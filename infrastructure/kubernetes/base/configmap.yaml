@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aether-config
+  namespace: aether
+  labels:
+    app.kubernetes.io/name: aether-config
+data:
+  redis-host: "aether-redis"
+  redis-port: "6379"
+  cors-origins: "https://aether.example.com"
+  log-level: "info"
+  node-env: "production"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aether-secrets
+  namespace: aether
+  labels:
+    app.kubernetes.io/name: aether-secrets
+type: Opaque
+stringData:
+  # These should be overridden in production via sealed-secrets or external secrets manager
+  database-url: "postgresql://aether:changeme@aether-postgres:5432/aether?schema=public"
+  redis-password: ""
+  jwt-secret: "change-this-in-production-to-a-secure-random-string"
+  gemini-api-key: ""

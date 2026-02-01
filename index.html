@@ -1,0 +1,114 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Aether | Autonomous FP&A</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              aether: {
+                900: 'rgba(255, 255, 255, 0.4)', // Main Layout (Glass)
+                800: 'rgba(255, 255, 255, 0.75)', // Cards (Glass)
+                700: 'rgba(203, 213, 225, 0.5)', // Borders (Slate 300 equivalent)
+                accent: '#3b82f6',
+                success: '#10b981',
+                warning: '#f59e0b',
+                danger: '#ef4444',
+              }
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+      body {
+        /* Liquid Light Mesh Gradient */
+        background-color: #f0f4f8;
+        background-image: 
+          radial-gradient(at 0% 0%, hsla(253,16%,7%,0) 0, hsla(253,16%,7%,0) 50%), 
+          radial-gradient(at 50% 0%, hsla(225,39%,30%,0) 0, hsla(225,39%,30%,0) 50%), 
+          radial-gradient(at 100% 0%, hsla(339,49%,30%,0) 0, hsla(339,49%,30%,0) 50%);
+        background: radial-gradient(circle at 10% 20%, rgb(239, 246, 255) 0%, rgb(241, 245, 249) 90%);
+        color: #1e293b; /* Slate 800 */
+        font-family: 'Inter', sans-serif;
+      }
+
+      /* Custom scrollbar for modern feel (Light Mode) */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.5); 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1; /* Slate 300 */
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8; /* Slate 400 */
+      }
+
+      /* Global Overrides for Light Theme compatibility */
+      .text-white { color: #0f172a !important; } /* Invert white text to dark slate */
+      .text-slate-200 { color: #334155 !important; } /* Darker text */
+      .text-slate-300 { color: #475569 !important; } /* Medium dark */
+      .text-slate-400 { color: #64748b !important; } /* Muted */
+      .text-slate-500 { color: #64748b !important; }
+      
+      /* Glassmorphism Utilities */
+      .bg-aether-800 {
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+      }
+      
+      .bg-aether-900 {
+        /* Sidebar needs slightly more opacity/color */
+        background-color: rgba(255, 255, 255, 0.5);
+        backdrop-filter: blur(20px);
+        border-right: 1px solid rgba(255, 255, 255, 0.6);
+      }
+
+      /* Inputs */
+      select, input, textarea {
+        background-color: rgba(255, 255, 255, 0.8) !important;
+        border-color: rgba(203, 213, 225, 0.8) !important;
+        color: #0f172a !important;
+      }
+      
+      /* Table Hover */
+      tr:hover td {
+        background-color: rgba(241, 245, 249, 0.5);
+      }
+    </style>
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "recharts": "https://aistudiocdn.com/recharts@^3.5.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

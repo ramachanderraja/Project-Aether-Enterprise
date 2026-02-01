@@ -1,0 +1,458 @@
+// Prisma Schema for Project Aether
+// Enterprise Autonomous FP&A Platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// TENANT & USER MANAGEMENT
+// ============================================
+
+model Tenant {
+  id          String   @id @default(uuid())
+  name        String
+  domain      String?  @unique
+  plan        String   @default("standard") // standard, professional, enterprise
+  isActive    Boolean  @default(true)
+  settings    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users         User[]
+  costCenters   CostCenter[]
+  deals         Deal[]
+  scenarios     Scenario[]
+  dataSources   DataSource[]
+  auditLogs     AuditLog[]
+
+  @@map("tenants")
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  passwordHash    String?
+  firstName       String
+  lastName        String
+  avatarUrl       String?
+  isActive        Boolean   @default(true)
+  lastLoginAt     DateTime?
+  tenantId        String
+  mfaEnabled      Boolean   @default(false)
+  mfaSecret       String?
+  mfaBackupCodes  String[]  @default([])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  roles           UserRole[]
+  refreshTokens   RefreshToken[]
+  preferences     UserPreference?
+  scenarios       Scenario[]       @relation("ScenarioOwner")
+  approvals       Approval[]       @relation("ApprovalApprover")
+  conversations   AIConversation[]
+  auditLogs       AuditLog[]
+
+  @@index([tenantId])
+  @@index([email])
+  @@map("users")
+}
+
+model UserPreference {
+  id              String  @id @default(uuid())
+  userId          String  @unique
+  theme           String  @default("light")
+  locale          String  @default("en-US")
+  timezone        String  @default("America/New_York")
+  defaultCurrency String  @default("USD")
+  notifications   Json?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  resource    String
+  action      String
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model UserRole {
+  userId String
+  roleId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ============================================
+// FINANCIAL DATA
+// ============================================
+
+model FinancialMetric {
+  id           String   @id @default(uuid())
+  tenantId     String
+  metricType   String   // revenue, cost, ebitda, etc.
+  value        Decimal  @db.Decimal(18, 2)
+  currency     String   @default("USD")
+  periodStart  DateTime
+  periodEnd    DateTime
+  region       String?
+  lob          String?  // Line of Business
+  costCenterId String?
+  source       String?
+  isActual     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  costCenter CostCenter? @relation(fields: [costCenterId], references: [id])
+
+  @@index([tenantId, metricType, periodStart])
+  @@index([periodStart, periodEnd])
+  @@map("financial_metrics")
+}
+
+model CostCenter {
+  id          String   @id @default(uuid())
+  tenantId    String
+  code        String
+  name        String
+  parentId    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  tenant   Tenant           @relation(fields: [tenantId], references: [id])
+  parent   CostCenter?      @relation("CostCenterHierarchy", fields: [parentId], references: [id])
+  children CostCenter[]     @relation("CostCenterHierarchy")
+  metrics  FinancialMetric[]
+  costs    Cost[]
+
+  @@unique([tenantId, code])
+  @@map("cost_centers")
+}
+
+model Cost {
+  id           String   @id @default(uuid())
+  tenantId     String
+  category     String
+  subcategory  String?
+  vendorId     String?
+  amount       Decimal  @db.Decimal(18, 2)
+  currency     String   @default("USD")
+  periodDate   DateTime
+  costCenterId String?
+  description  String?
+  isRecurring  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  costCenter CostCenter? @relation(fields: [costCenterId], references: [id])
+  vendor     Vendor?     @relation(fields: [vendorId], references: [id])
+
+  @@index([tenantId, periodDate])
+  @@index([category])
+  @@map("costs")
+}
+
+model Vendor {
+  id             String   @id @default(uuid())
+  tenantId       String
+  name           String
+  category       String?
+  contractStart  DateTime?
+  contractEnd    DateTime?
+  paymentTerms   String?
+  riskScore      String?  // low, medium, high
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  costs Cost[]
+
+  @@index([tenantId])
+  @@map("vendors")
+}
+
+// ============================================
+// SALES & PIPELINE
+// ============================================
+
+model Deal {
+  id              String    @id @default(uuid())
+  tenantId        String
+  externalId      String?   // Salesforce ID
+  name            String
+  accountName     String
+  amount          Decimal   @db.Decimal(18, 2)
+  currency        String    @default("USD")
+  stage           String
+  probability     Decimal   @db.Decimal(5, 2)
+  closeDate       DateTime?
+  ownerId         String?
+  ownerName       String?
+  region          String?
+  lob             String?
+  productLine     String?
+  riskLevel       String?   // low, medium, high
+  lastActivityAt  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant    Tenant         @relation(fields: [tenantId], references: [id])
+  stageHistory DealStageHistory[]
+
+  @@index([tenantId, stage])
+  @@index([closeDate])
+  @@map("deals")
+}
+
+model DealStageHistory {
+  id        String   @id @default(uuid())
+  dealId    String
+  stage     String
+  enteredAt DateTime @default(now())
+  exitedAt  DateTime?
+  duration  Int?     // Duration in days
+
+  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([dealId])
+  @@map("deal_stage_history")
+}
+
+// ============================================
+// ANOMALY DETECTION
+// ============================================
+
+model Anomaly {
+  id           String   @id @default(uuid())
+  tenantId     String
+  severity     String   // critical, high, medium, low
+  category     String   // cost_spike, revenue_drop, variance, pattern
+  metricName   String
+  accountCode  String?
+  description  String
+  currentValue Decimal  @db.Decimal(18, 2)
+  expectedValue Decimal @db.Decimal(18, 2)
+  varianceAmount Decimal @db.Decimal(18, 2)
+  variancePercent Decimal @db.Decimal(8, 4)
+  detectedAt   DateTime @default(now())
+  status       String   @default("unresolved") // unresolved, investigating, resolved, dismissed
+  assignedTo   String?
+  rootCauseAnalysis Json?
+  resolvedAt   DateTime?
+  notes        String?
+
+  @@index([tenantId, status])
+  @@index([detectedAt])
+  @@map("anomalies")
+}
+
+// ============================================
+// AI & CONVERSATIONS
+// ============================================
+
+model AIConversation {
+  id        String   @id @default(uuid())
+  userId    String
+  tenantId  String
+  context   String?  // dashboard, scenario, etc.
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User          @relation(fields: [userId], references: [id])
+  messages AIMessage[]
+
+  @@index([userId])
+  @@map("ai_conversations")
+}
+
+model AIMessage {
+  id             String   @id @default(uuid())
+  conversationId String
+  role           String   // user, assistant
+  content        String
+  citations      Json?
+  suggestedActions Json?
+  tokensUsed     Int?
+  processingTimeMs Int?
+  createdAt      DateTime @default(now())
+
+  conversation AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("ai_messages")
+}
+
+// ============================================
+// SCENARIO PLANNING
+// ============================================
+
+model Scenario {
+  id             String   @id @default(uuid())
+  tenantId       String
+  name           String
+  description    String?
+  type           String   // budget, forecast, what_if, strategic
+  status         String   @default("draft") // draft, in_review, approved, active, archived
+  ownerId        String
+  baseScenarioId String?
+  timeHorizon    Json?
+  assumptions    Json?
+  projections    Json?
+  sensitivity    Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant       Tenant     @relation(fields: [tenantId], references: [id])
+  owner        User       @relation("ScenarioOwner", fields: [ownerId], references: [id])
+  baseScenario Scenario?  @relation("ScenarioVersion", fields: [baseScenarioId], references: [id])
+  versions     Scenario[] @relation("ScenarioVersion")
+  approvals    Approval[]
+
+  @@index([tenantId, status])
+  @@map("scenarios")
+}
+
+model Approval {
+  id          String    @id @default(uuid())
+  scenarioId  String
+  approverId  String
+  step        Int
+  status      String    @default("pending") // pending, approved, rejected
+  comments    String?
+  conditions  Json?
+  approvedAt  DateTime?
+  rejectedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  approver User     @relation("ApprovalApprover", fields: [approverId], references: [id])
+
+  @@index([scenarioId])
+  @@map("approvals")
+}
+
+// ============================================
+// DATA FABRIC & INTEGRATIONS
+// ============================================
+
+model DataSource {
+  id            String   @id @default(uuid())
+  tenantId      String
+  name          String
+  type          String   // erp, crm, hris, etc.
+  status        String   @default("disconnected") // connected, disconnected, error
+  config        Json?
+  lastSyncAt    DateTime?
+  syncFrequency String?
+  healthStatus  Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  syncJobs SyncJob[]
+
+  @@index([tenantId])
+  @@map("data_sources")
+}
+
+model SyncJob {
+  id           String    @id @default(uuid())
+  dataSourceId String
+  status       String    @default("pending") // pending, running, completed, failed
+  syncType     String    // full, incremental
+  startedAt    DateTime?
+  completedAt  DateTime?
+  recordsProcessed Int?
+  errors       Json?
+  createdAt    DateTime  @default(now())
+
+  dataSource DataSource @relation(fields: [dataSourceId], references: [id])
+
+  @@index([dataSourceId])
+  @@map("sync_jobs")
+}
+
+// ============================================
+// AUDIT & GOVERNANCE
+// ============================================
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  tenantId    String
+  userId      String?
+  action      String
+  resourceType String
+  resourceId  String?
+  resourceName String?
+  changes     Json?
+  ipAddress   String?
+  userAgent   String?
+  sessionId   String?
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([userId])
+  @@index([resourceType, resourceId])
+  @@map("audit_logs")
+}
