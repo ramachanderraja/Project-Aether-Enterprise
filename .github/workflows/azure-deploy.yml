@@ -1,0 +1,214 @@
+# =============================================================================
+# Project Aether - Azure Deployment Workflow
+# =============================================================================
+# This workflow deploys the application to Azure App Service
+#
+# Required secrets:
+#   AZURE_CREDENTIALS - Azure service principal credentials (JSON)
+#   ACR_LOGIN_SERVER  - Azure Container Registry login server
+#   ACR_USERNAME      - ACR admin username
+#   ACR_PASSWORD      - ACR admin password
+#   AZURE_RG          - Azure resource group name
+#   BACKEND_APP_NAME  - Backend App Service name
+#   FRONTEND_APP_NAME - Frontend App Service name
+# =============================================================================
+
+name: Deploy to Azure
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.gitignore'
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+env:
+  REGISTRY: ${{ secrets.ACR_LOGIN_SERVER }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Build and Test
+  # ---------------------------------------------------------------------------
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Install backend dependencies
+        run: cd backend && npm ci
+
+      - name: Run backend tests
+        run: cd backend && npm test
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Run frontend tests
+        run: cd frontend && npm test -- --run
+
+      - name: Build backend
+        run: cd backend && npm run build
+
+      - name: Build frontend
+        run: cd frontend && npm run build
+
+  # ---------------------------------------------------------------------------
+  # Build and Push Docker Images
+  # ---------------------------------------------------------------------------
+  build-push:
+    needs: build-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to ACR
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/aether-backend:latest
+            ${{ env.REGISTRY }}/aether-backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/aether-frontend:latest
+            ${{ env.REGISTRY }}/aether-frontend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------------------------------------------------------------------------
+  # Deploy to Azure App Service
+  # ---------------------------------------------------------------------------
+  deploy:
+    needs: build-push
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.environment || 'dev' }}
+
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy Backend
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ secrets.BACKEND_APP_NAME }}
+          images: '${{ env.REGISTRY }}/aether-backend:${{ github.sha }}'
+
+      - name: Deploy Frontend
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ secrets.FRONTEND_APP_NAME }}
+          images: '${{ env.REGISTRY }}/aether-frontend:${{ github.sha }}'
+
+      - name: Health Check - Backend
+        run: |
+          echo "Waiting for backend to be ready..."
+          sleep 30
+          for i in {1..10}; do
+            if curl -sf "https://${{ secrets.BACKEND_APP_NAME }}.azurewebsites.net/health"; then
+              echo "Backend is healthy!"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 10 seconds..."
+            sleep 10
+          done
+          echo "Backend health check failed"
+          exit 1
+
+      - name: Azure logout
+        run: az logout
+
+  # ---------------------------------------------------------------------------
+  # Run Database Migrations (Manual Trigger)
+  # ---------------------------------------------------------------------------
+  migrate:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Run migrations
+        run: |
+          az webapp config appsettings set \
+            --name ${{ secrets.BACKEND_APP_NAME }} \
+            --resource-group ${{ secrets.AZURE_RG }} \
+            --settings STARTUP_COMMAND="npx prisma migrate deploy && node dist/main.js"
+
+          # Restart to apply
+          az webapp restart \
+            --name ${{ secrets.BACKEND_APP_NAME }} \
+            --resource-group ${{ secrets.AZURE_RG }}
+
+          # Wait for restart
+          sleep 60
+
+          # Reset startup command
+          az webapp config appsettings set \
+            --name ${{ secrets.BACKEND_APP_NAME }} \
+            --resource-group ${{ secrets.AZURE_RG }} \
+            --settings STARTUP_COMMAND="node dist/main.js"
+
+      - name: Azure logout
+        run: az logout

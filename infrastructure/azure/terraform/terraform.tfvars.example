@@ -1,0 +1,95 @@
+# =============================================================================
+# Project Aether - Terraform Variables Example
+# =============================================================================
+# Copy this file to terraform.tfvars and fill in your values
+# IMPORTANT: Never commit terraform.tfvars to version control!
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# General Configuration
+# -----------------------------------------------------------------------------
+
+project_name = "aether"
+environment  = "dev"        # Options: dev, staging, prod
+location     = "East US"    # Azure region
+
+# -----------------------------------------------------------------------------
+# App Service Configuration
+# -----------------------------------------------------------------------------
+
+# SKU Options (monthly cost estimates):
+# F1   - Free tier (limited features)
+# B1   - Basic (~$13/month) - Good for dev
+# B2   - Basic (~$26/month)
+# S1   - Standard (~$73/month) - Good for staging
+# P1V2 - Premium (~$81/month) - Good for production
+# P1V3 - Premium V3 (~$138/month)
+app_service_sku = "B1"
+
+# -----------------------------------------------------------------------------
+# Container Registry
+# -----------------------------------------------------------------------------
+
+# SKU Options:
+# Basic    - Good for dev/test
+# Standard - Good for most production workloads
+# Premium  - For geo-replication, enhanced throughput
+acr_sku = "Basic"
+
+# -----------------------------------------------------------------------------
+# Database Configuration
+# -----------------------------------------------------------------------------
+
+db_admin_username = "aether_admin"
+db_admin_password = "YourSecurePassword123!"  # Min 12 chars, must include uppercase, lowercase, number
+db_name           = "aether_db"
+
+# SKU Options (monthly cost estimates):
+# B_Standard_B1ms    - Burstable (~$12/month) - Good for dev
+# B_Standard_B2s     - Burstable (~$25/month)
+# GP_Standard_D2s_v3 - General Purpose (~$98/month) - Good for production
+db_sku_name = "B_Standard_B1ms"
+db_storage_mb = 32768  # 32 GB
+
+# -----------------------------------------------------------------------------
+# Redis Configuration
+# -----------------------------------------------------------------------------
+
+# SKU Options:
+# Basic    - Single node, no SLA (~$16/month for C0)
+# Standard - Replicated, SLA (~$50/month for C0)
+# Premium  - Enterprise features
+redis_sku      = "Basic"
+redis_family   = "C"
+redis_capacity = 0  # 0 = 250MB, 1 = 1GB, 2 = 2.5GB, etc.
+
+# -----------------------------------------------------------------------------
+# Security Configuration
+# -----------------------------------------------------------------------------
+
+# Generate with: openssl rand -base64 48
+jwt_secret = "your-super-secret-jwt-key-at-least-32-characters-long"
+
+# -----------------------------------------------------------------------------
+# AI Configuration (Optional)
+# -----------------------------------------------------------------------------
+
+# Get from: https://makersuite.google.com/app/apikey
+gemini_api_key = ""
+
+# -----------------------------------------------------------------------------
+# Custom Domain (Optional)
+# -----------------------------------------------------------------------------
+
+# Leave empty if not using custom domain
+custom_domain = ""
+
+# -----------------------------------------------------------------------------
+# Tags
+# -----------------------------------------------------------------------------
+
+additional_tags = {
+  Owner       = "Your Name"
+  Department  = "Finance"
+  CostCenter  = "FP&A"
+}
