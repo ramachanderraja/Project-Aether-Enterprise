@@ -1,0 +1,25 @@
+code,name,parent_code,is_active
+CC001,Corporate,, true
+CC001-FIN,Finance,CC001,true
+CC001-FIN-AP,Accounts Payable,CC001-FIN,true
+CC001-FIN-AR,Accounts Receivable,CC001-FIN,true
+CC001-FIN-FPA,FP&A,CC001-FIN,true
+CC001-HR,Human Resources,CC001,true
+CC001-HR-REC,Recruiting,CC001-HR,true
+CC001-HR-BEN,Benefits,CC001-HR,true
+CC001-IT,Information Technology,CC001,true
+CC001-IT-INF,Infrastructure,CC001-IT,true
+CC001-IT-DEV,Development,CC001-IT,true
+CC001-IT-SEC,Security,CC001-IT,true
+CC002,Sales,, true
+CC002-NAM,North America Sales,CC002,true
+CC002-EMEA,EMEA Sales,CC002,true
+CC002-APAC,APAC Sales,CC002,true
+CC003,Operations,, true
+CC003-MFG,Manufacturing,CC003,true
+CC003-LOG,Logistics,CC003,true
+CC003-QA,Quality Assurance,CC003,true
+CC004,Marketing,, true
+CC004-DIG,Digital Marketing,CC004,true
+CC004-BRAND,Brand Marketing,CC004,true
+CC004-EVENTS,Events,CC004,true

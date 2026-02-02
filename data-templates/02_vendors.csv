@@ -1,0 +1,21 @@
+name,category,contract_start,contract_end,payment_terms,risk_score,is_active
+Amazon Web Services,Cloud Services,2023-01-01,2025-12-31,Net 30,low,true
+Microsoft Corporation,Software,2023-03-15,2026-03-14,Net 45,low,true
+Salesforce Inc,CRM Software,2023-06-01,2024-05-31,Net 30,low,true
+Google Cloud Platform,Cloud Services,2023-02-01,2025-01-31,Net 30,low,true
+Workday Inc,HR Software,2023-04-01,2026-03-31,Net 30,low,true
+Oracle Corporation,Database,2022-07-01,2025-06-30,Net 60,medium,true
+SAP SE,ERP Software,2022-01-01,2027-12-31,Net 45,low,true
+Dell Technologies,Hardware,2023-01-01,2024-12-31,Net 30,low,true
+Cisco Systems,Networking,2023-05-15,2025-05-14,Net 30,low,true
+Accenture,Consulting,2023-09-01,2024-08-31,Net 45,medium,true
+Deloitte,Professional Services,2023-01-01,2024-12-31,Net 30,low,true
+KPMG,Audit Services,2023-04-01,2024-03-31,Net 30,low,true
+FedEx Corporation,Logistics,2023-01-01,2024-12-31,Net 15,low,true
+UPS Inc,Logistics,2023-01-01,2024-12-31,Net 15,low,true
+Office Depot,Office Supplies,2023-06-01,2024-05-31,Net 30,low,true
+Zoom Video Communications,Communication,2023-01-01,2024-12-31,Net 30,low,true
+Slack Technologies,Communication,2023-03-01,2024-02-29,Net 30,low,true
+DocuSign Inc,E-Signature,2023-07-01,2024-06-30,Net 30,low,true
+Stripe Inc,Payment Processing,2023-01-01,2025-12-31,Net 15,low,true
+Twilio Inc,Communication API,2023-02-15,2024-02-14,Net 30,medium,true

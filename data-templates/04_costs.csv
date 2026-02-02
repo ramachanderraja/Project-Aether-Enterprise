@@ -1,0 +1,31 @@
+category,subcategory,vendor_name,amount,currency,period_date,cost_center_code,description,is_recurring
+Cloud Infrastructure,Compute,Amazon Web Services,485000.00,USD,2023-01-15,CC001-IT-INF,AWS Monthly Compute Costs,true
+Cloud Infrastructure,Storage,Amazon Web Services,125000.00,USD,2023-01-15,CC001-IT-INF,AWS S3 Storage,true
+Cloud Infrastructure,Database,Amazon Web Services,95000.00,USD,2023-01-15,CC001-IT-INF,AWS RDS Database,true
+Software Licenses,CRM,Salesforce Inc,180000.00,USD,2023-01-01,CC002,Salesforce Enterprise Licenses,true
+Software Licenses,ERP,SAP SE,250000.00,USD,2023-01-01,CC001-FIN,SAP S/4HANA Licenses,true
+Software Licenses,HR,Workday Inc,120000.00,USD,2023-01-01,CC001-HR,Workday HCM Platform,true
+Software Licenses,Productivity,Microsoft Corporation,85000.00,USD,2023-01-01,CC001-IT,Microsoft 365 E5,true
+Professional Services,Consulting,Accenture,350000.00,USD,2023-01-31,CC001-IT-DEV,Digital Transformation Project,false
+Professional Services,Audit,KPMG,125000.00,USD,2023-01-31,CC001-FIN,Annual Audit Services,false
+Professional Services,Legal,Deloitte,75000.00,USD,2023-01-31,CC001,Legal Advisory Services,false
+Hardware,Servers,Dell Technologies,450000.00,USD,2023-01-20,CC001-IT-INF,Server Refresh Program,false
+Hardware,Networking,Cisco Systems,180000.00,USD,2023-01-20,CC001-IT-INF,Network Equipment Upgrade,false
+Marketing,Digital Advertising,Google Cloud Platform,125000.00,USD,2023-01-31,CC004-DIG,Google Ads Campaigns,true
+Marketing,Events,,,85000.00,USD,2023-01-31,CC004-EVENTS,Industry Conference Sponsorship,false
+Marketing,Content,,,45000.00,USD,2023-01-31,CC004-DIG,Content Marketing Agency,true
+Facilities,Office Supplies,Office Depot,12500.00,USD,2023-01-31,CC001,Monthly Office Supplies,true
+Facilities,Utilities,,,35000.00,USD,2023-01-31,CC001,Office Utilities,true
+Travel,Sales Travel,,,125000.00,USD,2023-01-31,CC002,Sales Team Travel Expenses,false
+Travel,Executive Travel,,,45000.00,USD,2023-01-31,CC001,Executive Travel,false
+Logistics,Shipping,FedEx Corporation,28000.00,USD,2023-01-31,CC003-LOG,Monthly Shipping Costs,true
+Logistics,Shipping,UPS Inc,22000.00,USD,2023-01-31,CC003-LOG,Monthly Shipping Costs,true
+Communication,Video Conferencing,Zoom Video Communications,15000.00,USD,2023-01-01,CC001-IT,Zoom Enterprise,true
+Communication,Messaging,Slack Technologies,12000.00,USD,2023-01-01,CC001-IT,Slack Business+,true
+Payment Processing,Transaction Fees,Stripe Inc,95000.00,USD,2023-01-31,CC001-FIN-AR,Payment Processing Fees,true
+Cloud Infrastructure,Compute,Amazon Web Services,495000.00,USD,2023-02-15,CC001-IT-INF,AWS Monthly Compute Costs,true
+Cloud Infrastructure,Storage,Amazon Web Services,128000.00,USD,2023-02-15,CC001-IT-INF,AWS S3 Storage,true
+Software Licenses,CRM,Salesforce Inc,180000.00,USD,2023-02-01,CC002,Salesforce Enterprise Licenses,true
+Software Licenses,ERP,SAP SE,250000.00,USD,2023-02-01,CC001-FIN,SAP S/4HANA Licenses,true
+Marketing,Digital Advertising,Google Cloud Platform,135000.00,USD,2023-02-28,CC004-DIG,Google Ads Campaigns,true
+Professional Services,Consulting,Accenture,380000.00,USD,2023-02-28,CC001-IT-DEV,Digital Transformation Project,false

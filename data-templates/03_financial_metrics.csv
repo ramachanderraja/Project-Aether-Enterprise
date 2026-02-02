@@ -1,0 +1,36 @@
+metric_type,value,currency,period_start,period_end,region,lob,cost_center_code,source,is_actual
+revenue,12500000.00,USD,2023-01-01,2023-01-31,North America,Enterprise Software,CC002-NAM,SAP,true
+revenue,8750000.00,USD,2023-01-01,2023-01-31,EMEA,Enterprise Software,CC002-EMEA,SAP,true
+revenue,5250000.00,USD,2023-01-01,2023-01-31,APAC,Enterprise Software,CC002-APAC,SAP,true
+revenue,3200000.00,USD,2023-01-01,2023-01-31,North America,Professional Services,CC002-NAM,SAP,true
+revenue,13100000.00,USD,2023-02-01,2023-02-28,North America,Enterprise Software,CC002-NAM,SAP,true
+revenue,9100000.00,USD,2023-02-01,2023-02-28,EMEA,Enterprise Software,CC002-EMEA,SAP,true
+revenue,5500000.00,USD,2023-02-01,2023-02-28,APAC,Enterprise Software,CC002-APAC,SAP,true
+revenue,3400000.00,USD,2023-02-01,2023-02-28,North America,Professional Services,CC002-NAM,SAP,true
+revenue,14200000.00,USD,2023-03-01,2023-03-31,North America,Enterprise Software,CC002-NAM,SAP,true
+revenue,9800000.00,USD,2023-03-01,2023-03-31,EMEA,Enterprise Software,CC002-EMEA,SAP,true
+revenue,6100000.00,USD,2023-03-01,2023-03-31,APAC,Enterprise Software,CC002-APAC,SAP,true
+revenue,3800000.00,USD,2023-03-01,2023-03-31,North America,Professional Services,CC002-NAM,SAP,true
+cost,8500000.00,USD,2023-01-01,2023-01-31,Global,Operations,CC003,SAP,true
+cost,4200000.00,USD,2023-01-01,2023-01-31,Global,Sales & Marketing,CC002,SAP,true
+cost,2100000.00,USD,2023-01-01,2023-01-31,Global,R&D,CC001-IT-DEV,SAP,true
+cost,1500000.00,USD,2023-01-01,2023-01-31,Global,G&A,CC001,SAP,true
+cost,8800000.00,USD,2023-02-01,2023-02-28,Global,Operations,CC003,SAP,true
+cost,4400000.00,USD,2023-02-01,2023-02-28,Global,Sales & Marketing,CC002,SAP,true
+cost,2200000.00,USD,2023-02-01,2023-02-28,Global,R&D,CC001-IT-DEV,SAP,true
+cost,1550000.00,USD,2023-02-01,2023-02-28,Global,G&A,CC001,SAP,true
+ebitda,13400000.00,USD,2023-01-01,2023-01-31,Global,,, SAP,true
+ebitda,14350000.00,USD,2023-02-01,2023-02-28,Global,,,SAP,true
+ebitda,16050000.00,USD,2023-03-01,2023-03-31,Global,,,SAP,true
+gross_margin,0.72,USD,2023-01-01,2023-01-31,Global,,,SAP,true
+gross_margin,0.73,USD,2023-02-01,2023-02-28,Global,,,SAP,true
+gross_margin,0.74,USD,2023-03-01,2023-03-31,Global,,,SAP,true
+arr,350000000.00,USD,2023-01-01,2023-01-31,Global,,,Salesforce,true
+arr,358000000.00,USD,2023-02-01,2023-02-28,Global,,,Salesforce,true
+arr,365000000.00,USD,2023-03-01,2023-03-31,Global,,,Salesforce,true
+nrr,1.12,USD,2023-01-01,2023-01-31,Global,,,Calculated,true
+nrr,1.14,USD,2023-02-01,2023-02-28,Global,,,Calculated,true
+nrr,1.13,USD,2023-03-01,2023-03-31,Global,,,Calculated,true
+revenue,13800000.00,USD,2023-01-01,2023-01-31,North America,Enterprise Software,CC002-NAM,SAP,false
+revenue,9500000.00,USD,2023-01-01,2023-01-31,EMEA,Enterprise Software,CC002-EMEA,SAP,false
+revenue,5800000.00,USD,2023-01-01,2023-01-31,APAC,Enterprise Software,CC002-APAC,SAP,false

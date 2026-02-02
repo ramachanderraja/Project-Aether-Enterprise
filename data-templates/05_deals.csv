@@ -1,0 +1,21 @@
+external_id,name,account_name,amount,currency,stage,probability,close_date,owner_name,region,lob,product_line,risk_level,last_activity_at
+SF-001234,Enterprise Platform Deal,Acme Corporation,2500000.00,USD,Negotiation,75.00,2024-03-15,John Smith,North America,Enterprise Software,Platform,low,2024-01-28
+SF-001235,Cloud Migration Project,Global Tech Inc,1800000.00,USD,Proposal,60.00,2024-04-30,Sarah Johnson,North America,Professional Services,Consulting,medium,2024-01-25
+SF-001236,Annual License Renewal,Mega Industries,950000.00,USD,Closed Won,100.00,2024-01-15,Mike Williams,North America,Enterprise Software,Platform,low,2024-01-15
+SF-001237,New Implementation,TechStart Ltd,450000.00,USD,Discovery,25.00,2024-06-30,Emily Brown,EMEA,Enterprise Software,Platform,high,2024-01-20
+SF-001238,Expansion Deal,DataFlow Systems,1200000.00,USD,Qualification,40.00,2024-05-15,David Lee,APAC,Enterprise Software,Analytics,medium,2024-01-22
+SF-001239,Enterprise Agreement,Fortune 500 Co,5500000.00,USD,Negotiation,80.00,2024-02-28,John Smith,North America,Enterprise Software,Platform,low,2024-01-29
+SF-001240,Professional Services,Innovation Labs,680000.00,USD,Proposal,55.00,2024-04-15,Sarah Johnson,EMEA,Professional Services,Implementation,medium,2024-01-24
+SF-001241,Platform Upgrade,Legacy Corp,320000.00,USD,Discovery,20.00,2024-07-31,Mike Williams,North America,Enterprise Software,Platform,high,2024-01-18
+SF-001242,Analytics Suite,Data Driven Inc,890000.00,USD,Qualification,35.00,2024-05-30,Emily Brown,APAC,Enterprise Software,Analytics,medium,2024-01-21
+SF-001243,Multi-Year Contract,Enterprise Plus,3200000.00,USD,Closed Won,100.00,2024-01-20,David Lee,North America,Enterprise Software,Platform,low,2024-01-20
+SF-001244,Cloud Transformation,NextGen Tech,2100000.00,USD,Proposal,65.00,2024-03-31,John Smith,EMEA,Professional Services,Consulting,low,2024-01-27
+SF-001245,Security Module Add-on,Secure Systems,280000.00,USD,Negotiation,70.00,2024-02-15,Sarah Johnson,North America,Enterprise Software,Security,low,2024-01-26
+SF-001246,Implementation Services,GrowthCo,750000.00,USD,Discovery,30.00,2024-06-15,Mike Williams,APAC,Professional Services,Implementation,medium,2024-01-19
+SF-001247,Platform Migration,OldTech Corp,1450000.00,USD,Qualification,45.00,2024-04-30,Emily Brown,North America,Enterprise Software,Platform,medium,2024-01-23
+SF-001248,Support Renewal,Loyal Customer Inc,180000.00,USD,Closed Won,100.00,2024-01-10,David Lee,EMEA,Enterprise Software,Support,low,2024-01-10
+SF-001249,New Logo Deal,Startup Ventures,520000.00,USD,Discovery,15.00,2024-08-31,John Smith,North America,Enterprise Software,Platform,high,2024-01-17
+SF-001250,Expansion - APAC,Regional Leader Ltd,980000.00,USD,Proposal,50.00,2024-05-15,Sarah Johnson,APAC,Enterprise Software,Platform,medium,2024-01-25
+SF-001251,Consulting Engagement,Strategy First,420000.00,USD,Negotiation,72.00,2024-02-28,Mike Williams,North America,Professional Services,Consulting,low,2024-01-28
+SF-001252,Training Program,Skill Builder Corp,95000.00,USD,Closed Lost,0.00,2024-01-05,Emily Brown,EMEA,Professional Services,Training,high,2024-01-05
+SF-001253,Enterprise Upsell,Existing Client A,650000.00,USD,Qualification,38.00,2024-05-31,David Lee,North America,Enterprise Software,Analytics,medium,2024-01-22
