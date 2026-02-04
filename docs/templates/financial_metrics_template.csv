@@ -1,0 +1,20 @@
+metric_type,value,currency,period_start,period_end,region,line_of_business,cost_center_code,source,is_actual
+revenue,1250000.00,USD,2025-01-01,2025-01-31,North America,Enterprise Software,CC001,SAP,true
+revenue,1180000.00,USD,2025-01-01,2025-01-31,EMEA,Enterprise Software,CC002,SAP,true
+revenue,890000.00,USD,2025-01-01,2025-01-31,APAC,Enterprise Software,CC003,SAP,true
+gross_profit,875000.00,USD,2025-01-01,2025-01-31,North America,Enterprise Software,CC001,SAP,true
+gross_profit,826000.00,USD,2025-01-01,2025-01-31,EMEA,Enterprise Software,CC002,SAP,true
+operating_expense,420000.00,USD,2025-01-01,2025-01-31,North America,Enterprise Software,CC001,SAP,true
+ebitda,455000.00,USD,2025-01-01,2025-01-31,North America,Enterprise Software,CC001,SAP,true
+net_income,380000.00,USD,2025-01-01,2025-01-31,North America,Enterprise Software,CC001,SAP,true
+arr,15000000.00,USD,2025-01-01,2025-01-31,Global,Enterprise Software,,Salesforce,true
+mrr,1250000.00,USD,2025-01-01,2025-01-31,Global,Enterprise Software,,Salesforce,true
+customer_count,245,USD,2025-01-01,2025-01-31,Global,Enterprise Software,,CRM,true
+churn_rate,2.5,USD,2025-01-01,2025-01-31,Global,Enterprise Software,,Analytics,true
+nps_score,72,USD,2025-01-01,2025-01-31,Global,Enterprise Software,,Survey,true
+revenue,1320000.00,USD,2025-02-01,2025-02-28,North America,Enterprise Software,CC001,SAP,true
+revenue,1210000.00,USD,2025-02-01,2025-02-28,EMEA,Enterprise Software,CC002,SAP,true
+revenue,920000.00,USD,2025-02-01,2025-02-28,APAC,Enterprise Software,CC003,SAP,true
+revenue,1380000.00,USD,2025-03-01,2025-03-31,North America,Enterprise Software,CC001,SAP,true
+revenue,1280000.00,USD,2025-03-01,2025-03-31,EMEA,Enterprise Software,CC002,SAP,true
+revenue,980000.00,USD,2025-03-01,2025-03-31,APAC,Enterprise Software,CC003,SAP,true

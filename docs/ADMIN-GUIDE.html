@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Aether - Administration Guide</title>
+    <style>
+        @media print {
+            body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .page-break { page-break-before: always; }
+            .no-break { page-break-inside: avoid; }
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px;
+            background: #fff;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #0078d4;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #0078d4;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            color: #666;
+            font-size: 1.2em;
+        }
+
+        .header .version {
+            color: #888;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        h2 {
+            color: #0078d4;
+            border-bottom: 2px solid #e1e1e1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #333;
+            margin-top: 25px;
+        }
+
+        h4 {
+            color: #555;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #0078d4;
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        .url-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .url-box a {
+            color: #fff;
+            text-decoration: underline;
+        }
+
+        .info-box {
+            background-color: #e7f3ff;
+            border-left: 4px solid #0078d4;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 5px 5px 0;
+        }
+
+        .warning-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 5px 5px 0;
+        }
+
+        .success-box {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 5px 5px 0;
+        }
+
+        ul, ol {
+            padding-left: 25px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .checklist {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .checklist li {
+            padding-left: 30px;
+            position: relative;
+        }
+
+        .checklist li:before {
+            content: "\2610";
+            position: absolute;
+            left: 0;
+            font-size: 1.2em;
+        }
+
+        .toc {
+            background-color: #f8f9fa;
+            padding: 20px 30px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .toc h3 {
+            margin-top: 0;
+            color: #0078d4;
+        }
+
+        .toc ol {
+            columns: 2;
+            column-gap: 40px;
+        }
+
+        .toc a {
+            color: #333;
+            text-decoration: none;
+        }
+
+        .toc a:hover {
+            color: #0078d4;
+        }
+
+        .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 2px solid #e1e1e1;
+            text-align: center;
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        .badge-yes {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .badge-no {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .step-number {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            background-color: #0078d4;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 28px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Project Aether</h1>
+        <div class="subtitle">Administration Guide</div>
+        <div class="version">Version 1.0 | February 2026</div>
+    </div>
+
+    <div class="toc">
+        <h3>Table of Contents</h3>
+        <ol>
+            <li><a href="#urls">Application URLs</a></li>
+            <li><a href="#first-login">First-Time Login</a></li>
+            <li><a href="#user-accounts">Creating User Accounts</a></li>
+            <li><a href="#roles">User Roles &amp; Permissions</a></li>
+            <li><a href="#data-upload">Uploading Historical Data</a></li>
+            <li><a href="#migrations">Database Migrations</a></li>
+            <li><a href="#monitoring">Monitoring &amp; Logs</a></li>
+            <li><a href="#troubleshooting">Troubleshooting</a></li>
+            <li><a href="#team">Sharing with Your Team</a></li>
+            <li><a href="#resources">Azure Resources Reference</a></li>
+        </ol>
+    </div>
+
+    <h2 id="urls">Application URLs</h2>
+
+    <div class="url-box">
+        <strong>Frontend Application:</strong><br>
+        <a href="https://aether-dev-web-04w9l0.azurewebsites.net">https://aether-dev-web-04w9l0.azurewebsites.net</a>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Environment</th>
+                <th>URL</th>
+                <th>Purpose</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Frontend</strong></td>
+                <td>https://aether-dev-web-04w9l0.azurewebsites.net</td>
+                <td>Main application UI</td>
+            </tr>
+            <tr>
+                <td><strong>Backend API</strong></td>
+                <td>https://aether-dev-api-04w9l0.azurewebsites.net</td>
+                <td>REST API</td>
+            </tr>
+            <tr>
+                <td><strong>Health Check</strong></td>
+                <td>https://aether-dev-api-04w9l0.azurewebsites.net/health</td>
+                <td>API health status</td>
+            </tr>
+            <tr>
+                <td><strong>Azure Portal</strong></td>
+                <td>https://portal.azure.com</td>
+                <td>Infrastructure management</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2 id="first-login" class="page-break">First-Time Login</h2>
+
+    <h3>Creating Your Admin Account</h3>
+    <div class="info-box">
+        When the application is first deployed, you need to create an admin account.
+    </div>
+
+    <div class="no-break">
+        <p><span class="step-number">1</span><strong>Navigate to the application:</strong></p>
+        <p style="margin-left: 40px;">https://aether-dev-web-04w9l0.azurewebsites.net</p>
+
+        <p><span class="step-number">2</span><strong>Click "Sign Up"</strong> or "Register" on the login page</p>
+
+        <p><span class="step-number">3</span><strong>Create the first admin account:</strong></p>
+        <ul style="margin-left: 40px;">
+            <li><strong>Email:</strong> Your corporate email (e.g., admin@gep.com)</li>
+            <li><strong>Password:</strong> Min 8 characters, include uppercase, lowercase, number, special char</li>
+            <li><strong>Name:</strong> Your full name</li>
+        </ul>
+    </div>
+
+    <h3>Alternative: Create Admin via API</h3>
+    <p>If registration is disabled, create admin via API:</p>
+    <pre><code>curl -X POST https://aether-dev-api-04w9l0.azurewebsites.net/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@gep.com",
+    "password": "YourSecurePassword123!",
+    "firstName": "Admin",
+    "lastName": "User"
+  }'</code></pre>
+
+    <h2 id="user-accounts" class="page-break">Creating User Accounts</h2>
+
+    <h3>Method 1: Self-Registration (If Enabled)</h3>
+    <ol>
+        <li>Navigate to the application URL</li>
+        <li>Click "Sign Up" / "Register"</li>
+        <li>Fill in required details</li>
+        <li>Verify email (if email verification is enabled)</li>
+    </ol>
+
+    <h3>Method 2: Admin Creates Users (Recommended)</h3>
+    <h4>Via Admin Dashboard</h4>
+    <ol>
+        <li>Login as an admin user</li>
+        <li>Navigate to <strong>Settings</strong> &gt; <strong>User Management</strong></li>
+        <li>Click <strong>"Add User"</strong></li>
+        <li>Fill in user details: Email, First name, Last name, Role</li>
+        <li>Click <strong>"Create User"</strong></li>
+        <li>User will receive an email with login instructions</li>
+    </ol>
+
+    <h4>Via API (Bulk Creation)</h4>
+    <pre><code>curl -X POST https://aether-dev-api-04w9l0.azurewebsites.net/api/users \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "email": "user@gep.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "role": "ANALYST"
+  }'</code></pre>
+
+    <h3>Bulk User Import</h3>
+    <p>For large teams, prepare a CSV file:</p>
+    <pre><code>email,firstName,lastName,role
+john.doe@gep.com,John,Doe,ANALYST
+jane.smith@gep.com,Jane,Smith,MANAGER
+bob.wilson@gep.com,Bob,Wilson,VIEWER</code></pre>
+    <p>Upload via <strong>Settings</strong> &gt; <strong>User Management</strong> &gt; <strong>Import Users</strong></p>
+
+    <h2 id="roles" class="page-break">User Roles &amp; Permissions</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Role</th>
+                <th>Dashboard</th>
+                <th>View Data</th>
+                <th>Edit Data</th>
+                <th>Upload Data</th>
+                <th>Manage Users</th>
+                <th>System Settings</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>ADMIN</strong></td>
+                <td><span class="badge badge-yes">Yes</span></td>
+                <td><span class="badge badge-yes">Yes</span></td>
+                <td><span class="badge badge-yes">Yes</span></td>
+                <td><span class="badge badge-yes">Yes</span></td>
+                <td><span class="badge badge-yes">Yes</span></td>
+                <td><span class="badge badge-yes">Yes</span></td>
+            </tr>
+            <tr>
+                <td><strong>MANAGER</strong></td>
+                <td><span class="badge badge-yes">Yes</span></td>
+                <td><span class="badge badge-yes">Yes</span></td>
+                <td><span class="badge badge-yes">Yes</span></td>
+                <td><span class="badge badge-yes">Yes</span></td>
+                <td><span class="badge badge-no">No</span></td>
+                <td><span class="badge badge-no">No</span></td>
+            </tr>
+            <tr>
+                <td><strong>ANALYST</strong></td>
+                <td><span class="badge badge-yes">Yes</span></td>
+                <td><span class="badge badge-yes">Yes</span></td>
+                <td><span class="badge badge-yes">Yes</span></td>
+                <td><span class="badge badge-yes">Yes</span></td>
+                <td><span class="badge badge-no">No</span></td>
+                <td><span class="badge badge-no">No</span></td>
+            </tr>
+            <tr>
+                <td><strong>VIEWER</strong></td>
+                <td><span class="badge badge-yes">Yes</span></td>
+                <td><span class="badge badge-yes">Yes</span></td>
+                <td><span class="badge badge-no">No</span></td>
+                <td><span class="badge badge-no">No</span></td>
+                <td><span class="badge badge-no">No</span></td>
+                <td><span class="badge badge-no">No</span></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>Role Descriptions</h3>
+    <ul>
+        <li><strong>ADMIN:</strong> Full system access, user management, settings configuration</li>
+        <li><strong>MANAGER:</strong> Can view/edit all data, create scenarios, approve forecasts</li>
+        <li><strong>ANALYST:</strong> Can view/edit data, upload files, create reports</li>
+        <li><strong>VIEWER:</strong> Read-only access to dashboards and reports</li>
+    </ul>
+
+    <h2 id="data-upload" class="page-break">Uploading Historical Data</h2>
+
+    <h3>Supported Data Types</h3>
+    <ol>
+        <li><strong>Revenue Data</strong> - Sales, subscriptions, service revenue</li>
+        <li><strong>Cost Data</strong> - COGS, operating expenses, overhead</li>
+        <li><strong>Headcount Data</strong> - Employee counts, salaries, benefits</li>
+        <li><strong>Department Budgets</strong> - Budget allocations by department</li>
+        <li><strong>Product Data</strong> - Product catalog, pricing, margins</li>
+        <li><strong>Customer Data</strong> - Customer segments, retention rates</li>
+        <li><strong>Market Data</strong> - Market size, growth rates, competition</li>
+    </ol>
+
+    <h3>Data Upload via Web Interface (Recommended)</h3>
+    <ol>
+        <li>Login to the application</li>
+        <li>Navigate to <strong>Data Fabric</strong> &gt; <strong>Import Data</strong></li>
+        <li>Select data type (Revenue, Costs, etc.)</li>
+        <li>Click <strong>"Upload File"</strong></li>
+        <li>Select your CSV/Excel file</li>
+        <li>Map columns to system fields</li>
+        <li>Review and confirm import</li>
+        <li>Click <strong>"Import"</strong></li>
+    </ol>
+
+    <h3>Data Templates</h3>
+
+    <h4>Revenue Data Template</h4>
+    <pre><code>date,product_id,product_name,region,channel,quantity,unit_price,total_revenue,currency
+2024-01-01,PROD001,Enterprise License,North America,Direct,100,1000.00,100000.00,USD
+2024-01-01,PROD002,Professional License,EMEA,Partner,250,500.00,125000.00,USD</code></pre>
+
+    <h4>Cost Data Template</h4>
+    <pre><code>date,cost_center,department,category,subcategory,amount,currency,description
+2024-01-01,CC001,Engineering,Personnel,Salaries,500000.00,USD,Engineering salaries
+2024-01-01,CC002,Sales,Operations,Travel,25000.00,USD,Sales travel expenses</code></pre>
+
+    <h4>Headcount Data Template</h4>
+    <pre><code>date,department,role,level,location,headcount,avg_salary,total_cost
+2024-01-01,Engineering,Software Engineer,Senior,US,25,150000,3750000
+2024-01-01,Sales,Account Executive,Mid,UK,15,80000,1200000</code></pre>
+
+    <div class="warning-box">
+        <strong>Data Validation Rules:</strong>
+        <ul style="margin-bottom: 0;">
+            <li>Dates must be in YYYY-MM-DD format</li>
+            <li>Currency codes must be ISO 4217 (USD, EUR, GBP, etc.)</li>
+            <li>Numeric fields cannot be empty (use 0 if needed)</li>
+            <li>Required fields cannot be null</li>
+        </ul>
+    </div>
+
+    <h2 id="migrations" class="page-break">Database Migrations</h2>
+
+    <div class="info-box">
+        After deploying the application, you need to run database migrations (one-time setup).
+    </div>
+
+    <h3>Option 1: Via Azure Portal</h3>
+    <ol>
+        <li>Go to Azure Portal &gt; App Services &gt; <code>aether-dev-api-04w9l0</code></li>
+        <li>Click <strong>SSH</strong> in the left menu</li>
+        <li>Run the migration commands:</li>
+    </ol>
+    <pre><code>npx prisma migrate deploy
+npx prisma db seed  # Optional: seed with sample data</code></pre>
+
+    <h3>Option 2: Via Azure CLI</h3>
+    <pre><code># Connect to the backend container
+az webapp ssh --name aether-dev-api-04w9l0 --resource-group aether-dev-rg
+
+# Inside the container, run:
+npx prisma migrate deploy</code></pre>
+
+    <h3>Option 3: Via Kudu Console</h3>
+    <ol>
+        <li>Go to: <code>https://aether-dev-api-04w9l0.scm.azurewebsites.net</code></li>
+        <li>Navigate to Debug Console &gt; Bash</li>
+        <li>Run migration commands</li>
+    </ol>
+
+    <h2 id="monitoring" class="page-break">Monitoring &amp; Logs</h2>
+
+    <h3>Azure Application Insights</h3>
+    <ol>
+        <li>Go to Azure Portal</li>
+        <li>Navigate to: <strong>aether-dev-rg</strong> &gt; <strong>aether-dev-ai</strong></li>
+        <li>View: Live metrics, Failures, Performance, Usage analytics</li>
+    </ol>
+
+    <h3>Container Logs</h3>
+    <pre><code># View backend logs
+az webapp log tail --name aether-dev-api-04w9l0 --resource-group aether-dev-rg
+
+# View frontend logs
+az webapp log tail --name aether-dev-web-04w9l0 --resource-group aether-dev-rg</code></pre>
+
+    <h3>Log Analytics Queries</h3>
+    <p>In Azure Portal &gt; Log Analytics &gt; <code>aether-dev-law</code>:</p>
+    <pre><code>// Application errors in last 24 hours
+AppExceptions
+| where TimeGenerated > ago(24h)
+| order by TimeGenerated desc
+
+// Request performance
+AppRequests
+| where TimeGenerated > ago(1h)
+| summarize avg(DurationMs) by Name
+| order by avg_DurationMs desc</code></pre>
+
+    <h2 id="troubleshooting" class="page-break">Troubleshooting</h2>
+
+    <h3>Common Issues</h3>
+
+    <div class="no-break">
+        <h4>1. "Application Error" on Frontend</h4>
+        <p><strong>Cause:</strong> Container still starting or crashed</p>
+        <p><strong>Solution:</strong></p>
+        <pre><code># Restart the app
+az webapp restart --name aether-dev-web-04w9l0 --resource-group aether-dev-rg
+
+# Wait 2-3 minutes and try again</code></pre>
+    </div>
+
+    <div class="no-break">
+        <h4>2. "504 Gateway Timeout"</h4>
+        <p><strong>Cause:</strong> Backend not responding</p>
+        <p><strong>Solution:</strong></p>
+        <pre><code># Check backend status
+az webapp show --name aether-dev-api-04w9l0 --resource-group aether-dev-rg --query state
+
+# Restart backend
+az webapp restart --name aether-dev-api-04w9l0 --resource-group aether-dev-rg</code></pre>
+    </div>
+
+    <div class="no-break">
+        <h4>3. "Database Connection Error"</h4>
+        <p><strong>Cause:</strong> PostgreSQL not accessible or credentials wrong</p>
+        <p><strong>Solution:</strong></p>
+        <ul>
+            <li>Verify database is running in Azure Portal</li>
+            <li>Check connection string in Key Vault</li>
+            <li>Ensure VNet integration is working</li>
+        </ul>
+    </div>
+
+    <div class="no-break">
+        <h4>4. "Invalid Token" or "Unauthorized"</h4>
+        <p><strong>Cause:</strong> JWT token expired or invalid</p>
+        <p><strong>Solution:</strong></p>
+        <ul>
+            <li>Clear browser cookies</li>
+            <li>Login again</li>
+            <li>Check JWT secret in Key Vault</li>
+        </ul>
+    </div>
+
+    <div class="no-break">
+        <h4>5. Cannot Upload Files</h4>
+        <p><strong>Cause:</strong> File size limit or format issue</p>
+        <p><strong>Solution:</strong></p>
+        <ul>
+            <li>Check file is under 50MB</li>
+            <li>Ensure CSV format is correct</li>
+            <li>Check for special characters in headers</li>
+        </ul>
+    </div>
+
+    <h3>Health Check</h3>
+    <pre><code># Check backend health
+curl https://aether-dev-api-04w9l0.azurewebsites.net/health
+
+# Expected response:
+# {"status":"ok","timestamp":"2024-01-01T00:00:00.000Z"}</code></pre>
+
+    <h3>Restarting Services</h3>
+    <pre><code># Restart both services
+az webapp restart --name aether-dev-api-04w9l0 --resource-group aether-dev-rg
+az webapp restart --name aether-dev-web-04w9l0 --resource-group aether-dev-rg</code></pre>
+
+    <h2 id="team" class="page-break">Sharing with Your Team</h2>
+
+    <h3>Quick Start for Team Members</h3>
+    <ol>
+        <li><strong>Share the application URL:</strong><br>
+            <code>https://aether-dev-web-04w9l0.azurewebsites.net</code></li>
+        <li><strong>Create accounts</strong> for each team member</li>
+        <li><strong>Assign appropriate roles</strong> based on responsibilities</li>
+        <li><strong>Share data templates</strong> so team can prepare their data</li>
+        <li><strong>Schedule training session</strong> to walk through features</li>
+    </ol>
+
+    <h3>Team Onboarding Checklist</h3>
+    <ul class="checklist">
+        <li>Create user accounts for all team members</li>
+        <li>Assign roles based on job functions</li>
+        <li>Share application URL and login credentials</li>
+        <li>Provide data template files</li>
+        <li>Schedule demo/training session</li>
+        <li>Set up communication channel (Teams/Slack) for support</li>
+        <li>Document department-specific workflows</li>
+    </ul>
+
+    <h2 id="resources" class="page-break">Azure Resources Reference</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Resource</th>
+                <th>Name</th>
+                <th>Purpose</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Resource Group</td>
+                <td><code>aether-dev-rg</code></td>
+                <td>Container for all resources</td>
+            </tr>
+            <tr>
+                <td>App Service Plan</td>
+                <td><code>aether-dev-asp</code></td>
+                <td>Hosts web apps</td>
+            </tr>
+            <tr>
+                <td>Backend API</td>
+                <td><code>aether-dev-api-04w9l0</code></td>
+                <td>REST API service</td>
+            </tr>
+            <tr>
+                <td>Frontend</td>
+                <td><code>aether-dev-web-04w9l0</code></td>
+                <td>React web application</td>
+            </tr>
+            <tr>
+                <td>PostgreSQL</td>
+                <td><code>aether-dev-psql-04w9l0</code></td>
+                <td>Database server</td>
+            </tr>
+            <tr>
+                <td>Redis Cache</td>
+                <td><code>aether-dev-redis-04w9l0</code></td>
+                <td>Caching layer</td>
+            </tr>
+            <tr>
+                <td>Key Vault</td>
+                <td><code>aether-dev-kv-04w9l0</code></td>
+                <td>Secrets management</td>
+            </tr>
+            <tr>
+                <td>Container Registry</td>
+                <td><code>aetherdevacr04w9l0</code></td>
+                <td>Docker images</td>
+            </tr>
+            <tr>
+                <td>Application Insights</td>
+                <td><code>aether-dev-ai</code></td>
+                <td>Monitoring</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>Support Contacts</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Issue Type</th>
+                <th>Contact</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Technical Issues</td>
+                <td>IT Support / DevOps Team</td>
+            </tr>
+            <tr>
+                <td>Access Requests</td>
+                <td>System Admin</td>
+            </tr>
+            <tr>
+                <td>Data Questions</td>
+                <td>FP&amp;A Team Lead</td>
+            </tr>
+            <tr>
+                <td>Feature Requests</td>
+                <td>Product Owner</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="footer">
+        <p><strong>Project Aether - Administration Guide</strong></p>
+        <p>Last Updated: February 2026 | Version 1.0</p>
+        <p>GEP - R&amp;D Department</p>
+    </div>
+</body>
+</html>

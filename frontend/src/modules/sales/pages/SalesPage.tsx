@@ -1,276 +1,421 @@
 import { useState } from 'react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
 
-interface Deal {
+interface StalledDeal {
   id: string;
   name: string;
-  account: string;
-  amount: number;
   stage: string;
-  probability: number;
-  closeDate: string;
-  owner: string;
-  riskLevel: 'low' | 'medium' | 'high';
-}
-
-interface PipelineStage {
-  name: string;
   value: number;
-  count: number;
-  color: string;
+  daysStalled: number;
 }
 
-const mockDeals: Deal[] = [
-  { id: '1', name: 'Enterprise Platform Deal', account: 'Acme Corp', amount: 450000, stage: 'Negotiation', probability: 0.7, closeDate: '2024-02-15', owner: 'John Smith', riskLevel: 'high' },
-  { id: '2', name: 'Cloud Migration Project', account: 'TechStart Inc', amount: 320000, stage: 'Proposal', probability: 0.45, closeDate: '2024-02-28', owner: 'Sarah Johnson', riskLevel: 'medium' },
-  { id: '3', name: 'Analytics Suite Expansion', account: 'Global Retail', amount: 580000, stage: 'Negotiation', probability: 0.65, closeDate: '2024-03-10', owner: 'Mike Wilson', riskLevel: 'high' },
-  { id: '4', name: 'Security Enhancement', account: 'FinServ Partners', amount: 290000, stage: 'Qualified', probability: 0.25, closeDate: '2024-03-30', owner: 'Emily Davis', riskLevel: 'low' },
-  { id: '5', name: 'Digital Transformation', account: 'MedTech Solutions', amount: 410000, stage: 'Proposal', probability: 0.5, closeDate: '2024-02-20', owner: 'John Smith', riskLevel: 'medium' },
-  { id: '6', name: 'Infrastructure Upgrade', account: 'Manufacturing Co', amount: 185000, stage: 'Qualified', probability: 0.3, closeDate: '2024-04-15', owner: 'Sarah Johnson', riskLevel: 'low' },
-  { id: '7', name: 'Data Platform License', account: 'Logistics Pro', amount: 675000, stage: 'Proposal', probability: 0.55, closeDate: '2024-03-05', owner: 'Mike Wilson', riskLevel: 'medium' },
-  { id: '8', name: 'AI Integration Package', account: 'Retail Giant', amount: 520000, stage: 'Negotiation', probability: 0.75, closeDate: '2024-02-10', owner: 'Emily Davis', riskLevel: 'low' },
+interface ClosedLostDeal {
+  id: string;
+  deal: string;
+  owner: string;
+  value: number;
+  lossDate: string;
+  reason: string;
+}
+
+interface FunnelStage {
+  stage: string;
+  eventsAndTrade: number;
+  organicContent: number;
+  outboundSales: number;
+  paidSearchSEM: number;
+  partnerReseller: number;
+}
+
+interface ForecastData {
+  month: string;
+  closedRevenue: number;
+  projectedPipeline: number;
+}
+
+const funnelData: FunnelStage[] = [
+  { stage: 'Prospecting', eventsAndTrade: 12, organicContent: 15, outboundSales: 18, paidSearchSEM: 10, partnerReseller: 8 },
+  { stage: 'Discovery', eventsAndTrade: 8, organicContent: 10, outboundSales: 12, paidSearchSEM: 7, partnerReseller: 5 },
+  { stage: 'Proposal', eventsAndTrade: 6, organicContent: 8, outboundSales: 10, paidSearchSEM: 6, partnerReseller: 4 },
+  { stage: 'Negotiation', eventsAndTrade: 4, organicContent: 6, outboundSales: 8, paidSearchSEM: 5, partnerReseller: 3 },
 ];
 
-const pipelineStages: PipelineStage[] = [
-  { name: 'Lead', value: 2100000, count: 45, color: 'bg-secondary-400' },
-  { name: 'Qualified', value: 4500000, count: 32, color: 'bg-blue-400' },
-  { name: 'Proposal', value: 6200000, count: 18, color: 'bg-yellow-400' },
-  { name: 'Negotiation', value: 8300000, count: 12, color: 'bg-orange-400' },
-  { name: 'Closed Won', value: 3200000, count: 8, color: 'bg-green-500' },
+const forecastData: ForecastData[] = [
+  { month: 'Jan', closedRevenue: 0.8, projectedPipeline: 0.5 },
+  { month: 'Feb', closedRevenue: 3.2, projectedPipeline: 0 },
+  { month: 'Mar', closedRevenue: 1.5, projectedPipeline: 2.8 },
+  { month: 'Apr', closedRevenue: 0, projectedPipeline: 2.5 },
+  { month: 'May', closedRevenue: 1.2, projectedPipeline: 2.3 },
+  { month: 'Jun', closedRevenue: 1.3, projectedPipeline: 4.8 },
+];
+
+const stalledDeals: StalledDeal[] = [
+  { id: '1', name: 'TMT Deal - D1293', stage: 'Legal Review', value: 256000, daysStalled: 178 },
+  { id: '2', name: 'Enterprise Platform - D1456', stage: 'Procurement', value: 485000, daysStalled: 145 },
+  { id: '3', name: 'Cloud Migration - D1589', stage: 'Security Review', value: 312000, daysStalled: 132 },
+  { id: '4', name: 'Analytics Suite - D1672', stage: 'Budget Approval', value: 198000, daysStalled: 118 },
+  { id: '5', name: 'Data Platform - D1734', stage: 'Legal Review', value: 425000, daysStalled: 105 },
+];
+
+const closedLostDeals: ClosedLostDeal[] = [
+  { id: '1', deal: 'Global Retail Expansion', owner: 'Sarah Johnson', value: 1250000, lossDate: '2024-01-15', reason: 'Budget constraints' },
+  { id: '2', deal: 'FinTech Integration', owner: 'Mike Wilson', value: 890000, lossDate: '2024-01-22', reason: 'Competitor selected' },
+  { id: '3', deal: 'Healthcare Platform', owner: 'John Smith', value: 756000, lossDate: '2024-02-01', reason: 'Project cancelled' },
+  { id: '4', deal: 'Manufacturing IoT', owner: 'Emily Davis', value: 534000, lossDate: '2024-02-08', reason: 'Timing - delayed to next FY' },
+  { id: '5', deal: 'Logistics Optimization', owner: 'Sarah Johnson', value: 445000, lossDate: '2024-02-12', reason: 'Price sensitivity' },
 ];
 
 const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+  if (value >= 1000000) {
+    return `$${(value / 1000000).toFixed(2)}M`;
+  }
+  if (value >= 1000) {
+    return `$${(value / 1000).toFixed(0)}k`;
+  }
+  return `$${value}`;
+};
+
+const formatCurrencyShort = (value: number) => {
+  if (value >= 1000000) {
+    return `$${(value / 1000000).toFixed(2)}M`;
+  }
+  return `$${(value / 1000).toFixed(0)}k`;
+};
+
+const CHANNEL_COLORS = {
+  eventsAndTrade: '#f97316',
+  organicContent: '#10b981',
+  outboundSales: '#3b82f6',
+  paidSearchSEM: '#8b5cf6',
+  partnerReseller: '#ec4899',
 };
 
 export default function SalesPage() {
-  const [selectedStage, setSelectedStage] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'pipeline' | 'list'>('pipeline');
-
-  const totalPipeline = pipelineStages.reduce((sum, stage) => sum + stage.value, 0);
-  const totalDeals = pipelineStages.reduce((sum, stage) => sum + stage.count, 0);
-  const weightedPipeline = mockDeals.reduce((sum, deal) => sum + deal.amount * deal.probability, 0);
-
-  const filteredDeals = selectedStage
-    ? mockDeals.filter(deal => deal.stage === selectedStage)
-    : mockDeals;
-
-  const getRiskBadge = (risk: string) => {
-    const styles = {
-      low: 'bg-green-100 text-green-800',
-      medium: 'bg-yellow-100 text-yellow-800',
-      high: 'bg-red-100 text-red-800',
-    };
-    return styles[risk as keyof typeof styles] || styles.low;
-  };
+  const [regionFilter, setRegionFilter] = useState('all');
+  const [lobFilter, setLobFilter] = useState('all');
+  const [verticalFilter, setVerticalFilter] = useState('all');
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-secondary-900">Sales Pipeline</h1>
-          <p className="text-secondary-500">Manage and track your sales opportunities</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex rounded-lg border border-secondary-200 overflow-hidden">
-            <button
-              onClick={() => setViewMode('pipeline')}
-              className={`px-4 py-2 text-sm font-medium ${viewMode === 'pipeline' ? 'bg-primary-600 text-white' : 'bg-white text-secondary-600 hover:bg-secondary-50'}`}
-            >
-              Pipeline
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`px-4 py-2 text-sm font-medium ${viewMode === 'list' ? 'bg-primary-600 text-white' : 'bg-white text-secondary-600 hover:bg-secondary-50'}`}
-            >
-              List
-            </button>
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-secondary-900">Sales Performance</h1>
+        <p className="text-secondary-500 uppercase text-sm tracking-wide">Pipeline Velocity & Forecast Accuracy</p>
+      </div>
+
+      {/* Filters */}
+      <div className="card p-4">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 text-secondary-600">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            <span className="font-medium">Filters:</span>
           </div>
-          <button className="btn-primary">
-            + New Deal
-          </button>
+          <select
+            value={regionFilter}
+            onChange={(e) => setRegionFilter(e.target.value)}
+            className="px-4 py-2 border border-secondary-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+          >
+            <option value="all">All Regions</option>
+            <option value="na">North America</option>
+            <option value="emea">EMEA</option>
+            <option value="apac">APAC</option>
+            <option value="latam">LATAM</option>
+          </select>
+          <select
+            value={lobFilter}
+            onChange={(e) => setLobFilter(e.target.value)}
+            className="px-4 py-2 border border-secondary-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+          >
+            <option value="all">All LOBs</option>
+            <option value="enterprise">Enterprise</option>
+            <option value="mid-market">Mid-Market</option>
+            <option value="smb">SMB</option>
+          </select>
+          <select
+            value={verticalFilter}
+            onChange={(e) => setVerticalFilter(e.target.value)}
+            className="px-4 py-2 border border-secondary-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+          >
+            <option value="all">All Verticals</option>
+            <option value="technology">Technology</option>
+            <option value="financial">Financial Services</option>
+            <option value="healthcare">Healthcare</option>
+            <option value="retail">Retail</option>
+            <option value="manufacturing">Manufacturing</option>
+          </select>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="card p-4">
-          <p className="text-sm text-secondary-500">Total Pipeline</p>
-          <p className="text-2xl font-bold text-secondary-900">{formatCurrency(totalPipeline)}</p>
-          <p className="text-xs text-green-600 mt-1">+15% vs last quarter</p>
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="card p-5">
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Weighted Forecast</p>
+          <p className="text-3xl font-bold text-secondary-900">$26.81M</p>
         </div>
-        <div className="card p-4">
-          <p className="text-sm text-secondary-500">Weighted Pipeline</p>
-          <p className="text-2xl font-bold text-secondary-900">{formatCurrency(weightedPipeline)}</p>
-          <p className="text-xs text-secondary-400 mt-1">Based on probability</p>
+        <div className="card p-5">
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Closed ARR (YTD)</p>
+          <p className="text-3xl font-bold text-green-500">$7.96M</p>
         </div>
-        <div className="card p-4">
-          <p className="text-sm text-secondary-500">Active Deals</p>
-          <p className="text-2xl font-bold text-secondary-900">{totalDeals}</p>
-          <p className="text-xs text-blue-600 mt-1">12 closing this month</p>
+        <div className="card p-5">
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Win Rate</p>
+          <p className="text-3xl font-bold text-blue-500">13.7%</p>
         </div>
-        <div className="card p-4">
-          <p className="text-sm text-secondary-500">Win Rate (QTD)</p>
-          <p className="text-2xl font-bold text-secondary-900">32%</p>
-          <p className="text-xs text-yellow-600 mt-1">-3% vs target</p>
+        <div className="card p-5">
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Avg Deal Size</p>
+          <p className="text-3xl font-bold text-secondary-900">$179k</p>
+        </div>
+        <div className="card p-5">
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Closed Lost Value</p>
+          <p className="text-3xl font-bold text-red-500">$7.14M</p>
         </div>
       </div>
 
-      {viewMode === 'pipeline' ? (
-        <>
-          {/* Pipeline Visualization */}
-          <div className="card p-6">
-            <h2 className="text-lg font-semibold text-secondary-900 mb-4">Pipeline by Stage</h2>
-            <div className="flex h-12 rounded-lg overflow-hidden mb-4">
-              {pipelineStages.map((stage) => (
-                <div
-                  key={stage.name}
-                  className={`${stage.color} cursor-pointer hover:opacity-80 transition-opacity relative group`}
-                  style={{ width: `${(stage.value / totalPipeline) * 100}%` }}
-                  onClick={() => setSelectedStage(selectedStage === stage.name ? null : stage.name)}
-                >
-                  <div className="absolute inset-0 flex items-center justify-center text-white font-medium text-sm">
-                    {stage.value >= totalPipeline * 0.15 && formatCurrency(stage.value)}
-                  </div>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-secondary-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                    {stage.name}: {formatCurrency(stage.value)} ({stage.count} deals)
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-4">
-              {pipelineStages.map((stage) => (
-                <button
-                  key={stage.name}
-                  onClick={() => setSelectedStage(selectedStage === stage.name ? null : stage.name)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors ${
-                    selectedStage === stage.name
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-secondary-200 hover:border-secondary-300'
-                  }`}
-                >
-                  <span className={`w-3 h-3 rounded-full ${stage.color}`}></span>
-                  <span className="text-sm font-medium text-secondary-700">{stage.name}</span>
-                  <span className="text-sm text-secondary-400">({stage.count})</span>
-                </button>
-              ))}
-            </div>
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Pipeline Funnel by Channel */}
+        <div className="card p-6">
+          <h2 className="text-lg font-semibold text-secondary-900 mb-1">Pipeline Funnel by Channel</h2>
+          <p className="text-sm text-secondary-500 mb-6">Distribution of open opportunities across stages, segmented by acquisition source.</p>
+
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                layout="vertical"
+                data={funnelData}
+                margin={{ top: 0, right: 20, left: 80, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e2e8f0" />
+                <XAxis type="number" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={{ stroke: '#e2e8f0' }} />
+                <YAxis
+                  dataKey="stage"
+                  type="category"
+                  tick={{ fontSize: 12, fill: '#64748b' }}
+                  axisLine={{ stroke: '#e2e8f0' }}
+                  width={75}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                  }}
+                />
+                <Bar dataKey="outboundSales" stackId="a" fill={CHANNEL_COLORS.outboundSales} name="Outbound Sales" />
+                <Bar dataKey="organicContent" stackId="a" fill={CHANNEL_COLORS.organicContent} name="Organic/Content" />
+                <Bar dataKey="eventsAndTrade" stackId="a" fill={CHANNEL_COLORS.eventsAndTrade} name="Events & Trade" />
+                <Bar dataKey="paidSearchSEM" stackId="a" fill={CHANNEL_COLORS.paidSearchSEM} name="Paid Search (SEM)" />
+                <Bar dataKey="partnerReseller" stackId="a" fill={CHANNEL_COLORS.partnerReseller} name="Partner/Reseller" />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
 
-          {/* Forecast vs Target */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="card p-6">
-              <h2 className="text-lg font-semibold text-secondary-900 mb-4">Quarterly Forecast</h2>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-secondary-600">Q1 Target</span>
-                    <span className="font-medium">$12.5M</span>
-                  </div>
-                  <div className="h-3 bg-secondary-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-primary-500 rounded-full" style={{ width: '85%' }}></div>
-                  </div>
-                  <p className="text-xs text-secondary-400 mt-1">$10.6M committed (85%)</p>
-                </div>
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-secondary-600">Best Case</span>
-                    <span className="font-medium text-green-600">$14.2M</span>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-secondary-600">Worst Case</span>
-                    <span className="font-medium text-red-600">$9.8M</span>
-                  </div>
-                </div>
-              </div>
+          {/* Legend */}
+          <div className="flex flex-wrap justify-center gap-4 mt-4">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded" style={{ backgroundColor: CHANNEL_COLORS.eventsAndTrade }}></span>
+              <span className="text-xs text-orange-500">Events & Trade</span>
             </div>
-
-            <div className="card p-6">
-              <h2 className="text-lg font-semibold text-secondary-900 mb-4">Top Opportunities</h2>
-              <div className="space-y-3">
-                {mockDeals
-                  .sort((a, b) => b.amount - a.amount)
-                  .slice(0, 4)
-                  .map((deal) => (
-                    <div key={deal.id} className="flex items-center justify-between py-2 border-b border-secondary-100 last:border-0">
-                      <div>
-                        <p className="font-medium text-secondary-900">{deal.account}</p>
-                        <p className="text-sm text-secondary-500">{deal.name}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-secondary-900">{formatCurrency(deal.amount)}</p>
-                        <p className="text-xs text-secondary-400">{deal.stage}</p>
-                      </div>
-                    </div>
-                  ))}
-              </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded" style={{ backgroundColor: CHANNEL_COLORS.organicContent }}></span>
+              <span className="text-xs text-green-500">Organic/Content</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded" style={{ backgroundColor: CHANNEL_COLORS.outboundSales }}></span>
+              <span className="text-xs text-blue-500">Outbound Sales</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded" style={{ backgroundColor: CHANNEL_COLORS.paidSearchSEM }}></span>
+              <span className="text-xs text-purple-500">Paid Search (SEM)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded" style={{ backgroundColor: CHANNEL_COLORS.partnerReseller }}></span>
+              <span className="text-xs text-pink-500">Partner/Reseller</span>
             </div>
           </div>
-        </>
-      ) : (
-        /* List View */
+        </div>
+
+        {/* Forecast vs Actuals */}
+        <div className="card p-6">
+          <h2 className="text-lg font-semibold text-secondary-900 mb-1">Forecast vs Actuals</h2>
+          <p className="text-sm text-secondary-500 mb-6">6-Month Trend Analysis</p>
+
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={forecastData}
+                margin={{ top: 0, right: 20, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={{ stroke: '#e2e8f0' }} />
+                <YAxis
+                  tick={{ fontSize: 12, fill: '#64748b' }}
+                  axisLine={{ stroke: '#e2e8f0' }}
+                  tickFormatter={(value) => `$${value}M`}
+                  domain={[0, 6]}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                  }}
+                  formatter={(value: number) => [`$${value.toFixed(1)}M`, '']}
+                />
+                <Bar dataKey="closedRevenue" fill="#10b981" name="Closed Revenue" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="projectedPipeline" fill="#3b82f6" name="Projected Pipeline" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Legend */}
+          <div className="flex justify-center gap-6 mt-4">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded bg-green-500"></span>
+              <span className="text-sm text-green-500">Closed Revenue</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded bg-blue-500"></span>
+              <span className="text-sm text-blue-500">Projected Pipeline</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tables Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Stalled Opportunities */}
         <div className="card overflow-hidden">
+          <div className="p-5 border-b border-secondary-200 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-secondary-900">Stalled Opportunities</h2>
+              <p className="text-sm text-secondary-500">Deals in current stage &gt; 90 days</p>
+            </div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-red-50 text-red-600 border border-red-200">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Action Required
+            </span>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-secondary-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Deal</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Account</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Amount</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Stage</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Probability</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Close Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Risk</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Owner</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase tracking-wider">Deal Name</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase tracking-wider">Stage</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase tracking-wider">Value</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase tracking-wider">Days Stalled</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-secondary-100">
-                {filteredDeals.map((deal) => (
+                {stalledDeals.map((deal) => (
                   <tr key={deal.id} className="hover:bg-secondary-50 cursor-pointer">
-                    <td className="px-4 py-4">
-                      <p className="font-medium text-secondary-900">{deal.name}</p>
-                    </td>
-                    <td className="px-4 py-4 text-secondary-600">{deal.account}</td>
-                    <td className="px-4 py-4 font-medium text-secondary-900">{formatCurrency(deal.amount)}</td>
-                    <td className="px-4 py-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {deal.stage}
+                    <td className="px-5 py-4 font-medium text-secondary-900">{deal.name}</td>
+                    <td className="px-5 py-4 text-secondary-600">{deal.stage}</td>
+                    <td className="px-5 py-4 text-secondary-600">{formatCurrencyShort(deal.value)}</td>
+                    <td className="px-5 py-4">
+                      <span className="flex items-center gap-1.5 text-red-600 font-semibold">
+                        {deal.daysStalled}
+                        {deal.daysStalled > 150 && (
+                          <svg className="w-4 h-4 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                        )}
                       </span>
                     </td>
-                    <td className="px-4 py-4 text-secondary-600">{Math.round(deal.probability * 100)}%</td>
-                    <td className="px-4 py-4 text-secondary-600">{new Date(deal.closeDate).toLocaleDateString()}</td>
-                    <td className="px-4 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRiskBadge(deal.riskLevel)}`}>
-                        {deal.riskLevel}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-secondary-600">{deal.owner}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </div>
-      )}
 
-      {/* Deals at Risk Alert */}
-      <div className="card p-4 border-l-4 border-red-500 bg-red-50">
-        <div className="flex items-start gap-3">
-          <svg className="w-5 h-5 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <div>
-            <h3 className="font-medium text-red-800">3 Deals at High Risk</h3>
-            <p className="text-sm text-red-700 mt-1">
-              Total value of $1.35M at risk. Review Acme Corp, Global Retail, and TechStart deals for immediate action.
-            </p>
+        {/* Closed Lost Analysis */}
+        <div className="card overflow-hidden">
+          <div className="p-5 border-b border-secondary-200">
+            <h2 className="text-lg font-semibold text-secondary-900">Closed Lost Analysis</h2>
+            <p className="text-sm text-secondary-500">Review largest losses to identify patterns.</p>
           </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-secondary-50">
+                <tr>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase tracking-wider">Deal</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase tracking-wider">Owner</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase tracking-wider">
+                    <div className="flex items-center gap-1">
+                      Value
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                      </svg>
+                    </div>
+                  </th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase tracking-wider">
+                    <div className="flex items-center gap-1">
+                      Loss Date
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                      </svg>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-secondary-100">
+                {closedLostDeals.map((deal) => (
+                  <tr key={deal.id} className="hover:bg-secondary-50 cursor-pointer group">
+                    <td className="px-5 py-4">
+                      <div>
+                        <p className="font-medium text-secondary-900">{deal.deal}</p>
+                        <p className="text-xs text-secondary-400 mt-0.5">{deal.reason}</p>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 text-secondary-600">{deal.owner}</td>
+                    <td className="px-5 py-4 text-red-600 font-medium">{formatCurrency(deal.value)}</td>
+                    <td className="px-5 py-4 text-secondary-600">{new Date(deal.lossDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Summary Stats */}
+      <div className="card p-4 bg-secondary-50 border-secondary-200">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-secondary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-sm text-secondary-600">
+                <strong className="text-secondary-900">{stalledDeals.length}</strong> deals stalled &gt; 90 days
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-secondary-600">
+                Total at-risk value: <strong className="text-red-600">{formatCurrency(stalledDeals.reduce((sum, d) => sum + d.value, 0))}</strong>
+              </span>
+            </div>
+          </div>
+          <button className="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1">
+            View All Opportunities
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
         </div>
       </div>
     </div>

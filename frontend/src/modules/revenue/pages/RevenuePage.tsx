@@ -1,4 +1,14 @@
 import { useState } from 'react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from 'recharts';
 
 interface RevenueSegment {
   name: string;
@@ -15,6 +25,16 @@ interface Customer {
   lastContact: string;
   risk: 'low' | 'medium' | 'high';
   expansion: number;
+}
+
+interface WaterfallDataPoint {
+  name: string;
+  value: number;
+  displayValue: number;
+  start: number;
+  end: number;
+  fill: string;
+  isTotal?: boolean;
 }
 
 const mockSegments: RevenueSegment[] = [
@@ -42,6 +62,82 @@ const arrMovement = {
   endingARR: 28200000,
 };
 
+// Generate waterfall data for proper waterfall chart
+const generateWaterfallData = (): WaterfallDataPoint[] => {
+  const data: WaterfallDataPoint[] = [];
+  let runningTotal = arrMovement.startingARR;
+
+  // Starting ARR
+  data.push({
+    name: 'Starting ARR',
+    value: arrMovement.startingARR,
+    displayValue: arrMovement.startingARR,
+    start: 0,
+    end: arrMovement.startingARR,
+    fill: '#64748b',
+    isTotal: true,
+  });
+
+  // New Business
+  data.push({
+    name: 'New Business',
+    value: arrMovement.newBusiness,
+    displayValue: arrMovement.newBusiness,
+    start: runningTotal,
+    end: runningTotal + arrMovement.newBusiness,
+    fill: '#10b981',
+  });
+  runningTotal += arrMovement.newBusiness;
+
+  // Expansion
+  data.push({
+    name: 'Expansion',
+    value: arrMovement.expansion,
+    displayValue: arrMovement.expansion,
+    start: runningTotal,
+    end: runningTotal + arrMovement.expansion,
+    fill: '#3b82f6',
+  });
+  runningTotal += arrMovement.expansion;
+
+  // Contraction (negative)
+  data.push({
+    name: 'Contraction',
+    value: arrMovement.contraction,
+    displayValue: Math.abs(arrMovement.contraction),
+    start: runningTotal + arrMovement.contraction,
+    end: runningTotal,
+    fill: '#f59e0b',
+  });
+  runningTotal += arrMovement.contraction;
+
+  // Churn (negative)
+  data.push({
+    name: 'Churn',
+    value: arrMovement.churn,
+    displayValue: Math.abs(arrMovement.churn),
+    start: runningTotal + arrMovement.churn,
+    end: runningTotal,
+    fill: '#ef4444',
+  });
+  runningTotal += arrMovement.churn;
+
+  // Ending ARR
+  data.push({
+    name: 'Ending ARR',
+    value: arrMovement.endingARR,
+    displayValue: arrMovement.endingARR,
+    start: 0,
+    end: arrMovement.endingARR,
+    fill: '#3b82f6',
+    isTotal: true,
+  });
+
+  return data;
+};
+
+const waterfallData = generateWaterfallData();
+
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -49,6 +145,29 @@ const formatCurrency = (value: number) => {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(value);
+};
+
+const formatCurrencyShort = (value: number) => {
+  if (Math.abs(value) >= 1000000) {
+    return `$${(value / 1000000).toFixed(1)}M`;
+  }
+  return `$${(value / 1000).toFixed(0)}K`;
+};
+
+// Custom tooltip for waterfall chart
+const WaterfallTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-white border border-secondary-200 rounded-lg shadow-lg p-3">
+        <p className="font-semibold text-secondary-900">{data.name}</p>
+        <p className={`text-sm ${data.value >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          {data.value >= 0 ? '+' : ''}{formatCurrency(data.value)}
+        </p>
+      </div>
+    );
+  }
+  return null;
 };
 
 export default function RevenuePage() {
@@ -237,62 +356,82 @@ export default function RevenuePage() {
 
       {activeTab === 'arr' && (
         <div className="card p-6">
-          <h2 className="text-lg font-semibold text-secondary-900 mb-6">ARR Bridge</h2>
+          <h2 className="text-lg font-semibold text-secondary-900 mb-2">ARR Bridge</h2>
+          <p className="text-sm text-secondary-500 mb-6">Waterfall analysis of ARR movement from Q4 2023 to Q4 2024</p>
 
-          {/* Waterfall Chart Representation */}
-          <div className="flex items-end justify-between h-64 px-8">
-            <div className="flex flex-col items-center">
-              <div className="w-20 bg-secondary-500 rounded-t" style={{ height: '200px' }}></div>
-              <p className="text-xs text-secondary-600 mt-2">Starting ARR</p>
-              <p className="font-medium">{formatCurrency(arrMovement.startingARR)}</p>
+          {/* Waterfall Chart */}
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={waterfallData}
+                margin={{ top: 20, right: 30, left: 30, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 12, fill: '#64748b' }}
+                  axisLine={{ stroke: '#e2e8f0' }}
+                />
+                <YAxis
+                  tick={{ fontSize: 12, fill: '#64748b' }}
+                  axisLine={{ stroke: '#e2e8f0' }}
+                  tickFormatter={(value) => formatCurrencyShort(value)}
+                  domain={[0, 32000000]}
+                />
+                <Tooltip content={<WaterfallTooltip />} />
+
+                {/* Invisible bar for the "floating" effect */}
+                <Bar dataKey="start" stackId="stack" fill="transparent" />
+
+                {/* Visible bar showing the actual value */}
+                <Bar dataKey="displayValue" stackId="stack" radius={[4, 4, 0, 0]}>
+                  {waterfallData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Legend */}
+          <div className="flex justify-center gap-6 mt-4 mb-6">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded bg-secondary-500"></span>
+              <span className="text-xs text-secondary-600">Starting/Ending</span>
             </div>
-
-            <div className="flex flex-col items-center">
-              <div className="w-20 bg-green-500 rounded-t" style={{ height: `${(arrMovement.newBusiness / arrMovement.startingARR) * 200}px` }}></div>
-              <p className="text-xs text-secondary-600 mt-2">New Business</p>
-              <p className="font-medium text-green-600">+{formatCurrency(arrMovement.newBusiness)}</p>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded bg-green-500"></span>
+              <span className="text-xs text-secondary-600">New Business</span>
             </div>
-
-            <div className="flex flex-col items-center">
-              <div className="w-20 bg-blue-500 rounded-t" style={{ height: `${(arrMovement.expansion / arrMovement.startingARR) * 200}px` }}></div>
-              <p className="text-xs text-secondary-600 mt-2">Expansion</p>
-              <p className="font-medium text-blue-600">+{formatCurrency(arrMovement.expansion)}</p>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded bg-blue-500"></span>
+              <span className="text-xs text-secondary-600">Expansion</span>
             </div>
-
-            <div className="flex flex-col items-center">
-              <div className="w-20 bg-yellow-500 rounded-t" style={{ height: `${(Math.abs(arrMovement.contraction) / arrMovement.startingARR) * 200}px` }}></div>
-              <p className="text-xs text-secondary-600 mt-2">Contraction</p>
-              <p className="font-medium text-yellow-600">{formatCurrency(arrMovement.contraction)}</p>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded bg-yellow-500"></span>
+              <span className="text-xs text-secondary-600">Contraction</span>
             </div>
-
-            <div className="flex flex-col items-center">
-              <div className="w-20 bg-red-500 rounded-t" style={{ height: `${(Math.abs(arrMovement.churn) / arrMovement.startingARR) * 200}px` }}></div>
-              <p className="text-xs text-secondary-600 mt-2">Churn</p>
-              <p className="font-medium text-red-600">{formatCurrency(arrMovement.churn)}</p>
-            </div>
-
-            <div className="flex flex-col items-center">
-              <div className="w-20 bg-primary-600 rounded-t" style={{ height: `${(arrMovement.endingARR / arrMovement.startingARR) * 200}px` }}></div>
-              <p className="text-xs text-secondary-600 mt-2">Ending ARR</p>
-              <p className="font-medium text-primary-600">{formatCurrency(arrMovement.endingARR)}</p>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded bg-red-500"></span>
+              <span className="text-xs text-secondary-600">Churn</span>
             </div>
           </div>
 
           {/* Summary Metrics */}
-          <div className="grid grid-cols-4 gap-4 mt-8 pt-6 border-t border-secondary-200">
-            <div className="text-center">
+          <div className="grid grid-cols-4 gap-4 pt-6 border-t border-secondary-200">
+            <div className="text-center p-4 bg-secondary-50 rounded-lg">
               <p className="text-sm text-secondary-500">Net New ARR</p>
               <p className="text-xl font-bold text-green-600">+{formatCurrency(arrMovement.endingARR - arrMovement.startingARR)}</p>
             </div>
-            <div className="text-center">
+            <div className="text-center p-4 bg-secondary-50 rounded-lg">
               <p className="text-sm text-secondary-500">Gross New</p>
               <p className="text-xl font-bold text-secondary-900">{formatCurrency(arrMovement.newBusiness + arrMovement.expansion)}</p>
             </div>
-            <div className="text-center">
+            <div className="text-center p-4 bg-secondary-50 rounded-lg">
               <p className="text-sm text-secondary-500">Gross Lost</p>
               <p className="text-xl font-bold text-red-600">{formatCurrency(Math.abs(arrMovement.contraction + arrMovement.churn))}</p>
             </div>
-            <div className="text-center">
+            <div className="text-center p-4 bg-secondary-50 rounded-lg">
               <p className="text-sm text-secondary-500">Logo Churn Rate</p>
               <p className="text-xl font-bold text-secondary-900">3.2%</p>
             </div>

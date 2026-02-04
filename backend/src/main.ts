@@ -3,8 +3,10 @@ import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
-import compression from 'compression';
-import cookieParser from 'cookie-parser';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const compression = require('compression');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const cookieParser = require('cookie-parser');
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -30,16 +32,16 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-Tenant-ID'],
   });
 
-  // API versioning
+  // Global prefix (must be set before versioning)
+  app.setGlobalPrefix('api', {
+    exclude: ['health', 'metrics'],
+  });
+
+  // API versioning - prefix is 'v' to create /api/v1/... paths
   app.enableVersioning({
     type: VersioningType.URI,
     defaultVersion: '1',
-    prefix: 'api/v',
-  });
-
-  // Global prefix
-  app.setGlobalPrefix('api', {
-    exclude: ['health', 'metrics'],
+    prefix: 'v',
   });
 
   // Global pipes

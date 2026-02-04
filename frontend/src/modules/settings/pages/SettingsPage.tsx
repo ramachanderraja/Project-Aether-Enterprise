@@ -1,4 +1,102 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+
+interface ImportTemplate {
+  id: string;
+  name: string;
+  description: string;
+  fileType: string;
+  lastImport: string | null;
+  recordCount: number | null;
+}
+
+interface ImportHistory {
+  id: string;
+  templateName: string;
+  fileName: string;
+  status: 'completed' | 'failed' | 'processing';
+  recordsImported: number;
+  errors: number;
+  importedAt: string;
+  importedBy: string;
+}
+
+const importTemplates: ImportTemplate[] = [
+  { id: 'financial_metrics', name: 'Financial Metrics', description: 'Revenue, expenses, EBITDA, margins, and cash flow metrics by region/segment', fileType: 'CSV', lastImport: '2025-01-28T14:30:00Z', recordCount: 156 },
+  { id: 'profitability', name: 'Profitability Data', description: 'Account-level profitability with region, segment, vertical, costs and margins', fileType: 'CSV', lastImport: '2025-01-28T14:30:00Z', recordCount: 250 },
+  { id: 'sales_performance', name: 'Sales Performance', description: 'Sales pipeline, forecasts, opportunities by channel and region', fileType: 'CSV', lastImport: '2025-01-30T11:00:00Z', recordCount: 87 },
+  { id: 'revenue_analytics', name: 'Revenue Analytics', description: 'ARR data, bookings, churn, expansion by segment and region', fileType: 'CSV', lastImport: '2025-01-25T09:15:00Z', recordCount: 423 },
+  { id: 'cost_data', name: 'Cost Data', description: 'Cost line items with categories, vendors, and cost centers', fileType: 'CSV', lastImport: '2025-01-25T09:15:00Z', recordCount: 423 },
+  { id: 'vendors', name: 'Vendors', description: 'Vendor master data with contacts, contracts, and spend info', fileType: 'CSV', lastImport: null, recordCount: null },
+  { id: 'cost_centers', name: 'Cost Centers', description: 'Hierarchical cost center structure with budgets', fileType: 'CSV', lastImport: '2025-01-20T16:45:00Z', recordCount: 34 },
+];
+
+// CSV Template definitions with proper data structures for all reports
+const templateCSVData: Record<string, { headers: string[]; sampleRows: string[][] }> = {
+  'financial_metrics': {
+    headers: ['Date', 'Region', 'Segment', 'Vertical', 'Revenue', 'Expenses', 'EBITDA', 'Gross_Margin_Pct', 'Net_Margin_Pct', 'Cash_Flow'],
+    sampleRows: [
+      ['2025-01-01', 'North America', 'Enterprise', 'CPG', '1500000', '1200000', '300000', '0.72', '0.20', '250000'],
+      ['2025-01-01', 'Europe', 'Mid-Market', 'TMT', '850000', '680000', '170000', '0.68', '0.18', '140000'],
+      ['2025-02-01', 'Asia Pacific', 'Enterprise', 'LS', '1200000', '950000', '250000', '0.70', '0.19', '200000'],
+    ]
+  },
+  'profitability': {
+    headers: ['Account_ID', 'Account_Name', 'Region', 'Segment', 'Vertical', 'Revenue', 'Cloud_Infra_Cost', 'Resource_Cost', 'TSO_Cost', 'Engineering_Cost', 'Gross_Margin_Value', 'Gross_Margin_Pct', 'Contribution_Margin_Pct', 'Health_Score', 'Renewal_Date', 'Report_Type'],
+    sampleRows: [
+      ['ACC-1001', 'Acme Corp', 'North America', 'Enterprise', 'CPG', '1500000', '225000', '150000', '0', '0', '1125000', '0.75', '0.60', '85', '2025-06-15', 'License'],
+      ['ACC-1002', 'Global Solutions', 'Europe', 'Mid-Market', 'TMT', '850000', '0', '0', '340000', '170000', '340000', '0.40', '0.25', '72', '2025-09-20', 'Implementation'],
+      ['ACC-1003', 'Tech Industries', 'Asia Pacific', 'Enterprise', 'AIM', '2200000', '330000', '220000', '0', '0', '1650000', '0.75', '0.58', '91', '2025-03-10', 'License'],
+    ]
+  },
+  'sales_performance': {
+    headers: ['Opportunity_ID', 'Account_Name', 'Region', 'LOB', 'Vertical', 'Channel', 'Stage', 'Probability_Pct', 'Deal_Value', 'Weighted_Value', 'Expected_Close_Date', 'Days_In_Stage', 'Owner', 'Status', 'Loss_Reason'],
+    sampleRows: [
+      ['OPP-001', 'Acme Corp', 'North America', 'Software', 'CPG', 'Direct', 'Qualified', '40', '500000', '200000', '2025-03-15', '12', 'John Smith', 'Active', ''],
+      ['OPP-002', 'Global Tech', 'Europe', 'Services', 'TMT', 'Partner', 'Proposal', '60', '750000', '450000', '2025-02-28', '25', 'Jane Doe', 'Active', ''],
+      ['OPP-003', 'Beta Industries', 'Asia Pacific', 'Software', 'LS', 'Direct', 'Closed Lost', '0', '320000', '0', '2025-01-20', '45', 'Mike Wilson', 'Lost', 'Budget Constraints'],
+    ]
+  },
+  'revenue_analytics': {
+    headers: ['Date', 'Region', 'Segment', 'Product_Line', 'Beginning_ARR', 'New_Bookings', 'Expansion', 'Contraction', 'Churn', 'Ending_ARR', 'Net_New_ARR', 'NRR_Pct', 'GRR_Pct'],
+    sampleRows: [
+      ['2025-01-01', 'North America', 'Enterprise', 'Platform', '45000000', '3500000', '2200000', '800000', '1200000', '48700000', '3700000', '0.103', '0.097'],
+      ['2025-01-01', 'Europe', 'Mid-Market', 'Analytics', '28000000', '2100000', '1400000', '500000', '700000', '30300000', '2300000', '0.107', '0.096'],
+      ['2025-01-01', 'Asia Pacific', 'Enterprise', 'Platform', '32000000', '2800000', '1800000', '600000', '900000', '35100000', '3100000', '0.109', '0.095'],
+    ]
+  },
+  'cost_data': {
+    headers: ['Date', 'Cost_Center_ID', 'Cost_Center_Name', 'Category', 'Sub_Category', 'Vendor', 'Amount', 'Budget', 'Variance', 'Region', 'Department'],
+    sampleRows: [
+      ['2025-01-15', 'CC-001', 'Engineering', 'Personnel', 'Salaries', 'Internal', '450000', '500000', '-50000', 'North America', 'R&D'],
+      ['2025-01-15', 'CC-002', 'Infrastructure', 'Cloud', 'AWS', 'Amazon', '125000', '120000', '5000', 'Global', 'IT'],
+      ['2025-01-15', 'CC-003', 'Marketing', 'Advertising', 'Digital', 'Google Ads', '85000', '90000', '-5000', 'North America', 'Marketing'],
+    ]
+  },
+  'vendors': {
+    headers: ['Vendor_ID', 'Vendor_Name', 'Category', 'Contact_Name', 'Contact_Email', 'Contract_Start', 'Contract_End', 'Annual_Spend', 'Payment_Terms', 'Status', 'Risk_Rating'],
+    sampleRows: [
+      ['VND-001', 'Amazon Web Services', 'Cloud Infrastructure', 'John AWS', 'support@aws.com', '2024-01-01', '2026-12-31', '1500000', 'Net 30', 'Active', 'Low'],
+      ['VND-002', 'Salesforce', 'CRM', 'Jane SF', 'support@salesforce.com', '2024-06-01', '2025-05-31', '250000', 'Annual', 'Active', 'Low'],
+      ['VND-003', 'Consulting Partners Inc', 'Professional Services', 'Mike Consult', 'mike@consultpartners.com', '2024-03-01', '2025-02-28', '500000', 'Net 45', 'Active', 'Medium'],
+    ]
+  },
+  'cost_centers': {
+    headers: ['Cost_Center_ID', 'Name', 'Parent_ID', 'Level', 'Manager', 'Annual_Budget', 'YTD_Actual', 'YTD_Variance', 'Department', 'Region', 'Status'],
+    sampleRows: [
+      ['CC-001', 'Engineering', '', '1', 'Sarah Johnson', '5000000', '4200000', '800000', 'R&D', 'Global', 'Active'],
+      ['CC-001-A', 'Frontend Development', 'CC-001', '2', 'Tom Frontend', '1500000', '1350000', '150000', 'R&D', 'North America', 'Active'],
+      ['CC-001-B', 'Backend Development', 'CC-001', '2', 'Lisa Backend', '2000000', '1800000', '200000', 'R&D', 'Global', 'Active'],
+    ]
+  }
+};
+
+const importHistory: ImportHistory[] = [
+  { id: '1', templateName: 'Sales Performance', fileName: 'sales_q1_2025.csv', status: 'completed', recordsImported: 87, errors: 0, importedAt: '2025-01-30T11:00:00Z', importedBy: 'John Smith' },
+  { id: '2', templateName: 'Profitability Data', fileName: 'profitability_jan_2025.csv', status: 'completed', recordsImported: 250, errors: 2, importedAt: '2025-01-28T14:30:00Z', importedBy: 'Jane Doe' },
+  { id: '3', templateName: 'Revenue Analytics', fileName: 'revenue_2024_final.csv', status: 'completed', recordsImported: 423, errors: 5, importedAt: '2025-01-25T09:15:00Z', importedBy: 'John Smith' },
+  { id: '4', templateName: 'Cost Centers', fileName: 'cost_centers_v2.csv', status: 'failed', recordsImported: 0, errors: 12, importedAt: '2025-01-22T10:30:00Z', importedBy: 'Mike Wilson' },
+  { id: '5', templateName: 'Cost Centers', fileName: 'cost_centers_fixed.csv', status: 'completed', recordsImported: 34, errors: 0, importedAt: '2025-01-20T16:45:00Z', importedBy: 'Mike Wilson' },
+];
 
 interface User {
   id: string;
@@ -36,8 +134,66 @@ const mockNotifications: Notification[] = [
 ];
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<'general' | 'users' | 'notifications' | 'security' | 'billing'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'users' | 'notifications' | 'security' | 'billing' | 'data-import'>('general');
   const [notifications, setNotifications] = useState(mockNotifications);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [uploadingFile, setUploadingFile] = useState<File | null>(null);
+  const [importStatus, setImportStatus] = useState<'idle' | 'validating' | 'importing' | 'complete' | 'error'>('idle');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setUploadingFile(file);
+      setImportStatus('idle');
+    }
+  };
+
+  const handleImport = async () => {
+    if (!uploadingFile || !selectedTemplate) return;
+
+    setImportStatus('validating');
+    // Simulate validation
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    setImportStatus('importing');
+    // Simulate import
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    setImportStatus('complete');
+    // Reset after showing success
+    setTimeout(() => {
+      setUploadingFile(null);
+      setSelectedTemplate(null);
+      setImportStatus('idle');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }, 3000);
+  };
+
+  const downloadTemplate = (templateId: string) => {
+    const templateData = templateCSVData[templateId];
+    if (!templateData) {
+      alert('Template not found');
+      return;
+    }
+
+    // Generate CSV content with headers and sample rows
+    const csvContent = [
+      templateData.headers.join(','),
+      ...templateData.sampleRows.map(row => row.join(','))
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${templateId}_template.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const getStatusBadge = (status: string) => {
     const styles = {
@@ -83,6 +239,7 @@ export default function SettingsPage() {
               { id: 'general', label: 'General', icon: '⚙️' },
               { id: 'users', label: 'Users', icon: '👥' },
               { id: 'notifications', label: 'Notifications', icon: '🔔' },
+              { id: 'data-import', label: 'Data Import', icon: '📥' },
               { id: 'security', label: 'Security', icon: '🔒' },
               { id: 'billing', label: 'Billing', icon: '💳' },
             ].map((item) => (
@@ -299,6 +456,211 @@ export default function SettingsPage() {
 
               <div className="flex justify-end">
                 <button className="btn-primary">Save Preferences</button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'data-import' && (
+            <div className="space-y-6">
+              {/* Import Section */}
+              <div className="card p-6">
+                <h2 className="text-lg font-semibold text-secondary-900 mb-4">Import Data</h2>
+                <p className="text-sm text-secondary-500 mb-6">
+                  Upload CSV files to import historical data into Aether. Select a template type and upload your file.
+                </p>
+
+                {/* Template Selection */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-secondary-700 mb-2">Select Data Type</label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {importTemplates.map((template) => (
+                      <button
+                        key={template.id}
+                        onClick={() => setSelectedTemplate(template.id)}
+                        className={`p-4 rounded-lg border-2 text-left transition-all ${
+                          selectedTemplate === template.id
+                            ? 'border-primary-500 bg-primary-50'
+                            : 'border-secondary-200 hover:border-secondary-300'
+                        }`}
+                      >
+                        <p className="font-medium text-secondary-900">{template.name}</p>
+                        <p className="text-xs text-secondary-500 mt-1">{template.description}</p>
+                        {template.lastImport && (
+                          <p className="text-xs text-primary-600 mt-2">
+                            Last import: {new Date(template.lastImport).toLocaleDateString()}
+                          </p>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* File Upload */}
+                {selectedTemplate && (
+                  <div className="border-2 border-dashed border-secondary-200 rounded-lg p-8 text-center">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".csv"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      id="file-upload"
+                    />
+                    {!uploadingFile ? (
+                      <label htmlFor="file-upload" className="cursor-pointer">
+                        <div className="text-4xl mb-3">📄</div>
+                        <p className="text-secondary-900 font-medium">Drop your CSV file here or click to browse</p>
+                        <p className="text-sm text-secondary-500 mt-1">
+                          Maximum file size: 50MB
+                        </p>
+                        <button
+                          onClick={() => downloadTemplate(selectedTemplate)}
+                          className="mt-4 text-sm text-primary-600 hover:text-primary-700 underline"
+                        >
+                          Download template for {importTemplates.find(t => t.id === selectedTemplate)?.name}
+                        </button>
+                      </label>
+                    ) : (
+                      <div>
+                        <div className="text-4xl mb-3">
+                          {importStatus === 'complete' ? '✅' : importStatus === 'error' ? '❌' : '📄'}
+                        </div>
+                        <p className="text-secondary-900 font-medium">{uploadingFile.name}</p>
+                        <p className="text-sm text-secondary-500">
+                          {(uploadingFile.size / 1024).toFixed(1)} KB
+                        </p>
+
+                        {importStatus === 'idle' && (
+                          <div className="mt-4 flex justify-center gap-3">
+                            <button
+                              onClick={() => {
+                                setUploadingFile(null);
+                                if (fileInputRef.current) fileInputRef.current.value = '';
+                              }}
+                              className="px-4 py-2 border border-secondary-200 text-secondary-600 rounded-lg text-sm font-medium hover:bg-secondary-50"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={handleImport}
+                              className="btn-primary"
+                            >
+                              Start Import
+                            </button>
+                          </div>
+                        )}
+
+                        {importStatus === 'validating' && (
+                          <div className="mt-4">
+                            <div className="flex items-center justify-center gap-2 text-primary-600">
+                              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                              </svg>
+                              <span>Validating file...</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {importStatus === 'importing' && (
+                          <div className="mt-4">
+                            <div className="flex items-center justify-center gap-2 text-primary-600">
+                              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                              </svg>
+                              <span>Importing data...</span>
+                            </div>
+                            <div className="mt-3 h-2 bg-secondary-100 rounded-full overflow-hidden max-w-xs mx-auto">
+                              <div className="h-full bg-primary-500 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+                            </div>
+                          </div>
+                        )}
+
+                        {importStatus === 'complete' && (
+                          <div className="mt-4 text-green-600">
+                            <p className="font-medium">Import completed successfully!</p>
+                          </div>
+                        )}
+
+                        {importStatus === 'error' && (
+                          <div className="mt-4 text-red-600">
+                            <p className="font-medium">Import failed. Please check your file and try again.</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Import History */}
+              <div className="card p-6">
+                <h2 className="text-lg font-semibold text-secondary-900 mb-4">Import History</h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-secondary-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Data Type</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">File Name</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Status</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Records</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Errors</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Imported</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">By</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-secondary-100">
+                      {importHistory.map((item) => (
+                        <tr key={item.id} className="hover:bg-secondary-50">
+                          <td className="px-4 py-3 text-sm font-medium text-secondary-900">{item.templateName}</td>
+                          <td className="px-4 py-3 text-sm text-secondary-600">{item.fileName}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              item.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              item.status === 'failed' ? 'bg-red-100 text-red-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {item.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-secondary-600">{item.recordsImported.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-sm text-secondary-600">
+                            {item.errors > 0 ? (
+                              <span className="text-red-600">{item.errors}</span>
+                            ) : (
+                              <span className="text-green-600">0</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-secondary-600">
+                            {new Date(item.importedAt).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-secondary-600">{item.importedBy}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Template Download Section */}
+              <div className="card p-6">
+                <h2 className="text-lg font-semibold text-secondary-900 mb-4">Download Templates</h2>
+                <p className="text-sm text-secondary-500 mb-4">
+                  Download CSV templates with the correct format for each data type.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {importTemplates.map((template) => (
+                    <button
+                      key={template.id}
+                      onClick={() => downloadTemplate(template.id)}
+                      className="flex items-center gap-2 p-3 border border-secondary-200 rounded-lg hover:bg-secondary-50 transition-colors"
+                    >
+                      <span className="text-xl">📥</span>
+                      <span className="text-sm font-medium text-secondary-700">{template.name}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}

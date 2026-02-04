@@ -18,22 +18,27 @@ RUN npm run build
 # Production stage with Nginx
 FROM nginx:alpine AS production
 
-# Copy custom nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy custom nginx config as template
+COPY nginx.conf /etc/nginx/templates/default.conf.template
+
+# Copy entrypoint script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # Copy built assets
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Create non-root user
+# Create permissions for nginx
 RUN chown -R nginx:nginx /usr/share/nginx/html && \
     chown -R nginx:nginx /var/cache/nginx && \
     chown -R nginx:nginx /var/log/nginx && \
-    chown -R nginx:nginx /etc/nginx/conf.d
-
-RUN touch /var/run/nginx.pid && \
+    chown -R nginx:nginx /etc/nginx/conf.d && \
+    chown -R nginx:nginx /etc/nginx/templates && \
+    touch /var/run/nginx.pid && \
     chown -R nginx:nginx /var/run/nginx.pid
 
-USER nginx
+# Set default backend URL (override at runtime with environment variable)
+ENV BACKEND_URL=http://backend:3001
 
 # Expose port
 EXPOSE 80
@@ -42,4 +47,5 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:80/health || exit 1
 
-CMD ["nginx", "-g", "daemon off;"]
+# Use custom entrypoint for envsubst
+ENTRYPOINT ["/docker-entrypoint.sh"]

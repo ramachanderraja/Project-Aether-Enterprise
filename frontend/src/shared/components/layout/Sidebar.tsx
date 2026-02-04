@@ -12,6 +12,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Plug,
+  FileBarChart,
+  Megaphone,
+  Rocket,
+  Brain,
+  BookOpen,
 } from 'lucide-react';
 import { useState } from 'react';
 import { clsx } from 'clsx';
@@ -19,14 +24,19 @@ import { clsx } from 'clsx';
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/ai', label: 'AI Agent', icon: MessageSquare },
-  { to: '/sales', label: 'Sales Pipeline', icon: TrendingUp },
+  { to: '/sales', label: 'Sales Performance', icon: TrendingUp },
+  { to: '/marketing', label: 'Marketing', icon: Megaphone },
+  { to: '/gtm', label: 'GTM Metrics', icon: Rocket },
   { to: '/cost', label: 'Cost Intelligence', icon: DollarSign },
   { to: '/revenue', label: 'Revenue Analytics', icon: BarChart3 },
+  { to: '/reports', label: 'Profitability', icon: FileBarChart },
   { to: '/scenarios', label: 'Scenarios', icon: GitBranch },
+  { to: '/intelligence', label: 'Intelligent Core', icon: Brain },
   { to: '/governance', label: 'Governance', icon: Shield },
 ];
 
 const bottomNavItems = [
+  { to: '/training', label: 'Training Center', icon: BookOpen },
   { to: '/data-fabric', label: 'Data Fabric', icon: Database },
   { to: '/integrations', label: 'Integrations', icon: Plug },
   { to: '/settings', label: 'Settings', icon: Settings },

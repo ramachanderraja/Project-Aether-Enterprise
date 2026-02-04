@@ -1,0 +1,21 @@
+category,subcategory,vendor_name,amount,currency,period_date,cost_center_code,description,is_recurring
+Personnel,Salaries,Internal,850000.00,USD,2025-01-15,CC001,Monthly salaries - Engineering,true
+Personnel,Salaries,Internal,420000.00,USD,2025-01-15,CC002,Monthly salaries - Sales,true
+Personnel,Salaries,Internal,280000.00,USD,2025-01-15,CC003,Monthly salaries - Operations,true
+Personnel,Benefits,Internal,255000.00,USD,2025-01-15,CC001,Employee benefits - Engineering,true
+Personnel,Benefits,Internal,126000.00,USD,2025-01-15,CC002,Employee benefits - Sales,true
+Technology,Cloud Infrastructure,AWS,125000.00,USD,2025-01-31,CC001,AWS monthly compute and storage,true
+Technology,Cloud Infrastructure,Azure,85000.00,USD,2025-01-31,CC001,Azure services monthly,true
+Technology,Cloud Infrastructure,Google Cloud,42000.00,USD,2025-01-31,CC001,GCP monthly services,true
+Technology,Software Licenses,Salesforce,45000.00,USD,2025-01-31,CC002,Salesforce CRM licenses,true
+Technology,Software Licenses,Microsoft,38000.00,USD,2025-01-31,CC001,Microsoft 365 licenses,true
+Technology,Software Licenses,Atlassian,12000.00,USD,2025-01-31,CC001,Jira and Confluence,true
+Marketing,Digital Advertising,Google,75000.00,USD,2025-01-31,CC004,Google Ads campaigns,true
+Marketing,Digital Advertising,LinkedIn,45000.00,USD,2025-01-31,CC004,LinkedIn sponsored content,true
+Marketing,Events,Various,32000.00,USD,2025-01-15,CC004,Conference sponsorships,false
+Facilities,Office Rent,Brookfield,95000.00,USD,2025-01-01,CC005,HQ office lease,true
+Facilities,Utilities,Various,8500.00,USD,2025-01-31,CC005,Electricity and utilities,true
+Professional Services,Legal,Baker McKenzie,28000.00,USD,2025-01-20,CC006,Legal services retainer,true
+Professional Services,Consulting,Deloitte,85000.00,USD,2025-01-25,CC001,Digital transformation consulting,false
+Travel,Business Travel,Various,42000.00,USD,2025-01-31,CC002,Sales team travel expenses,false
+Insurance,Business Insurance,AIG,18000.00,USD,2025-01-01,CC006,General liability insurance,true

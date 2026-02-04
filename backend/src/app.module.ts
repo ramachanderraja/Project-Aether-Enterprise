@@ -8,10 +8,14 @@ import { AuthModule } from './modules/auth/auth.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AIModule } from './modules/ai/ai.module';
 import { SalesModule } from './modules/sales/sales.module';
+import { MarketingModule } from './modules/marketing/marketing.module';
+import { GTMModule } from './modules/gtm/gtm.module';
 import { CostModule } from './modules/cost/cost.module';
 import { RevenueModule } from './modules/revenue/revenue.module';
 import { ScenariosModule } from './modules/scenarios/scenarios.module';
+import { IntelligenceModule } from './modules/intelligence/intelligence.module';
 import { GovernanceModule } from './modules/governance/governance.module';
+import { TrainingModule } from './modules/training/training.module';
 import { DataFabricModule } from './modules/data-fabric/data-fabric.module';
 import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { UsersModule } from './modules/users/users.module';
@@ -62,10 +66,14 @@ import { validate } from './config/env.validation';
     DashboardModule,
     AIModule,
     SalesModule,
+    MarketingModule,
+    GTMModule,
     CostModule,
     RevenueModule,
     ScenariosModule,
+    IntelligenceModule,
     GovernanceModule,
+    TrainingModule,
     DataFabricModule,
     IntegrationsModule,
     UsersModule,
