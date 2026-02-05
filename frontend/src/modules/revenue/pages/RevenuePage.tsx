@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -16,6 +16,7 @@ import {
   ScatterChart,
   Scatter,
   ReferenceLine,
+  LabelList,
 } from 'recharts';
 
 // ==================== TYPE DEFINITIONS ====================
@@ -326,25 +327,142 @@ const exportChartAsImage = (_chartRef: React.RefObject<HTMLDivElement>, filename
   alert(`Chart export for "${filename}" would be available with html2canvas library installed.`);
 };
 
+// ==================== MULTI-SELECT DROPDOWN ====================
+interface MultiSelectDropdownProps {
+  label: string;
+  options: string[];
+  selected: string[];
+  onChange: (selected: string[]) => void;
+  placeholder?: string;
+}
+
+const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({ label, options, selected, onChange, placeholder }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const toggleOption = (option: string) => {
+    if (selected.includes(option)) {
+      onChange(selected.filter(s => s !== option));
+    } else {
+      onChange([...selected, option]);
+    }
+  };
+
+  const selectAll = () => onChange([...options]);
+  const clearAll = () => onChange([]);
+
+  const displayText = selected.length === 0
+    ? placeholder || `All ${label}`
+    : selected.length === 1
+    ? selected[0]
+    : `${selected.length} selected`;
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="px-4 py-2 border border-secondary-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white flex items-center gap-2 min-w-[140px]"
+      >
+        <span className="truncate">{displayText}</span>
+        <svg className={`w-4 h-4 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
+          <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 top-full mt-1 bg-white border border-secondary-200 rounded-lg shadow-lg z-50 min-w-[200px] max-h-64 overflow-auto">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-secondary-100 bg-secondary-50 sticky top-0">
+            <button onClick={selectAll} className="text-xs text-primary-600 hover:text-primary-800">Select All</button>
+            <button onClick={clearAll} className="text-xs text-secondary-500 hover:text-secondary-700">Clear</button>
+          </div>
+          {options.map(option => (
+            <label key={option} className="flex items-center gap-2 px-3 py-2 hover:bg-secondary-50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selected.includes(option)}
+                onChange={() => toggleOption(option)}
+                className="w-4 h-4 rounded border-secondary-300 text-primary-600 focus:ring-primary-500"
+              />
+              <span className="text-sm text-secondary-700">{option}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ==================== SORTABLE TABLE HEADER ====================
 interface SortableHeaderProps {
   label: string;
   sortKey: string;
   currentSort: SortConfig | null;
   onSort: (key: string, direction: SortDirection) => void;
-  onFilter?: (key: string, value: string) => void;
+  onFilter?: (key: string, values: string[]) => void;
   filterOptions?: string[];
+  activeFilters?: string[];
 }
 
-const SortableHeader: React.FC<SortableHeaderProps> = ({ label, sortKey, currentSort, onSort, onFilter, filterOptions }) => {
+const SortableHeader: React.FC<SortableHeaderProps> = ({ label, sortKey, currentSort, onSort, onFilter, filterOptions, activeFilters = [] }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [localFilters, setLocalFilters] = useState<string[]>(activeFilters);
+  const menuRef = useRef<HTMLTableHeaderCellElement>(null);
   const isActive = currentSort?.key === sortKey;
+  const hasActiveFilters = activeFilters.length > 0;
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Sync local filters with activeFilters prop
+  useEffect(() => {
+    setLocalFilters(activeFilters);
+  }, [activeFilters]);
+
+  const toggleFilter = (opt: string) => {
+    const newFilters = localFilters.includes(opt)
+      ? localFilters.filter(f => f !== opt)
+      : [...localFilters, opt];
+    setLocalFilters(newFilters);
+  };
+
+  const applyFilters = () => {
+    if (onFilter) {
+      onFilter(sortKey, localFilters);
+    }
+    setShowMenu(false);
+  };
+
+  const clearFilters = () => {
+    setLocalFilters([]);
+    if (onFilter) {
+      onFilter(sortKey, []);
+    }
+  };
 
   return (
-    <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase tracking-wider relative">
+    <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase tracking-wider relative" ref={menuRef}>
       <button
         onClick={() => setShowMenu(!showMenu)}
-        className="flex items-center gap-1 hover:text-secondary-700"
+        className={`flex items-center gap-1 hover:text-secondary-700 ${hasActiveFilters ? 'text-primary-600' : ''}`}
       >
         {label}
         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -355,35 +473,55 @@ const SortableHeader: React.FC<SortableHeaderProps> = ({ label, sortKey, current
             {currentSort.direction === 'asc' ? '↑' : '↓'}
           </span>
         )}
+        {hasActiveFilters && (
+          <span className="ml-1 w-2 h-2 rounded-full bg-primary-500"></span>
+        )}
       </button>
 
       {showMenu && (
-        <div className="absolute left-0 top-full mt-1 bg-white border border-secondary-200 rounded-lg shadow-lg z-50 min-w-[150px]">
+        <div className="absolute left-0 top-full mt-1 bg-white border border-secondary-200 rounded-lg shadow-lg z-50 min-w-[180px]">
           <button
             onClick={() => { onSort(sortKey, 'asc'); setShowMenu(false); }}
-            className="w-full px-4 py-2 text-left text-sm hover:bg-secondary-50 flex items-center gap-2"
+            className={`w-full px-4 py-2 text-left text-sm hover:bg-secondary-50 flex items-center gap-2 ${isActive && currentSort?.direction === 'asc' ? 'bg-primary-50 text-primary-600' : ''}`}
           >
             <span>↑</span> Sort Ascending
           </button>
           <button
             onClick={() => { onSort(sortKey, 'desc'); setShowMenu(false); }}
-            className="w-full px-4 py-2 text-left text-sm hover:bg-secondary-50 flex items-center gap-2"
+            className={`w-full px-4 py-2 text-left text-sm hover:bg-secondary-50 flex items-center gap-2 ${isActive && currentSort?.direction === 'desc' ? 'bg-primary-50 text-primary-600' : ''}`}
           >
             <span>↓</span> Sort Descending
           </button>
           {filterOptions && onFilter && (
             <>
               <hr className="my-1" />
-              <div className="px-4 py-2 text-xs font-semibold text-secondary-400">Filter by</div>
-              {filterOptions.map(opt => (
+              <div className="px-4 py-2 text-xs font-semibold text-secondary-400 flex justify-between items-center">
+                <span>Filter by</span>
+                {localFilters.length > 0 && (
+                  <button onClick={clearFilters} className="text-primary-500 hover:text-primary-700">Clear</button>
+                )}
+              </div>
+              <div className="max-h-48 overflow-y-auto">
+                {filterOptions.map(opt => (
+                  <label key={opt} className="flex items-center gap-2 px-4 py-2 hover:bg-secondary-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={localFilters.includes(opt)}
+                      onChange={() => toggleFilter(opt)}
+                      className="w-4 h-4 rounded border-secondary-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm">{opt}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="px-4 py-2 border-t border-secondary-100">
                 <button
-                  key={opt}
-                  onClick={() => { onFilter(sortKey, opt); setShowMenu(false); }}
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-secondary-50"
+                  onClick={applyFilters}
+                  className="w-full px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600"
                 >
-                  {opt}
+                  Apply Filters
                 </button>
-              ))}
+              </div>
             </>
           )}
         </div>
@@ -446,10 +584,10 @@ const ChartWrapper: React.FC<ChartWrapperProps> = ({ title, subtitle, children, 
 
 // ==================== MAIN COMPONENT ====================
 export default function RevenuePage() {
-  // Filters
-  const [revenueType, setRevenueType] = useState<'All' | 'License' | 'Implementation'>('All');
-  const [yearFilter, setYearFilter] = useState(String(currentYear));
-  const [monthFilter, setMonthFilter] = useState('All');
+  // Filters - Multi-select support
+  const [revenueTypeFilter, setRevenueTypeFilter] = useState<string[]>([]);
+  const [yearFilterMulti, setYearFilterMulti] = useState<string[]>([]);
+  const [monthFilterMulti, setMonthFilterMulti] = useState<string[]>([]);
   const [regionFilter, setRegionFilter] = useState<string[]>([]);
   const [verticalFilter, setVerticalFilter] = useState<string[]>([]);
 
@@ -475,15 +613,34 @@ export default function RevenuePage() {
     setSortConfig({ key, direction });
   };
 
-  // Filter customers
+  // Filter customers (multi-select support)
   const filteredCustomers = useMemo(() => {
     return customers.filter(c => {
-      if (revenueType !== 'All' && c.revenueType !== revenueType) return false;
+      // Revenue type filter (multi-select)
+      if (revenueTypeFilter.length > 0 && !revenueTypeFilter.includes(c.revenueType)) return false;
+
+      // Region filter (multi-select)
       if (regionFilter.length > 0 && !regionFilter.includes(c.region)) return false;
+
+      // Vertical filter (multi-select)
       if (verticalFilter.length > 0 && !verticalFilter.includes(c.vertical)) return false;
+
+      // Year filter on renewal date (multi-select)
+      if (yearFilterMulti.length > 0) {
+        const renewalYear = new Date(c.renewalDate).getFullYear().toString();
+        if (!yearFilterMulti.includes(renewalYear)) return false;
+      }
+
+      // Month filter on renewal date (multi-select)
+      if (monthFilterMulti.length > 0) {
+        const renewalMonth = new Date(c.renewalDate).getMonth();
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        if (!monthFilterMulti.includes(monthNames[renewalMonth])) return false;
+      }
+
       return true;
     });
-  }, [revenueType, regionFilter, verticalFilter]);
+  }, [revenueTypeFilter, regionFilter, verticalFilter, yearFilterMulti, monthFilterMulti]);
 
   // Calculate metrics
   const metrics = useMemo(() => {
@@ -556,7 +713,7 @@ export default function RevenuePage() {
       .sort((a, b) => b.arr - a.arr);
   }, [filteredCustomers]);
 
-  // ARR Movement Data based on lookback - FLOATING WATERFALL
+  // ARR Movement Data based on lookback - TRUE FLOATING WATERFALL
   const arrMovementData = useMemo(() => {
     const months = parseInt(lookbackPeriod);
     const recentData = arrMovementHistory.slice(-months);
@@ -576,72 +733,89 @@ export default function RevenuePage() {
     const currentARR = metrics.currentARR;
     const startingARR = currentARR - totals.netChange;
 
-    // Build floating waterfall data
+    // Build floating waterfall data with proper structure for stacked bars
+    // Each bar has: bottom (invisible spacer), value (visible bar)
     let runningTotal = startingARR;
 
-    const waterfallData = [
-      {
-        name: 'Starting ARR',
-        value: startingARR,
-        start: 0,
-        end: startingARR,
-        fill: COLORS.gray,
-        displayValue: startingARR
-      },
-    ];
+    const waterfallData: Array<{
+      name: string;
+      bottom: number;       // Invisible spacer height (where bar starts)
+      value: number;        // Visible bar height (always positive for rendering)
+      displayValue: number; // Value to display (can be negative)
+      fill: string;
+      type: 'initial' | 'increase' | 'decrease' | 'final';
+      connectTo?: number;   // Y value to connect to next bar
+    }> = [];
 
-    // New Business (positive, floats above starting)
+    // Starting ARR - anchored to axis (bottom = 0)
     waterfallData.push({
-      name: 'New Business',
+      name: 'Starting\nARR',
+      bottom: 0,
+      value: startingARR,
+      displayValue: startingARR,
+      fill: COLORS.gray,
+      type: 'initial',
+      connectTo: startingARR
+    });
+
+    // New Business - positive, floats from running total
+    waterfallData.push({
+      name: 'New\nBusiness',
+      bottom: runningTotal,
       value: totals.newBusiness,
-      start: runningTotal,
-      end: runningTotal + totals.newBusiness,
+      displayValue: totals.newBusiness,
       fill: COLORS.success,
-      displayValue: totals.newBusiness
+      type: 'increase',
+      connectTo: runningTotal + totals.newBusiness
     });
     runningTotal += totals.newBusiness;
 
-    // Expansion (positive)
+    // Expansion - positive, floats from running total
     waterfallData.push({
       name: 'Expansion',
+      bottom: runningTotal,
       value: totals.expansion,
-      start: runningTotal,
-      end: runningTotal + totals.expansion,
+      displayValue: totals.expansion,
       fill: COLORS.primary,
-      displayValue: totals.expansion
+      type: 'increase',
+      connectTo: runningTotal + totals.expansion
     });
     runningTotal += totals.expansion;
 
-    // Contraction (negative, floats down)
+    // Contraction - negative, bar hangs down from running total
+    const contractionAbs = Math.abs(totals.contraction);
     waterfallData.push({
       name: 'Contraction',
-      value: totals.contraction,
-      start: runningTotal,
-      end: runningTotal + totals.contraction,
+      bottom: runningTotal - contractionAbs,  // Bar bottom is at lower level
+      value: contractionAbs,                   // Bar height
+      displayValue: totals.contraction,        // Display as negative
       fill: COLORS.warning,
-      displayValue: totals.contraction
+      type: 'decrease',
+      connectTo: runningTotal - contractionAbs
     });
-    runningTotal += totals.contraction;
+    runningTotal -= contractionAbs;
 
-    // Churn (negative)
+    // Churn - negative, bar hangs down from running total
+    const churnAbs = Math.abs(totals.churn);
     waterfallData.push({
       name: 'Churn',
-      value: totals.churn,
-      start: runningTotal,
-      end: runningTotal + totals.churn,
+      bottom: runningTotal - churnAbs,
+      value: churnAbs,
+      displayValue: totals.churn,
       fill: COLORS.danger,
-      displayValue: totals.churn
+      type: 'decrease',
+      connectTo: runningTotal - churnAbs
     });
-    runningTotal += totals.churn;
+    runningTotal -= churnAbs;
 
-    // Ending ARR
+    // Ending ARR - anchored to axis (bottom = 0)
     waterfallData.push({
-      name: 'Ending ARR',
+      name: 'Ending\nARR',
+      bottom: 0,
       value: runningTotal,
-      start: 0,
-      end: runningTotal,
+      displayValue: runningTotal,
       fill: COLORS.primary,
-      displayValue: runningTotal
+      type: 'final'
     });
 
     return {
@@ -888,45 +1062,119 @@ export default function RevenuePage() {
       {/* ARR Bridge / Floating Waterfall */}
       <ChartWrapper
         title="ARR Bridge"
-        subtitle="Floating waterfall showing ARR movement"
+        subtitle="Floating waterfall showing ARR movement over the selected period"
         data={arrMovementData.waterfallData}
         filename="arr_bridge"
       >
-        <div className="h-80">
+        <div className="h-96">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={arrMovementData.waterfallData} margin={{ top: 20, right: 30, left: 30, bottom: 20 }}>
+            <BarChart
+              data={arrMovementData.waterfallData}
+              margin={{ top: 30, right: 30, left: 30, bottom: 30 }}
+              barCategoryGap="20%"
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} />
-              <YAxis tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(v) => formatCurrency(v)} />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 10, fill: '#64748b' }}
+                interval={0}
+                height={50}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: '#64748b' }}
+                tickFormatter={(v) => formatCurrency(v)}
+                axisLine={{ stroke: '#e2e8f0' }}
+              />
               <Tooltip
                 formatter={(_value: number, _name: string, props: any) => {
                   const item = props.payload;
-                  return [formatCurrency(item.displayValue), 'Value'];
+                  if (item && item.displayValue !== undefined) {
+                    return [formatCurrency(item.displayValue), item.type === 'initial' || item.type === 'final' ? 'Total ARR' : 'Change'];
+                  }
+                  return [formatCurrency(_value), 'Value'];
                 }}
-                contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+                labelStyle={{ fontWeight: 600, marginBottom: 4 }}
               />
-              {/* Invisible bar for floating effect */}
-              <Bar dataKey="start" stackId="waterfall" fill="transparent" />
-              {/* Actual visible bar */}
+
+              {/* Invisible spacer bar - this creates the "floating" effect */}
               <Bar
-                dataKey={(d: any) => Math.abs(d.end - d.start)}
+                dataKey="bottom"
+                stackId="waterfall"
+                fill="transparent"
+                radius={0}
+              />
+
+              {/* Visible value bar - stacked on top of spacer */}
+              <Bar
+                dataKey="value"
                 stackId="waterfall"
                 radius={[4, 4, 4, 4]}
               >
                 {arrMovementData.waterfallData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.fill} />
                 ))}
+                <LabelList
+                  dataKey="displayValue"
+                  position="top"
+                  formatter={(v: number) => formatCurrency(v)}
+                  style={{ fontSize: 10, fill: '#374151', fontWeight: 600 }}
+                  offset={8}
+                />
               </Bar>
-              <ReferenceLine y={0} stroke="#94a3b8" />
+
+              {/* Reference line at 0 */}
+              <ReferenceLine y={0} stroke="#94a3b8" strokeWidth={1} />
+
+              {/* Connecting lines between bars */}
+              {arrMovementData.waterfallData.map((entry, index) => {
+                if (index < arrMovementData.waterfallData.length - 1 && entry.connectTo !== undefined) {
+                  return (
+                    <ReferenceLine
+                      key={`connect-${index}`}
+                      y={entry.connectTo}
+                      stroke="#cbd5e1"
+                      strokeWidth={1}
+                      strokeDasharray="4 2"
+                    />
+                  );
+                }
+                return null;
+              })}
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex justify-center gap-6 mt-4 flex-wrap">
-          <div className="flex items-center gap-2"><span className="w-3 h-3 rounded" style={{ backgroundColor: COLORS.gray }}></span><span className="text-xs">Starting/Ending ARR</span></div>
-          <div className="flex items-center gap-2"><span className="w-3 h-3 rounded" style={{ backgroundColor: COLORS.success }}></span><span className="text-xs">New Business</span></div>
-          <div className="flex items-center gap-2"><span className="w-3 h-3 rounded" style={{ backgroundColor: COLORS.primary }}></span><span className="text-xs">Expansion</span></div>
-          <div className="flex items-center gap-2"><span className="w-3 h-3 rounded" style={{ backgroundColor: COLORS.warning }}></span><span className="text-xs">Contraction</span></div>
-          <div className="flex items-center gap-2"><span className="w-3 h-3 rounded" style={{ backgroundColor: COLORS.danger }}></span><span className="text-xs">Churn</span></div>
+
+        {/* Legend */}
+        <div className="flex justify-center gap-6 mt-4 flex-wrap border-t border-secondary-100 pt-4">
+          <div className="flex items-center gap-2">
+            <span className="w-4 h-4 rounded" style={{ backgroundColor: COLORS.gray }}></span>
+            <span className="text-xs text-secondary-600">Initial/Final Value</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-4 h-4 rounded" style={{ backgroundColor: COLORS.success }}></span>
+            <span className="text-xs text-secondary-600">New Business (+)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-4 h-4 rounded" style={{ backgroundColor: COLORS.primary }}></span>
+            <span className="text-xs text-secondary-600">Expansion (+)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-4 h-4 rounded" style={{ backgroundColor: COLORS.warning }}></span>
+            <span className="text-xs text-secondary-600">Contraction (-)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-4 h-4 rounded" style={{ backgroundColor: COLORS.danger }}></span>
+            <span className="text-xs text-secondary-600">Churn (-)</span>
+          </div>
+        </div>
+
+        {/* Waterfall explanation */}
+        <div className="mt-4 p-3 bg-secondary-50 rounded-lg">
+          <p className="text-xs text-secondary-500 text-center">
+            <strong>How to read:</strong> Starting ARR + New Business + Expansion - Contraction - Churn = Ending ARR
+          </p>
         </div>
       </ChartWrapper>
 
@@ -1615,7 +1863,7 @@ export default function RevenuePage() {
         </button>
       </div>
 
-      {/* Global Filters */}
+      {/* Global Filters - Multi-Select */}
       <div className="card p-4">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2 text-secondary-600">
@@ -1625,55 +1873,61 @@ export default function RevenuePage() {
             <span className="font-medium">Filters:</span>
           </div>
 
-          <select
-            value={revenueType}
-            onChange={(e) => setRevenueType(e.target.value as any)}
-            className="px-4 py-2 border border-secondary-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-          >
-            <option value="All">All Revenue Types</option>
-            <option value="License">License</option>
-            <option value="Implementation">Implementation</option>
-          </select>
+          <MultiSelectDropdown
+            label="Revenue Types"
+            options={['License', 'Implementation']}
+            selected={revenueTypeFilter}
+            onChange={setRevenueTypeFilter}
+            placeholder="All Revenue Types"
+          />
 
-          <select
-            value={yearFilter}
-            onChange={(e) => setYearFilter(e.target.value)}
-            className="px-4 py-2 border border-secondary-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-          >
-            <option value="All">All Years</option>
-            <option value="2024">2024</option>
-            <option value="2025">2025</option>
-            <option value="2026">2026</option>
-          </select>
+          <MultiSelectDropdown
+            label="Years"
+            options={['2024', '2025', '2026']}
+            selected={yearFilterMulti}
+            onChange={setYearFilterMulti}
+            placeholder="All Years"
+          />
 
-          <select
-            value={monthFilter}
-            onChange={(e) => setMonthFilter(e.target.value)}
-            className="px-4 py-2 border border-secondary-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-          >
-            <option value="All">All Months</option>
-            {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map(m => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
+          <MultiSelectDropdown
+            label="Months"
+            options={['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']}
+            selected={monthFilterMulti}
+            onChange={setMonthFilterMulti}
+            placeholder="All Months"
+          />
 
-          <select
-            value={regionFilter.length === 0 ? '' : regionFilter[0]}
-            onChange={(e) => setRegionFilter(e.target.value ? [e.target.value] : [])}
-            className="px-4 py-2 border border-secondary-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-          >
-            <option value="">All Regions</option>
-            {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
+          <MultiSelectDropdown
+            label="Regions"
+            options={REGIONS}
+            selected={regionFilter}
+            onChange={setRegionFilter}
+            placeholder="All Regions"
+          />
 
-          <select
-            value={verticalFilter.length === 0 ? '' : verticalFilter[0]}
-            onChange={(e) => setVerticalFilter(e.target.value ? [e.target.value] : [])}
-            className="px-4 py-2 border border-secondary-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-          >
-            <option value="">All Verticals</option>
-            {VERTICALS.map(v => <option key={v} value={v}>{v}</option>)}
-          </select>
+          <MultiSelectDropdown
+            label="Verticals"
+            options={VERTICALS}
+            selected={verticalFilter}
+            onChange={setVerticalFilter}
+            placeholder="All Verticals"
+          />
+
+          {/* Clear All Filters Button */}
+          {(revenueTypeFilter.length > 0 || yearFilterMulti.length > 0 || monthFilterMulti.length > 0 || regionFilter.length > 0 || verticalFilter.length > 0) && (
+            <button
+              onClick={() => {
+                setRevenueTypeFilter([]);
+                setYearFilterMulti([]);
+                setMonthFilterMulti([]);
+                setRegionFilter([]);
+                setVerticalFilter([]);
+              }}
+              className="px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg"
+            >
+              Clear All
+            </button>
+          )}
         </div>
       </div>
 

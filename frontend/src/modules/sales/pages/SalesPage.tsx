@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -284,25 +284,142 @@ const exportChartAsImage = (_chartRef: React.RefObject<HTMLDivElement>, filename
   alert(`Chart export for "${filename}" would be available with html2canvas library installed.`);
 };
 
+// ==================== MULTI-SELECT DROPDOWN ====================
+interface MultiSelectDropdownProps {
+  label: string;
+  options: string[];
+  selected: string[];
+  onChange: (selected: string[]) => void;
+  placeholder?: string;
+}
+
+const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({ label, options, selected, onChange, placeholder }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const toggleOption = (option: string) => {
+    if (selected.includes(option)) {
+      onChange(selected.filter(s => s !== option));
+    } else {
+      onChange([...selected, option]);
+    }
+  };
+
+  const selectAll = () => onChange([...options]);
+  const clearAll = () => onChange([]);
+
+  const displayText = selected.length === 0
+    ? placeholder || `All ${label}`
+    : selected.length === 1
+    ? selected[0]
+    : `${selected.length} selected`;
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="px-4 py-2 border border-secondary-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white flex items-center gap-2 min-w-[140px]"
+      >
+        <span className="truncate">{displayText}</span>
+        <svg className={`w-4 h-4 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
+          <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 top-full mt-1 bg-white border border-secondary-200 rounded-lg shadow-lg z-50 min-w-[200px] max-h-64 overflow-auto">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-secondary-100 bg-secondary-50 sticky top-0">
+            <button onClick={selectAll} className="text-xs text-primary-600 hover:text-primary-800">Select All</button>
+            <button onClick={clearAll} className="text-xs text-secondary-500 hover:text-secondary-700">Clear</button>
+          </div>
+          {options.map(option => (
+            <label key={option} className="flex items-center gap-2 px-3 py-2 hover:bg-secondary-50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selected.includes(option)}
+                onChange={() => toggleOption(option)}
+                className="w-4 h-4 rounded border-secondary-300 text-primary-600 focus:ring-primary-500"
+              />
+              <span className="text-sm text-secondary-700">{option}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ==================== SORTABLE TABLE HEADER ====================
 interface SortableHeaderProps {
   label: string;
   sortKey: string;
   currentSort: SortConfig | null;
   onSort: (key: string, direction: SortDirection) => void;
-  onFilter?: (key: string, value: string) => void;
+  onFilter?: (key: string, values: string[]) => void;
   filterOptions?: string[];
+  activeFilters?: string[];
 }
 
-const SortableHeader: React.FC<SortableHeaderProps> = ({ label, sortKey, currentSort, onSort, onFilter, filterOptions }) => {
+const SortableHeader: React.FC<SortableHeaderProps> = ({ label, sortKey, currentSort, onSort, onFilter, filterOptions, activeFilters = [] }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [localFilters, setLocalFilters] = useState<string[]>(activeFilters);
+  const menuRef = useRef<HTMLTableHeaderCellElement>(null);
   const isActive = currentSort?.key === sortKey;
+  const hasActiveFilters = activeFilters.length > 0;
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Sync local filters with activeFilters prop
+  useEffect(() => {
+    setLocalFilters(activeFilters);
+  }, [activeFilters]);
+
+  const toggleFilter = (opt: string) => {
+    const newFilters = localFilters.includes(opt)
+      ? localFilters.filter(f => f !== opt)
+      : [...localFilters, opt];
+    setLocalFilters(newFilters);
+  };
+
+  const applyFilters = () => {
+    if (onFilter) {
+      onFilter(sortKey, localFilters);
+    }
+    setShowMenu(false);
+  };
+
+  const clearFilters = () => {
+    setLocalFilters([]);
+    if (onFilter) {
+      onFilter(sortKey, []);
+    }
+  };
 
   return (
-    <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase tracking-wider relative">
+    <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase tracking-wider relative" ref={menuRef}>
       <button
         onClick={() => setShowMenu(!showMenu)}
-        className="flex items-center gap-1 hover:text-secondary-700"
+        className={`flex items-center gap-1 hover:text-secondary-700 ${hasActiveFilters ? 'text-primary-600' : ''}`}
       >
         {label}
         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -313,35 +430,55 @@ const SortableHeader: React.FC<SortableHeaderProps> = ({ label, sortKey, current
             {currentSort.direction === 'asc' ? '↑' : '↓'}
           </span>
         )}
+        {hasActiveFilters && (
+          <span className="ml-1 w-2 h-2 rounded-full bg-primary-500"></span>
+        )}
       </button>
 
       {showMenu && (
-        <div className="absolute left-0 top-full mt-1 bg-white border border-secondary-200 rounded-lg shadow-lg z-50 min-w-[150px]">
+        <div className="absolute left-0 top-full mt-1 bg-white border border-secondary-200 rounded-lg shadow-lg z-50 min-w-[180px]">
           <button
             onClick={() => { onSort(sortKey, 'asc'); setShowMenu(false); }}
-            className="w-full px-4 py-2 text-left text-sm hover:bg-secondary-50 flex items-center gap-2"
+            className={`w-full px-4 py-2 text-left text-sm hover:bg-secondary-50 flex items-center gap-2 ${isActive && currentSort?.direction === 'asc' ? 'bg-primary-50 text-primary-600' : ''}`}
           >
             <span>↑</span> Sort Ascending
           </button>
           <button
             onClick={() => { onSort(sortKey, 'desc'); setShowMenu(false); }}
-            className="w-full px-4 py-2 text-left text-sm hover:bg-secondary-50 flex items-center gap-2"
+            className={`w-full px-4 py-2 text-left text-sm hover:bg-secondary-50 flex items-center gap-2 ${isActive && currentSort?.direction === 'desc' ? 'bg-primary-50 text-primary-600' : ''}`}
           >
             <span>↓</span> Sort Descending
           </button>
           {filterOptions && onFilter && (
             <>
               <hr className="my-1" />
-              <div className="px-4 py-2 text-xs font-semibold text-secondary-400">Filter by</div>
-              {filterOptions.map(opt => (
+              <div className="px-4 py-2 text-xs font-semibold text-secondary-400 flex justify-between items-center">
+                <span>Filter by</span>
+                {localFilters.length > 0 && (
+                  <button onClick={clearFilters} className="text-primary-500 hover:text-primary-700">Clear</button>
+                )}
+              </div>
+              <div className="max-h-48 overflow-y-auto">
+                {filterOptions.map(opt => (
+                  <label key={opt} className="flex items-center gap-2 px-4 py-2 hover:bg-secondary-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={localFilters.includes(opt)}
+                      onChange={() => toggleFilter(opt)}
+                      className="w-4 h-4 rounded border-secondary-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm">{opt}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="px-4 py-2 border-t border-secondary-100">
                 <button
-                  key={opt}
-                  onClick={() => { onFilter(sortKey, opt); setShowMenu(false); }}
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-secondary-50"
+                  onClick={applyFilters}
+                  className="w-full px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600"
                 >
-                  {opt}
+                  Apply Filters
                 </button>
-              ))}
+              </div>
             </>
           )}
         </div>
@@ -404,13 +541,14 @@ const ChartWrapper: React.FC<ChartWrapperProps> = ({ title, subtitle, children, 
 
 // ==================== MAIN COMPONENT ====================
 export default function SalesPage() {
-  // Filters
-  const [revenueType, setRevenueType] = useState<'All' | 'License' | 'Implementation'>('License');
-  const [yearFilter, setYearFilter] = useState(String(currentYear));
-  const [quarterFilter, setQuarterFilter] = useState<string>('All');
-  const [monthFilter, setMonthFilter] = useState('All');
-  const [regionFilter, setRegionFilter] = useState('All');
-  const [verticalFilter, setVerticalFilter] = useState('All');
+  // Filters - now with multi-select support
+  const [revenueType, setRevenueType] = useState<string[]>(['License']);
+  const [yearFilter, setYearFilter] = useState<string[]>([String(currentYear)]);
+  const [quarterFilter, setQuarterFilter] = useState<string[]>([]);
+  const [monthFilter, setMonthFilter] = useState<string[]>([]);
+  const [regionFilter, setRegionFilter] = useState<string[]>([]);
+  const [verticalFilter, setVerticalFilter] = useState<string[]>([]);
+  const [channelFilter, setChannelFilter] = useState<string[]>([]);
 
   // Tabs
   const [activeTab, setActiveTab] = useState<'overview' | 'forecast' | 'pipeline' | 'quota'>('overview');
@@ -421,34 +559,60 @@ export default function SalesPage() {
   // Sorting
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
+  // Table-specific column filters
+  const [tableColumnFilters, setTableColumnFilters] = useState<Record<string, string[]>>({});
+
   // Handle sort
   const handleSort = (key: string, direction: SortDirection) => {
     setSortConfig({ key, direction });
   };
 
-  // Filter opportunities based on selected filters
+  // Handle table column filter
+  const handleTableFilter = (key: string, values: string[]) => {
+    setTableColumnFilters(prev => ({
+      ...prev,
+      [key]: values
+    }));
+  };
+
+  // Filter opportunities based on selected filters (multi-select)
   const filteredOpportunities = useMemo(() => {
     return opportunities.filter(opp => {
-      if (revenueType !== 'All' && opp.revenueType !== revenueType) return false;
-      if (regionFilter !== 'All' && opp.region !== regionFilter) return false;
-      if (verticalFilter !== 'All' && opp.vertical !== verticalFilter) return false;
-      if (yearFilter !== 'All') {
+      // Revenue type filter (multi-select)
+      if (revenueType.length > 0 && !revenueType.includes(opp.revenueType)) return false;
+
+      // Region filter (multi-select)
+      if (regionFilter.length > 0 && !regionFilter.includes(opp.region)) return false;
+
+      // Vertical filter (multi-select)
+      if (verticalFilter.length > 0 && !verticalFilter.includes(opp.vertical)) return false;
+
+      // Channel filter (multi-select)
+      if (channelFilter.length > 0 && !channelFilter.includes(opp.channel)) return false;
+
+      // Year filter (multi-select)
+      if (yearFilter.length > 0) {
         const oppYear = new Date(opp.expectedCloseDate).getFullYear().toString();
-        if (oppYear !== yearFilter) return false;
+        if (!yearFilter.includes(oppYear)) return false;
       }
-      if (quarterFilter !== 'All') {
+
+      // Quarter filter (multi-select)
+      if (quarterFilter.length > 0) {
         const oppMonth = new Date(opp.expectedCloseDate).getMonth();
-        const oppQuarter = Math.floor(oppMonth / 3) + 1;
-        if (`Q${oppQuarter}` !== quarterFilter) return false;
+        const oppQuarter = `Q${Math.floor(oppMonth / 3) + 1}`;
+        if (!quarterFilter.includes(oppQuarter)) return false;
       }
-      if (monthFilter !== 'All') {
+
+      // Month filter (multi-select)
+      if (monthFilter.length > 0) {
         const oppMonth = new Date(opp.expectedCloseDate).getMonth();
-        const filterMonth = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(monthFilter);
-        if (oppMonth !== filterMonth) return false;
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        if (!monthFilter.includes(monthNames[oppMonth])) return false;
       }
+
       return true;
     });
-  }, [revenueType, yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter]);
+  }, [revenueType, yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter, channelFilter]);
 
   // Calculate metrics
   const metrics = useMemo(() => {
@@ -734,115 +898,6 @@ export default function SalesPage() {
     };
   }, [filteredOpportunities, lookbackPeriod]);
 
-  // Month filter dropdown state
-  const [showMonthDropdown, setShowMonthDropdown] = useState(false);
-  const [expandedQuarterInDropdown, setExpandedQuarterInDropdown] = useState<string | null>(null);
-
-  // Month filter with dropdown - grouped by quarters with expandable months
-  const renderMonthFilter = () => {
-    const quarters = [
-      { label: 'Q1', months: ['Jan', 'Feb', 'Mar'] },
-      { label: 'Q2', months: ['Apr', 'May', 'Jun'] },
-      { label: 'Q3', months: ['Jul', 'Aug', 'Sep'] },
-      { label: 'Q4', months: ['Oct', 'Nov', 'Dec'] },
-    ];
-
-    const getDisplayLabel = () => {
-      if (monthFilter !== 'All') return monthFilter;
-      if (quarterFilter !== 'All') return quarterFilter;
-      return 'Month';
-    };
-
-    return (
-      <div className="relative">
-        <button
-          onClick={() => setShowMonthDropdown(!showMonthDropdown)}
-          className="px-4 py-2 border border-secondary-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white flex items-center gap-2 min-w-[100px]"
-        >
-          <span>{getDisplayLabel()}</span>
-          <svg className={`w-4 h-4 transition-transform ${showMonthDropdown ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
-            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-          </svg>
-        </button>
-
-        {showMonthDropdown && (
-          <div className="absolute left-0 top-full mt-1 bg-white border border-secondary-200 rounded-lg shadow-lg z-50 min-w-[200px]">
-            {/* All option */}
-            <button
-              onClick={() => {
-                setQuarterFilter('All');
-                setMonthFilter('All');
-                setShowMonthDropdown(false);
-                setExpandedQuarterInDropdown(null);
-              }}
-              className={`w-full px-4 py-2.5 text-sm text-left hover:bg-secondary-50 border-b border-secondary-100 font-medium ${
-                quarterFilter === 'All' && monthFilter === 'All' ? 'bg-primary-50 text-primary-600' : ''
-              }`}
-            >
-              All Months
-            </button>
-
-            {/* Quarters with expandable months */}
-            {quarters.map(q => (
-              <div key={q.label} className="border-b border-secondary-100 last:border-b-0">
-                <button
-                  onClick={() => {
-                    if (expandedQuarterInDropdown === q.label) {
-                      // Second click on expanded quarter - select the quarter
-                      setQuarterFilter(q.label);
-                      setMonthFilter('All');
-                      setShowMonthDropdown(false);
-                      setExpandedQuarterInDropdown(null);
-                    } else {
-                      // First click - expand the quarter
-                      setExpandedQuarterInDropdown(q.label);
-                    }
-                  }}
-                  className={`w-full px-4 py-2.5 text-sm text-left hover:bg-secondary-50 flex items-center justify-between ${
-                    quarterFilter === q.label && monthFilter === 'All' ? 'bg-primary-50 text-primary-600 font-medium' : ''
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="font-medium">{q.label}</span>
-                    <span className="text-secondary-400 text-xs">({q.months.join(', ')})</span>
-                  </span>
-                  <svg
-                    className={`w-4 h-4 transition-transform ${expandedQuarterInDropdown === q.label ? 'rotate-180' : ''}`}
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                  </svg>
-                </button>
-
-                {/* Expanded months */}
-                {expandedQuarterInDropdown === q.label && (
-                  <div className="bg-secondary-50">
-                    {q.months.map(m => (
-                      <button
-                        key={m}
-                        onClick={() => {
-                          setQuarterFilter(q.label);
-                          setMonthFilter(m);
-                          setShowMonthDropdown(false);
-                          setExpandedQuarterInDropdown(null);
-                        }}
-                        className={`w-full px-8 py-2 text-sm text-left hover:bg-secondary-100 ${
-                          monthFilter === m ? 'bg-primary-100 text-primary-600 font-medium' : ''
-                        }`}
-                      >
-                        {m}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
 
   // Render tabs
   const renderOverviewTab = () => (
@@ -1433,97 +1488,197 @@ export default function SalesPage() {
   );
 
   const renderQuotaTab = () => {
-    // Calculate totals for managers
+    // Calculate totals for managers and derived fields
     const salespeopleWithTotals = salespeople.map(sp => {
+      const remainingTarget = sp.annualTarget - sp.closedYTD;
+      const pipelineCoverage = remainingTarget > 0 ? sp.pipelineValue / remainingTarget : 0;
+      const forecastAttainment = ((sp.closedYTD + sp.forecast) / sp.annualTarget) * 100;
+      const ytdAttainment = (sp.closedYTD / sp.annualTarget) * 100;
+
       if (sp.isManager) {
         const teamMembers = salespeople.filter(s => s.managerId === sp.id);
         const teamClosed = teamMembers.reduce((sum, s) => sum + s.closedYTD, 0) + sp.closedYTD;
         const teamForecast = teamMembers.reduce((sum, s) => sum + s.forecast, 0) + sp.forecast;
         const teamPipeline = teamMembers.reduce((sum, s) => sum + s.pipelineValue, 0) + sp.pipelineValue;
         const teamTarget = teamMembers.reduce((sum, s) => sum + s.annualTarget, 0) + sp.annualTarget;
-        return { ...sp, teamClosed, teamForecast, teamPipeline, teamTarget };
+        return { ...sp, teamClosed, teamForecast, teamPipeline, teamTarget, pipelineCoverage, forecastAttainment, ytdAttainment };
       }
-      return sp;
+      return { ...sp, pipelineCoverage, forecastAttainment, ytdAttainment };
     });
+
+    // Apply table-specific column filters
+    let filteredSalespeople = salespeopleWithTotals;
+
+    // Filter by region
+    if (tableColumnFilters.region && tableColumnFilters.region.length > 0) {
+      filteredSalespeople = filteredSalespeople.filter(sp => tableColumnFilters.region.includes(sp.region));
+    }
+
+    // Filter by name
+    if (tableColumnFilters.name && tableColumnFilters.name.length > 0) {
+      filteredSalespeople = filteredSalespeople.filter(sp => tableColumnFilters.name.includes(sp.name));
+    }
+
+    // Apply sorting to Sales Rep table
+    if (sortConfig) {
+      filteredSalespeople = [...filteredSalespeople].sort((a: any, b: any) => {
+        let aVal = a[sortConfig.key];
+        let bVal = b[sortConfig.key];
+
+        // Handle string comparison
+        if (typeof aVal === 'string') {
+          aVal = aVal.toLowerCase();
+          bVal = bVal?.toLowerCase() || '';
+        }
+
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
 
     return (
       <div className="space-y-6">
-        {/* Sales Rep Performance Table - Swapped Quota ATT and YTD ATT, renamed Quota ATT to Forecast ATT */}
+        {/* Sales Rep Performance Table - With sorting and individual column filters */}
         <div className="card overflow-hidden">
           <div className="p-5 border-b border-secondary-200 flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-secondary-900">Sales Rep Performance</h2>
-            <button
-              onClick={() => exportToCSV(salespeopleWithTotals.map(sp => ({
-                Name: sp.name,
-                Region: sp.region,
-                IsManager: sp.isManager,
-                ClosedYTD: sp.closedYTD,
-                Forecast: sp.forecast,
-                Pipeline: sp.pipelineValue,
-                Target: sp.annualTarget,
-              })), 'sales_rep_performance')}
-              className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
-            >
-              Export
-            </button>
+            <div>
+              <h2 className="text-lg font-semibold text-secondary-900">Sales Rep Performance</h2>
+              {Object.keys(tableColumnFilters).some(k => tableColumnFilters[k]?.length > 0) && (
+                <p className="text-xs text-secondary-500 mt-1">
+                  Filtered: {filteredSalespeople.length} of {salespeopleWithTotals.length} reps
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {Object.keys(tableColumnFilters).some(k => tableColumnFilters[k]?.length > 0) && (
+                <button
+                  onClick={() => setTableColumnFilters({})}
+                  className="px-3 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50"
+                >
+                  Clear Filters
+                </button>
+              )}
+              <button
+                onClick={() => exportToCSV(filteredSalespeople.map(sp => ({
+                  Name: sp.name,
+                  Region: sp.region,
+                  IsManager: sp.isManager,
+                  ClosedYTD: sp.closedYTD,
+                  Forecast: sp.forecast,
+                  Pipeline: sp.pipelineValue,
+                  Target: sp.annualTarget,
+                  Coverage: sp.pipelineCoverage.toFixed(2),
+                  YTDAttainment: sp.ytdAttainment.toFixed(1),
+                  ForecastAttainment: sp.forecastAttainment.toFixed(1),
+                })), 'sales_rep_performance')}
+                className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
+              >
+                Export
+              </button>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-secondary-50">
                 <tr>
-                  <SortableHeader label="Salesperson" sortKey="name" currentSort={sortConfig} onSort={handleSort} />
-                  <SortableHeader label="Region" sortKey="region" currentSort={sortConfig} onSort={handleSort} filterOptions={REGIONS} />
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Closed (YTD)</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Forecast</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Pipeline</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Target</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Coverage</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">YTD Att.</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Forecast Att.</th>
+                  <SortableHeader
+                    label="Salesperson"
+                    sortKey="name"
+                    currentSort={sortConfig}
+                    onSort={handleSort}
+                    onFilter={handleTableFilter}
+                    filterOptions={SALESPERSON_NAMES}
+                    activeFilters={tableColumnFilters.name || []}
+                  />
+                  <SortableHeader
+                    label="Region"
+                    sortKey="region"
+                    currentSort={sortConfig}
+                    onSort={handleSort}
+                    onFilter={handleTableFilter}
+                    filterOptions={REGIONS}
+                    activeFilters={tableColumnFilters.region || []}
+                  />
+                  <SortableHeader
+                    label="Closed (YTD)"
+                    sortKey="closedYTD"
+                    currentSort={sortConfig}
+                    onSort={handleSort}
+                  />
+                  <SortableHeader
+                    label="Forecast"
+                    sortKey="forecast"
+                    currentSort={sortConfig}
+                    onSort={handleSort}
+                  />
+                  <SortableHeader
+                    label="Pipeline"
+                    sortKey="pipelineValue"
+                    currentSort={sortConfig}
+                    onSort={handleSort}
+                  />
+                  <SortableHeader
+                    label="Target"
+                    sortKey="annualTarget"
+                    currentSort={sortConfig}
+                    onSort={handleSort}
+                  />
+                  <SortableHeader
+                    label="Coverage"
+                    sortKey="pipelineCoverage"
+                    currentSort={sortConfig}
+                    onSort={handleSort}
+                  />
+                  <SortableHeader
+                    label="YTD Att."
+                    sortKey="ytdAttainment"
+                    currentSort={sortConfig}
+                    onSort={handleSort}
+                  />
+                  <SortableHeader
+                    label="Forecast Att."
+                    sortKey="forecastAttainment"
+                    currentSort={sortConfig}
+                    onSort={handleSort}
+                  />
                 </tr>
               </thead>
               <tbody className="divide-y divide-secondary-100">
-                {salespeopleWithTotals.map((sp) => {
-                  const remainingTarget = sp.annualTarget - sp.closedYTD;
-                  const pipelineCoverage = remainingTarget > 0 ? sp.pipelineValue / remainingTarget : 0;
-                  const forecastAttainment = ((sp.closedYTD + sp.forecast) / sp.annualTarget) * 100;
-                  const ytdAttainment = (sp.closedYTD / sp.annualTarget) * 100;
-
-                  return (
-                    <tr key={sp.id} className={`hover:bg-secondary-50 ${sp.isManager ? 'bg-blue-50 font-semibold' : ''}`}>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-2">
-                          {sp.isManager && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                              MGR
-                            </span>
-                          )}
-                          <span className="text-secondary-900">{sp.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 text-secondary-600">{sp.region}</td>
-                      <td className="px-4 py-4 text-right text-green-600">{formatCurrency(sp.closedYTD)}</td>
-                      <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(sp.forecast)}</td>
-                      <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(sp.pipelineValue)}</td>
-                      <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(sp.annualTarget)}</td>
-                      <td className="px-4 py-4 text-right">
-                        <span className={`font-medium ${pipelineCoverage >= 3 ? 'text-green-600' : pipelineCoverage >= 2 ? 'text-yellow-600' : 'text-red-600'}`}>
-                          {pipelineCoverage.toFixed(1)}x
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 text-right">
-                        <span className={`font-medium ${ytdAttainment >= 50 ? 'text-green-600' : ytdAttainment >= 25 ? 'text-yellow-600' : 'text-red-600'}`}>
-                          {ytdAttainment.toFixed(0)}%
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 text-right">
-                        <span className={`font-medium ${forecastAttainment >= 100 ? 'text-green-600' : forecastAttainment >= 75 ? 'text-yellow-600' : 'text-red-600'}`}>
-                          {forecastAttainment.toFixed(0)}%
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {filteredSalespeople.map((sp) => (
+                  <tr key={sp.id} className={`hover:bg-secondary-50 ${sp.isManager ? 'bg-blue-50 font-semibold' : ''}`}>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-2">
+                        {sp.isManager && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                            MGR
+                          </span>
+                        )}
+                        <span className="text-secondary-900">{sp.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-secondary-600">{sp.region}</td>
+                    <td className="px-4 py-4 text-right text-green-600">{formatCurrency(sp.closedYTD)}</td>
+                    <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(sp.forecast)}</td>
+                    <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(sp.pipelineValue)}</td>
+                    <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(sp.annualTarget)}</td>
+                    <td className="px-4 py-4 text-right">
+                      <span className={`font-medium ${sp.pipelineCoverage >= 3 ? 'text-green-600' : sp.pipelineCoverage >= 2 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {sp.pipelineCoverage.toFixed(1)}x
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-right">
+                      <span className={`font-medium ${sp.ytdAttainment >= 50 ? 'text-green-600' : sp.ytdAttainment >= 25 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {sp.ytdAttainment.toFixed(0)}%
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-right">
+                      <span className={`font-medium ${sp.forecastAttainment >= 100 ? 'text-green-600' : sp.forecastAttainment >= 75 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {sp.forecastAttainment.toFixed(0)}%
+                      </span>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -1689,7 +1844,7 @@ export default function SalesPage() {
         <p className="text-secondary-500 uppercase text-sm tracking-wide">Pipeline Velocity & Forecast Accuracy</p>
       </div>
 
-      {/* Global Filters */}
+      {/* Global Filters - Multi-Select */}
       <div className="card p-4">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2 text-secondary-600">
@@ -1699,50 +1854,79 @@ export default function SalesPage() {
             <span className="font-medium">Filters:</span>
           </div>
 
-          <select
-            value={revenueType}
-            onChange={(e) => setRevenueType(e.target.value as any)}
-            className="px-4 py-2 border border-secondary-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-          >
-            <option value="All">All Revenue Types</option>
-            <option value="License">License</option>
-            <option value="Implementation">Implementation</option>
-          </select>
+          <MultiSelectDropdown
+            label="Revenue Types"
+            options={['License', 'Implementation']}
+            selected={revenueType}
+            onChange={setRevenueType}
+            placeholder="All Revenue Types"
+          />
 
-          <select
-            value={yearFilter}
-            onChange={(e) => setYearFilter(e.target.value)}
-            className="px-4 py-2 border border-secondary-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-          >
-            <option value="All">All Years</option>
-            <option value="2024">2024</option>
-            <option value="2025">2025</option>
-            <option value="2026">2026</option>
-          </select>
+          <MultiSelectDropdown
+            label="Years"
+            options={['2024', '2025', '2026']}
+            selected={yearFilter}
+            onChange={setYearFilter}
+            placeholder="All Years"
+          />
 
-          {renderMonthFilter()}
+          <MultiSelectDropdown
+            label="Quarters"
+            options={['Q1', 'Q2', 'Q3', 'Q4']}
+            selected={quarterFilter}
+            onChange={setQuarterFilter}
+            placeholder="All Quarters"
+          />
 
-          <select
-            value={regionFilter}
-            onChange={(e) => setRegionFilter(e.target.value)}
-            className="px-4 py-2 border border-secondary-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-          >
-            <option value="All">All Regions</option>
-            {REGIONS.map(r => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
+          <MultiSelectDropdown
+            label="Months"
+            options={['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']}
+            selected={monthFilter}
+            onChange={setMonthFilter}
+            placeholder="All Months"
+          />
 
-          <select
-            value={verticalFilter}
-            onChange={(e) => setVerticalFilter(e.target.value)}
-            className="px-4 py-2 border border-secondary-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-          >
-            <option value="All">All Verticals</option>
-            {VERTICALS.map(v => (
-              <option key={v} value={v}>{v}</option>
-            ))}
-          </select>
+          <MultiSelectDropdown
+            label="Regions"
+            options={REGIONS}
+            selected={regionFilter}
+            onChange={setRegionFilter}
+            placeholder="All Regions"
+          />
+
+          <MultiSelectDropdown
+            label="Verticals"
+            options={VERTICALS}
+            selected={verticalFilter}
+            onChange={setVerticalFilter}
+            placeholder="All Verticals"
+          />
+
+          <MultiSelectDropdown
+            label="Channels"
+            options={CHANNELS}
+            selected={channelFilter}
+            onChange={setChannelFilter}
+            placeholder="All Channels"
+          />
+
+          {/* Clear All Filters Button */}
+          {(revenueType.length > 0 || yearFilter.length > 0 || quarterFilter.length > 0 || monthFilter.length > 0 || regionFilter.length > 0 || verticalFilter.length > 0 || channelFilter.length > 0) && (
+            <button
+              onClick={() => {
+                setRevenueType([]);
+                setYearFilter([]);
+                setQuarterFilter([]);
+                setMonthFilter([]);
+                setRegionFilter([]);
+                setVerticalFilter([]);
+                setChannelFilter([]);
+              }}
+              className="px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg"
+            >
+              Clear All
+            </button>
+          )}
         </div>
       </div>
 
