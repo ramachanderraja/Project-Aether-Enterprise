@@ -19,3 +19,50 @@ Professional Services,Legal,Baker McKenzie,28000.00,USD,2025-01-20,CC006,Legal s
 Professional Services,Consulting,Deloitte,85000.00,USD,2025-01-25,CC001,Digital transformation consulting,false
 Travel,Business Travel,Various,42000.00,USD,2025-01-31,CC002,Sales team travel expenses,false
 Insurance,Business Insurance,AIG,18000.00,USD,2025-01-01,CC006,General liability insurance,true
+Personnel,Salaries,Internal,875000.00,USD,2025-06-15,CC001,Monthly salaries - Engineering,true
+Personnel,Salaries,Internal,450000.00,USD,2025-06-15,CC002,Monthly salaries - Sales,true
+Personnel,Salaries,Internal,295000.00,USD,2025-06-15,CC003,Monthly salaries - Operations,true
+Technology,Cloud Infrastructure,AWS,138000.00,USD,2025-06-30,CC001,AWS monthly compute and storage,true
+Technology,Cloud Infrastructure,Azure,92000.00,USD,2025-06-30,CC001,Azure services monthly,true
+Marketing,Digital Advertising,Google,85000.00,USD,2025-06-30,CC004,Google Ads campaigns,true
+Personnel,Salaries,Internal,920000.00,USD,2025-12-15,CC001,Monthly salaries - Engineering,true
+Personnel,Salaries,Internal,485000.00,USD,2025-12-15,CC002,Monthly salaries - Sales,true
+Personnel,Salaries,Internal,320000.00,USD,2025-12-15,CC003,Monthly salaries - Operations,true
+Technology,Cloud Infrastructure,AWS,155000.00,USD,2025-12-31,CC001,AWS monthly compute and storage,true
+Technology,Cloud Infrastructure,Azure,105000.00,USD,2025-12-31,CC001,Azure services monthly,true
+Technology,Cloud Infrastructure,Google Cloud,52000.00,USD,2025-12-31,CC001,GCP monthly services,true
+Marketing,Digital Advertising,Google,95000.00,USD,2025-12-31,CC004,Google Ads campaigns,true
+Marketing,Digital Advertising,LinkedIn,58000.00,USD,2025-12-31,CC004,LinkedIn sponsored content,true
+Personnel,Salaries,Internal,950000.00,USD,2026-01-15,CC001,Monthly salaries - Engineering,true
+Personnel,Salaries,Internal,505000.00,USD,2026-01-15,CC002,Monthly salaries - Sales,true
+Personnel,Salaries,Internal,335000.00,USD,2026-01-15,CC003,Monthly salaries - Operations,true
+Personnel,Benefits,Internal,285000.00,USD,2026-01-15,CC001,Employee benefits - Engineering,true
+Personnel,Benefits,Internal,152000.00,USD,2026-01-15,CC002,Employee benefits - Sales,true
+Technology,Cloud Infrastructure,AWS,162000.00,USD,2026-01-31,CC001,AWS monthly compute and storage,true
+Technology,Cloud Infrastructure,Azure,112000.00,USD,2026-01-31,CC001,Azure services monthly,true
+Technology,Cloud Infrastructure,Google Cloud,58000.00,USD,2026-01-31,CC001,GCP monthly services,true
+Technology,Software Licenses,Salesforce,52000.00,USD,2026-01-31,CC002,Salesforce CRM licenses,true
+Technology,Software Licenses,Microsoft,45000.00,USD,2026-01-31,CC001,Microsoft 365 licenses,true
+Technology,Software Licenses,Atlassian,15000.00,USD,2026-01-31,CC001,Jira and Confluence,true
+Marketing,Digital Advertising,Google,105000.00,USD,2026-01-31,CC004,Google Ads campaigns,true
+Marketing,Digital Advertising,LinkedIn,65000.00,USD,2026-01-31,CC004,LinkedIn sponsored content,true
+Marketing,Events,Various,48000.00,USD,2026-01-15,CC004,Q1 Conference sponsorships,false
+Facilities,Office Rent,Brookfield,98000.00,USD,2026-01-01,CC005,HQ office lease,true
+Facilities,Utilities,Various,9200.00,USD,2026-01-31,CC005,Electricity and utilities,true
+Professional Services,Legal,Baker McKenzie,32000.00,USD,2026-01-20,CC006,Legal services retainer,true
+Professional Services,Consulting,Deloitte,95000.00,USD,2026-01-25,CC001,AI implementation consulting,false
+Travel,Business Travel,Various,55000.00,USD,2026-01-31,CC002,Sales team travel expenses,false
+Insurance,Business Insurance,AIG,21000.00,USD,2026-01-01,CC006,General liability insurance,true
+Personnel,Salaries,Internal,975000.00,USD,2026-02-15,CC001,Monthly salaries - Engineering (Forecast),true
+Personnel,Salaries,Internal,520000.00,USD,2026-02-15,CC002,Monthly salaries - Sales (Forecast),true
+Personnel,Salaries,Internal,345000.00,USD,2026-02-15,CC003,Monthly salaries - Operations (Forecast),true
+Technology,Cloud Infrastructure,AWS,168000.00,USD,2026-02-28,CC001,AWS monthly compute and storage (Forecast),true
+Technology,Cloud Infrastructure,Azure,118000.00,USD,2026-02-28,CC001,Azure services monthly (Forecast),true
+Marketing,Digital Advertising,Google,112000.00,USD,2026-02-28,CC004,Google Ads campaigns (Forecast),true
+Personnel,Salaries,Internal,1050000.00,USD,2026-06-15,CC001,Monthly salaries - Engineering (Forecast),true
+Personnel,Salaries,Internal,580000.00,USD,2026-06-15,CC002,Monthly salaries - Sales (Forecast),true
+Technology,Cloud Infrastructure,AWS,195000.00,USD,2026-06-30,CC001,AWS monthly compute and storage (Forecast),true
+Personnel,Salaries,Internal,1150000.00,USD,2026-12-15,CC001,Monthly salaries - Engineering (Forecast),true
+Personnel,Salaries,Internal,650000.00,USD,2026-12-15,CC002,Monthly salaries - Sales (Forecast),true
+Technology,Cloud Infrastructure,AWS,225000.00,USD,2026-12-31,CC001,AWS monthly compute and storage (Forecast),true
+Technology,Cloud Infrastructure,Azure,155000.00,USD,2026-12-31,CC001,Azure services monthly (Forecast),true

@@ -325,7 +325,29 @@ export default function DashboardPage() {
             <option>This Quarter</option>
             <option>This Year</option>
           </select>
-          <button className="btn-primary">Export Report</button>
+          <button
+            onClick={() => {
+              // Export dashboard summary as CSV
+              const data = [
+                { Metric: 'Total YTD Revenue', Value: '$28.5M', Change: '+24%' },
+                { Metric: 'In-Year Closed ACV', Value: '$12.4M', Change: '+18%' },
+                { Metric: 'EBITDA Margin', Value: '21%', Change: '+2.5%' },
+                { Metric: 'Rule of 40', Value: '51', Change: '+3' },
+              ];
+              const csvContent = [
+                Object.keys(data[0]).join(','),
+                ...data.map(row => Object.values(row).join(','))
+              ].join('\n');
+              const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+              const link = document.createElement('a');
+              link.href = URL.createObjectURL(blob);
+              link.download = `dashboard_report_${new Date().toISOString().split('T')[0]}.csv`;
+              link.click();
+            }}
+            className="btn-primary whitespace-nowrap"
+          >
+            Export Report
+          </button>
         </div>
       </div>
 
@@ -610,7 +632,18 @@ export default function DashboardPage() {
                 <ZAxis type="number" range={[100, 100]} />
                 <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#1e293b' }} />
                 <Legend />
-                <Scatter name="Competitors" data={[{ growth: 20, margin: 10 }, { growth: 40, margin: -10 }, { growth: 10, margin: 25 }, { growth: 35, margin: 5 }]} fill="#94a3b8" />
+                <Scatter name="Competitors" data={[
+                  { name: 'SAP Ariba', growth: 18, margin: 22 },
+                  { name: 'Accenture', growth: 12, margin: 15 },
+                  { name: 'IBM', growth: 5, margin: 18 },
+                  { name: 'FTI Consulting', growth: 8, margin: 12 },
+                  { name: 'Oracle', growth: 10, margin: 28 },
+                  { name: 'Manhattan Associates', growth: 22, margin: 14 },
+                  { name: 'WNS', growth: 15, margin: 8 },
+                  { name: 'Genpact', growth: 14, margin: 11 },
+                  { name: 'Kinaxis', growth: 25, margin: 5 },
+                  { name: 'Blue Yonder', growth: 20, margin: -2 }
+                ]} fill="#94a3b8" />
                 <Scatter name="Aether (Current)" data={[{ growth: 24, margin: 27 }]} fill="#3b82f6" shape="star" />
               </ScatterChart>
             </ResponsiveContainer>
@@ -653,10 +686,10 @@ export default function DashboardPage() {
             ))}
           </div>
           <button
-            onClick={() => navigate('/governance')}
+            onClick={() => navigate('/reports?tab=risks')}
             className="w-full mt-4 text-sm text-primary-600 hover:text-primary-700 font-medium py-2"
           >
-            View All Anomalies
+            View All Risks
           </button>
         </div>
       </div>

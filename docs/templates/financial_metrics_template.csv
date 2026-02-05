@@ -18,3 +18,76 @@ revenue,920000.00,USD,2025-02-01,2025-02-28,APAC,Enterprise Software,CC003,SAP,t
 revenue,1380000.00,USD,2025-03-01,2025-03-31,North America,Enterprise Software,CC001,SAP,true
 revenue,1280000.00,USD,2025-03-01,2025-03-31,EMEA,Enterprise Software,CC002,SAP,true
 revenue,980000.00,USD,2025-03-01,2025-03-31,APAC,Enterprise Software,CC003,SAP,true
+revenue,1420000.00,USD,2025-04-01,2025-04-30,North America,Enterprise Software,CC001,SAP,true
+revenue,1350000.00,USD,2025-04-01,2025-04-30,EMEA,Enterprise Software,CC002,SAP,true
+revenue,1020000.00,USD,2025-04-01,2025-04-30,APAC,Enterprise Software,CC003,SAP,true
+revenue,1480000.00,USD,2025-05-01,2025-05-31,North America,Enterprise Software,CC001,SAP,true
+revenue,1400000.00,USD,2025-05-01,2025-05-31,EMEA,Enterprise Software,CC002,SAP,true
+revenue,1080000.00,USD,2025-05-01,2025-05-31,APAC,Enterprise Software,CC003,SAP,true
+revenue,1520000.00,USD,2025-06-01,2025-06-30,North America,Enterprise Software,CC001,SAP,true
+revenue,1450000.00,USD,2025-06-01,2025-06-30,EMEA,Enterprise Software,CC002,SAP,true
+revenue,1120000.00,USD,2025-06-01,2025-06-30,APAC,Enterprise Software,CC003,SAP,true
+revenue,1580000.00,USD,2025-07-01,2025-07-31,North America,Enterprise Software,CC001,SAP,true
+revenue,1510000.00,USD,2025-07-01,2025-07-31,EMEA,Enterprise Software,CC002,SAP,true
+revenue,1180000.00,USD,2025-07-01,2025-07-31,APAC,Enterprise Software,CC003,SAP,true
+revenue,1620000.00,USD,2025-08-01,2025-08-31,North America,Enterprise Software,CC001,SAP,true
+revenue,1560000.00,USD,2025-08-01,2025-08-31,EMEA,Enterprise Software,CC002,SAP,true
+revenue,1220000.00,USD,2025-08-01,2025-08-31,APAC,Enterprise Software,CC003,SAP,true
+revenue,1680000.00,USD,2025-09-01,2025-09-30,North America,Enterprise Software,CC001,SAP,true
+revenue,1620000.00,USD,2025-09-01,2025-09-30,EMEA,Enterprise Software,CC002,SAP,true
+revenue,1280000.00,USD,2025-09-01,2025-09-30,APAC,Enterprise Software,CC003,SAP,true
+revenue,1720000.00,USD,2025-10-01,2025-10-31,North America,Enterprise Software,CC001,SAP,true
+revenue,1680000.00,USD,2025-10-01,2025-10-31,EMEA,Enterprise Software,CC002,SAP,true
+revenue,1340000.00,USD,2025-10-01,2025-10-31,APAC,Enterprise Software,CC003,SAP,true
+revenue,1780000.00,USD,2025-11-01,2025-11-30,North America,Enterprise Software,CC001,SAP,true
+revenue,1740000.00,USD,2025-11-01,2025-11-30,EMEA,Enterprise Software,CC002,SAP,true
+revenue,1400000.00,USD,2025-11-01,2025-11-30,APAC,Enterprise Software,CC003,SAP,true
+revenue,1850000.00,USD,2025-12-01,2025-12-31,North America,Enterprise Software,CC001,SAP,true
+revenue,1800000.00,USD,2025-12-01,2025-12-31,EMEA,Enterprise Software,CC002,SAP,true
+revenue,1480000.00,USD,2025-12-01,2025-12-31,APAC,Enterprise Software,CC003,SAP,true
+revenue,1920000.00,USD,2026-01-01,2026-01-31,North America,Enterprise Software,CC001,SAP,true
+revenue,1860000.00,USD,2026-01-01,2026-01-31,EMEA,Enterprise Software,CC002,SAP,true
+revenue,1540000.00,USD,2026-01-01,2026-01-31,APAC,Enterprise Software,CC003,SAP,true
+arr,18500000.00,USD,2026-01-01,2026-01-31,Global,Enterprise Software,,Salesforce,true
+mrr,1542000.00,USD,2026-01-01,2026-01-31,Global,Enterprise Software,,Salesforce,true
+customer_count,285,USD,2026-01-01,2026-01-31,Global,Enterprise Software,,CRM,true
+churn_rate,2.1,USD,2026-01-01,2026-01-31,Global,Enterprise Software,,Analytics,true
+nps_score,76,USD,2026-01-01,2026-01-31,Global,Enterprise Software,,Survey,true
+revenue,1980000.00,USD,2026-02-01,2026-02-28,North America,Enterprise Software,CC001,Forecast,false
+revenue,1920000.00,USD,2026-02-01,2026-02-28,EMEA,Enterprise Software,CC002,Forecast,false
+revenue,1600000.00,USD,2026-02-01,2026-02-28,APAC,Enterprise Software,CC003,Forecast,false
+revenue,2050000.00,USD,2026-03-01,2026-03-31,North America,Enterprise Software,CC001,Forecast,false
+revenue,1980000.00,USD,2026-03-01,2026-03-31,EMEA,Enterprise Software,CC002,Forecast,false
+revenue,1660000.00,USD,2026-03-01,2026-03-31,APAC,Enterprise Software,CC003,Forecast,false
+revenue,2120000.00,USD,2026-04-01,2026-04-30,North America,Enterprise Software,CC001,Forecast,false
+revenue,2050000.00,USD,2026-04-01,2026-04-30,EMEA,Enterprise Software,CC002,Forecast,false
+revenue,1720000.00,USD,2026-04-01,2026-04-30,APAC,Enterprise Software,CC003,Forecast,false
+revenue,2200000.00,USD,2026-05-01,2026-05-31,North America,Enterprise Software,CC001,Forecast,false
+revenue,2120000.00,USD,2026-05-01,2026-05-31,EMEA,Enterprise Software,CC002,Forecast,false
+revenue,1780000.00,USD,2026-05-01,2026-05-31,APAC,Enterprise Software,CC003,Forecast,false
+revenue,2280000.00,USD,2026-06-01,2026-06-30,North America,Enterprise Software,CC001,Forecast,false
+revenue,2200000.00,USD,2026-06-01,2026-06-30,EMEA,Enterprise Software,CC002,Forecast,false
+revenue,1850000.00,USD,2026-06-01,2026-06-30,APAC,Enterprise Software,CC003,Forecast,false
+revenue,2360000.00,USD,2026-07-01,2026-07-31,North America,Enterprise Software,CC001,Forecast,false
+revenue,2280000.00,USD,2026-07-01,2026-07-31,EMEA,Enterprise Software,CC002,Forecast,false
+revenue,1920000.00,USD,2026-07-01,2026-07-31,APAC,Enterprise Software,CC003,Forecast,false
+revenue,2450000.00,USD,2026-08-01,2026-08-31,North America,Enterprise Software,CC001,Forecast,false
+revenue,2360000.00,USD,2026-08-01,2026-08-31,EMEA,Enterprise Software,CC002,Forecast,false
+revenue,2000000.00,USD,2026-08-01,2026-08-31,APAC,Enterprise Software,CC003,Forecast,false
+revenue,2540000.00,USD,2026-09-01,2026-09-30,North America,Enterprise Software,CC001,Forecast,false
+revenue,2450000.00,USD,2026-09-01,2026-09-30,EMEA,Enterprise Software,CC002,Forecast,false
+revenue,2080000.00,USD,2026-09-01,2026-09-30,APAC,Enterprise Software,CC003,Forecast,false
+revenue,2640000.00,USD,2026-10-01,2026-10-31,North America,Enterprise Software,CC001,Forecast,false
+revenue,2540000.00,USD,2026-10-01,2026-10-31,EMEA,Enterprise Software,CC002,Forecast,false
+revenue,2160000.00,USD,2026-10-01,2026-10-31,APAC,Enterprise Software,CC003,Forecast,false
+revenue,2740000.00,USD,2026-11-01,2026-11-30,North America,Enterprise Software,CC001,Forecast,false
+revenue,2640000.00,USD,2026-11-01,2026-11-30,EMEA,Enterprise Software,CC002,Forecast,false
+revenue,2250000.00,USD,2026-11-01,2026-11-30,APAC,Enterprise Software,CC003,Forecast,false
+revenue,2850000.00,USD,2026-12-01,2026-12-31,North America,Enterprise Software,CC001,Forecast,false
+revenue,2740000.00,USD,2026-12-01,2026-12-31,EMEA,Enterprise Software,CC002,Forecast,false
+revenue,2350000.00,USD,2026-12-01,2026-12-31,APAC,Enterprise Software,CC003,Forecast,false
+arr,22000000.00,USD,2026-12-01,2026-12-31,Global,Enterprise Software,,Forecast,false
+mrr,1833000.00,USD,2026-12-01,2026-12-31,Global,Enterprise Software,,Forecast,false
+customer_count,320,USD,2026-12-01,2026-12-31,Global,Enterprise Software,,Forecast,false
+churn_rate,1.8,USD,2026-12-01,2026-12-31,Global,Enterprise Software,,Forecast,false
+nps_score,80,USD,2026-12-01,2026-12-31,Global,Enterprise Software,,Forecast,false

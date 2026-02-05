@@ -1,16 +1,36 @@
 external_id,name,account_name,amount,currency,stage,probability,close_date,owner_name,region,line_of_business,product_line,risk_level,last_activity_date
-OPP-001,Enterprise Platform License,Acme Corporation,450000.00,USD,Negotiation,75,2025-03-15,John Smith,North America,Enterprise Software,Platform,Low,2025-02-01
-OPP-002,Analytics Suite Expansion,TechCorp Industries,280000.00,USD,Proposal,60,2025-03-31,Sarah Johnson,North America,Enterprise Software,Analytics,Medium,2025-01-28
-OPP-003,Cloud Migration Services,Global Manufacturing Inc,620000.00,USD,Discovery,30,2025-04-30,Michael Chen,EMEA,Professional Services,Consulting,High,2025-01-25
+OPP-001,Enterprise Platform License,Acme Corporation,450000.00,USD,Closed Won,100,2025-03-15,John Smith,North America,Enterprise Software,Platform,Low,2025-03-15
+OPP-002,Analytics Suite Expansion,TechCorp Industries,280000.00,USD,Closed Won,100,2025-03-31,Sarah Johnson,North America,Enterprise Software,Analytics,Low,2025-03-31
+OPP-003,Cloud Migration Services,Global Manufacturing Inc,620000.00,USD,Closed Won,100,2025-04-30,Michael Chen,EMEA,Professional Services,Consulting,Low,2025-04-30
 OPP-004,Annual Subscription Renewal,DataDriven LLC,180000.00,USD,Closed Won,100,2025-01-15,Emily Davis,North America,Enterprise Software,Platform,Low,2025-01-15
-OPP-005,New Implementation,Innovate Partners,350000.00,USD,Qualification,25,2025-05-15,Robert Wilson,APAC,Enterprise Software,Platform,Medium,2025-02-02
-OPP-006,Support Services Contract,Financial Services Co,95000.00,USD,Proposal,65,2025-02-28,Lisa Anderson,North America,Professional Services,Support,Low,2025-01-30
-OPP-007,Enterprise Expansion,MegaCorp Global,780000.00,USD,Negotiation,70,2025-03-20,David Martinez,EMEA,Enterprise Software,Platform,Medium,2025-02-01
-OPP-008,Data Integration Project,Retail Giants Inc,420000.00,USD,Discovery,35,2025-04-15,Jennifer Taylor,North America,Professional Services,Integration,High,2025-01-22
+OPP-005,New Implementation,Innovate Partners,350000.00,USD,Closed Won,100,2025-05-15,Robert Wilson,APAC,Enterprise Software,Platform,Low,2025-05-15
+OPP-006,Support Services Contract,Financial Services Co,95000.00,USD,Closed Won,100,2025-02-28,Lisa Anderson,North America,Professional Services,Support,Low,2025-02-28
+OPP-007,Enterprise Expansion,MegaCorp Global,780000.00,USD,Closed Won,100,2025-06-20,David Martinez,EMEA,Enterprise Software,Platform,Low,2025-06-20
+OPP-008,Data Integration Project,Retail Giants Inc,420000.00,USD,Closed Won,100,2025-07-15,Jennifer Taylor,North America,Professional Services,Integration,Low,2025-07-15
 OPP-009,Premium Support Upgrade,Healthcare Systems,145000.00,USD,Closed Won,100,2025-01-20,Chris Brown,North America,Professional Services,Support,Low,2025-01-20
-OPP-010,New Logo Acquisition,StartupXYZ,85000.00,USD,Qualification,20,2025-06-30,Amanda White,North America,Enterprise Software,Platform,High,2025-01-18
-OPP-011,Multi-Year Contract,Enterprise Holdings,1250000.00,USD,Proposal,55,2025-04-01,John Smith,North America,Enterprise Software,Platform,Medium,2025-02-03
-OPP-012,APAC Expansion,Asia Pacific Corp,520000.00,USD,Discovery,40,2025-05-01,Michael Chen,APAC,Enterprise Software,Platform,Medium,2025-01-29
-OPP-013,Government Contract,Federal Agency,890000.00,USD,Negotiation,80,2025-02-28,Sarah Johnson,North America,Enterprise Software,Platform,Low,2025-02-02
+OPP-010,New Logo Acquisition,StartupXYZ,85000.00,USD,Closed Won,100,2025-08-30,Amanda White,North America,Enterprise Software,Platform,Low,2025-08-30
+OPP-011,Multi-Year Contract,Enterprise Holdings,1250000.00,USD,Closed Won,100,2025-09-01,John Smith,North America,Enterprise Software,Platform,Low,2025-09-01
+OPP-012,APAC Expansion,Asia Pacific Corp,520000.00,USD,Closed Won,100,2025-10-01,Michael Chen,APAC,Enterprise Software,Platform,Low,2025-10-01
+OPP-013,Government Contract,Federal Agency,890000.00,USD,Closed Won,100,2025-02-28,Sarah Johnson,North America,Enterprise Software,Platform,Low,2025-02-28
 OPP-014,SMB Package Deal,Small Business Group,65000.00,USD,Closed Lost,0,2025-01-10,Emily Davis,North America,Enterprise Software,Starter,High,2025-01-10
-OPP-015,Custom Development,Custom Solutions Inc,320000.00,USD,Proposal,50,2025-03-31,Robert Wilson,EMEA,Professional Services,Development,Medium,2025-01-31
+OPP-015,Custom Development,Custom Solutions Inc,320000.00,USD,Closed Won,100,2025-11-30,Robert Wilson,EMEA,Professional Services,Development,Low,2025-11-30
+OPP-016,Q4 Enterprise Deal,Fortune 500 Corp,1580000.00,USD,Closed Won,100,2025-12-15,John Smith,North America,Enterprise Software,Platform,Low,2025-12-15
+OPP-017,EMEA Expansion Phase 2,European Holdings,680000.00,USD,Closed Won,100,2025-12-20,David Martinez,EMEA,Enterprise Software,Platform,Low,2025-12-20
+OPP-018,Year-End Renewal Bundle,Tech Consortium,420000.00,USD,Closed Won,100,2025-12-31,Sarah Johnson,North America,Enterprise Software,Platform,Low,2025-12-31
+OPP-019,January Mega Deal,Global Tech Partners,2100000.00,USD,Closed Won,100,2026-01-15,John Smith,North America,Enterprise Software,Platform,Low,2026-01-15
+OPP-020,APAC Strategic Account,Singapore Dynamics,750000.00,USD,Closed Won,100,2026-01-28,Michael Chen,APAC,Enterprise Software,Platform,Low,2026-01-28
+OPP-021,Q1 Pipeline - Enterprise License,NextGen Industries,1200000.00,USD,Negotiation,75,2026-03-15,John Smith,North America,Enterprise Software,Platform,Low,2026-02-01
+OPP-022,Analytics Platform Deal,DataFirst Corp,580000.00,USD,Proposal,60,2026-03-31,Sarah Johnson,North America,Enterprise Software,Analytics,Medium,2026-01-28
+OPP-023,EMEA Government Contract,EU Agency,920000.00,USD,Discovery,35,2026-04-30,David Martinez,EMEA,Enterprise Software,Platform,High,2026-01-25
+OPP-024,Healthcare Vertical Deal,MedTech Solutions,450000.00,USD,Qualification,25,2026-05-15,Emily Davis,North America,Enterprise Software,Platform,Medium,2026-02-02
+OPP-025,Financial Services Bundle,BankCorp International,1850000.00,USD,Negotiation,70,2026-03-20,Jennifer Taylor,EMEA,Enterprise Software,Platform,Medium,2026-02-01
+OPP-026,Retail Digital Transform,ShopSmart Global,680000.00,USD,Discovery,40,2026-04-15,Chris Brown,North America,Professional Services,Integration,High,2026-01-22
+OPP-027,Manufacturing IoT Platform,Industrial Dynamics,520000.00,USD,Proposal,55,2026-04-01,Robert Wilson,APAC,Enterprise Software,Platform,Medium,2026-02-03
+OPP-028,Education Sector Deal,University Consortium,380000.00,USD,Qualification,30,2026-05-01,Lisa Anderson,North America,Enterprise Software,Platform,Medium,2026-01-29
+OPP-029,Telecom Infrastructure,TeleCom Giants,1450000.00,USD,Negotiation,80,2026-02-28,John Smith,North America,Enterprise Software,Platform,Low,2026-02-02
+OPP-030,Energy Sector Expansion,PowerGrid Corp,890000.00,USD,Proposal,50,2026-06-30,Michael Chen,APAC,Enterprise Software,Platform,Medium,2026-01-31
+OPP-031,Q2 Enterprise Expansion,Tech Innovators Inc,1680000.00,USD,Discovery,30,2026-06-15,Sarah Johnson,North America,Enterprise Software,Platform,High,2026-01-18
+OPP-032,Latin America Entry,LATAM Holdings,720000.00,USD,Qualification,20,2026-07-31,David Martinez,EMEA,Enterprise Software,Platform,High,2026-01-25
+OPP-033,AI Analytics Bundle,ML Solutions Corp,950000.00,USD,Proposal,65,2026-05-30,Jennifer Taylor,North America,Enterprise Software,Analytics,Medium,2026-02-01
+OPP-034,Supply Chain Platform,LogiFlow Global,580000.00,USD,Discovery,35,2026-06-30,Chris Brown,APAC,Professional Services,Integration,Medium,2026-01-28
+OPP-035,Cybersecurity Add-on,SecureFirst Inc,320000.00,USD,Proposal,70,2026-04-15,Emily Davis,North America,Enterprise Software,Security,Low,2026-02-03

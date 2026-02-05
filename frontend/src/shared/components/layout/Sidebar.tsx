@@ -28,7 +28,7 @@ const navItems = [
   { to: '/marketing', label: 'Marketing', icon: Megaphone },
   { to: '/gtm', label: 'GTM Metrics', icon: Rocket },
   { to: '/cost', label: 'Cost Intelligence', icon: DollarSign },
-  { to: '/revenue', label: 'Revenue Analytics', icon: BarChart3 },
+  { to: '/revenue', label: 'ARR Analytics', icon: BarChart3 },
   { to: '/reports', label: 'Profitability', icon: FileBarChart },
   { to: '/scenarios', label: 'Scenarios', icon: GitBranch },
   { to: '/intelligence', label: 'Intelligent Core', icon: Brain },
