@@ -24,21 +24,26 @@ interface Opportunity {
   accountName: string;
   region: string;
   vertical: string;
+  segment: 'Enterprise' | 'SMB';
   channel: string;
   stage: string;
   probability: number;
   dealValue: number;
+  licenseValue: number;         // License component of deal
+  implementationValue: number;  // Implementation component of deal
   weightedValue: number;
   expectedCloseDate: string;
   daysInStage: number;
   owner: string;
   status: 'Active' | 'Won' | 'Lost' | 'Stalled';
   lossReason?: string;
-  revenueType: 'License' | 'Implementation';
+  logoType: 'New Logo' | 'Upsell' | 'Cross-Sell' | 'Extension' | 'Renewal';
   salesCycleDays: number;
   createdDate: string;
   previousValue?: number;
   movementReason?: string;
+  // Calculated Closed ACV (License only for New Logo/Upsell/Cross-Sell + Implementation always)
+  closedACV?: number;
 }
 
 interface Salesperson {
@@ -65,7 +70,7 @@ interface RegionalForecast {
   region: string;
   forecast: number;
   target: number;
-  actual: number;
+  closedACV: number;
   variance: number;
   percentToTarget: number;
 }
@@ -77,9 +82,28 @@ interface SortConfig {
 }
 
 // ==================== SAMPLE DATA GENERATION ====================
-const REGIONS = ['North America', 'Europe', 'Middle East', 'APAC', 'LATAM'];
-const VERTICALS = ['Technology', 'Healthcare', 'Financial Services', 'Retail', 'Manufacturing', 'Education'];
+// Standard filter options as per requirements document
+const REGIONS = ['North America', 'Europe', 'LATAM', 'Middle East', 'APAC'];
+const VERTICALS = [
+  'Life Sciences',
+  'Other Services',
+  'CPG & Retail',
+  'Chemicals/Oil/Gas/Resources',
+  'Automotive and Industrial',
+  'BFSI',
+  'Telecom/Media/Tech',
+  'Public Sector',
+  'Energy & Utilities',
+  'Private Equity',
+  'Unilever',
+];
+const SEGMENTS = ['Enterprise', 'SMB'];
 const CHANNELS = ['Direct', 'Partner', 'Reseller', 'Organic', 'Referral'];
+
+// Logo Types - Extension and Renewal are interchangeable
+const LOGO_TYPES = ['New Logo', 'Upsell', 'Cross-Sell', 'Extension', 'Renewal'];
+// Logo types that count toward License ACV (excludes Extension/Renewal)
+const LICENSE_ACV_LOGO_TYPES = ['New Logo', 'Upsell', 'Cross-Sell'];
 const STAGES = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
 const LOSS_REASONS = ['Budget Constraints', 'Competitor Selected', 'Project Cancelled', 'Timeline Delayed', 'Price Sensitivity', 'No Decision'];
 const MOVEMENT_REASONS = ['Expanded Scope', 'Reduced Scope', 'Lost to Competitor', 'Budget Cuts', 'Timeline Change', 'New Opportunity'];
@@ -106,7 +130,17 @@ const generateOpportunities = (): Opportunity[] => {
     const isLost = stage === 'Closed Lost';
     const dealValue = Math.floor(Math.random() * 950000) + 50000; // $50K - $1M
     const probability = isWon ? 100 : isLost ? 0 : [10, 25, 50, 75][Math.min(stageIndex, 3)];
-    const revenueType = Math.random() > 0.3 ? 'License' : 'Implementation';
+
+    // Split deal value into license and implementation components
+    const licenseRatio = 0.6 + Math.random() * 0.3; // 60-90% license
+    const licenseValue = Math.round(dealValue * licenseRatio);
+    const implementationValue = dealValue - licenseValue;
+
+    // Logo type distribution
+    const logoType = LOGO_TYPES[Math.floor(Math.random() * LOGO_TYPES.length)] as Opportunity['logoType'];
+
+    // Segment
+    const segment = SEGMENTS[Math.floor(Math.random() * SEGMENTS.length)] as 'Enterprise' | 'SMB';
 
     // For won deals, close date should be in past (before current month)
     // For active deals, close date should be current month onwards
@@ -126,27 +160,37 @@ const generateOpportunities = (): Opportunity[] => {
 
     const previousValue = Math.random() > 0.5 ? dealValue * (0.7 + Math.random() * 0.6) : undefined;
 
+    // Calculate Closed ACV based on Logo Type rules:
+    // - License: only count if Logo Type in (New Logo, Upsell, Cross-Sell)
+    // - Implementation: always count regardless of Logo Type
+    const licenseCountsTowardACV = LICENSE_ACV_LOGO_TYPES.includes(logoType);
+    const closedACV = (licenseCountsTowardACV ? licenseValue : 0) + implementationValue;
+
     opportunities.push({
       id: `OPP-${String(i).padStart(4, '0')}`,
       name: `${['Enterprise', 'Platform', 'Cloud', 'Analytics', 'Integration'][Math.floor(Math.random() * 5)]} Deal ${i}`,
       accountName: `${['Acme', 'Global', 'Tech', 'Prime', 'Alpha'][Math.floor(Math.random() * 5)]} ${['Corp', 'Inc', 'Solutions', 'Industries', 'Group'][Math.floor(Math.random() * 5)]}`,
       region: REGIONS[Math.floor(Math.random() * REGIONS.length)],
       vertical: VERTICALS[Math.floor(Math.random() * VERTICALS.length)],
+      segment,
       channel: CHANNELS[Math.floor(Math.random() * CHANNELS.length)],
       stage,
       probability,
       dealValue,
+      licenseValue,
+      implementationValue,
       weightedValue: Math.round(dealValue * (probability / 100)),
       expectedCloseDate: closeDate.toISOString().split('T')[0],
       daysInStage: Math.floor(Math.random() * 120) + 5,
       owner: SALESPERSON_NAMES[Math.floor(Math.random() * SALESPERSON_NAMES.length)],
       status: isWon ? 'Won' : isLost ? 'Lost' : Math.random() > 0.9 ? 'Stalled' : 'Active',
       lossReason: isLost ? LOSS_REASONS[Math.floor(Math.random() * LOSS_REASONS.length)] : undefined,
-      revenueType,
+      logoType,
       salesCycleDays: Math.floor(Math.random() * 120) + 30,
       createdDate: createdDate.toISOString().split('T')[0],
       previousValue: previousValue ? Math.round(previousValue) : undefined,
       movementReason: previousValue ? MOVEMENT_REASONS[Math.floor(Math.random() * MOVEMENT_REASONS.length)] : undefined,
+      closedACV: isWon ? closedACV : undefined,
     });
   }
   return opportunities;
@@ -216,16 +260,16 @@ const getQuarterlyForecastData = (): QuarterlyForecast[] => {
 
 const quarterlyForecastData = getQuarterlyForecastData();
 
-// Regional forecast data
+// Regional forecast data - using closedACV instead of actual
 const regionalForecastData: RegionalForecast[] = REGIONS.map(region => {
   const target = Math.floor(Math.random() * 3000000) + 2000000;
-  const actual = Math.floor(Math.random() * target * 0.8);
-  const forecast = actual + Math.floor(Math.random() * 1000000);
+  const closedACV = Math.floor(Math.random() * target * 0.8);
+  const forecast = closedACV + Math.floor(Math.random() * 1000000);
   return {
     region,
     forecast,
     target,
-    actual,
+    closedACV,
     variance: forecast - target,
     percentToTarget: Math.round((forecast / target) * 100),
   };
@@ -542,13 +586,14 @@ const ChartWrapper: React.FC<ChartWrapperProps> = ({ title, subtitle, children, 
 // ==================== MAIN COMPONENT ====================
 export default function SalesPage() {
   // Filters - now with multi-select support
-  const [revenueType, setRevenueType] = useState<string[]>(['License']);
   const [yearFilter, setYearFilter] = useState<string[]>([String(currentYear)]);
   const [quarterFilter, setQuarterFilter] = useState<string[]>([]);
   const [monthFilter, setMonthFilter] = useState<string[]>([]);
   const [regionFilter, setRegionFilter] = useState<string[]>([]);
   const [verticalFilter, setVerticalFilter] = useState<string[]>([]);
+  const [segmentFilter, setSegmentFilter] = useState<string[]>([]);
   const [channelFilter, setChannelFilter] = useState<string[]>([]);
+  const [logoTypeFilter, setLogoTypeFilter] = useState<string[]>([]);
 
   // Tabs
   const [activeTab, setActiveTab] = useState<'overview' | 'forecast' | 'pipeline' | 'quota'>('overview');
@@ -578,17 +623,29 @@ export default function SalesPage() {
   // Filter opportunities based on selected filters (multi-select)
   const filteredOpportunities = useMemo(() => {
     return opportunities.filter(opp => {
-      // Revenue type filter (multi-select)
-      if (revenueType.length > 0 && !revenueType.includes(opp.revenueType)) return false;
-
       // Region filter (multi-select)
       if (regionFilter.length > 0 && !regionFilter.includes(opp.region)) return false;
 
       // Vertical filter (multi-select)
       if (verticalFilter.length > 0 && !verticalFilter.includes(opp.vertical)) return false;
 
+      // Segment filter (multi-select)
+      if (segmentFilter.length > 0 && !segmentFilter.includes(opp.segment)) return false;
+
       // Channel filter (multi-select)
       if (channelFilter.length > 0 && !channelFilter.includes(opp.channel)) return false;
+
+      // Logo Type filter (multi-select) - treat Extension and Renewal as same
+      if (logoTypeFilter.length > 0) {
+        // Normalize Extension/Renewal
+        const normalizedLogoType = (opp.logoType === 'Renewal' || opp.logoType === 'Extension')
+          ? 'Extension/Renewal'
+          : opp.logoType;
+        const normalizedFilters = logoTypeFilter.map(lt =>
+          (lt === 'Extension' || lt === 'Renewal') ? 'Extension/Renewal' : lt
+        );
+        if (!normalizedFilters.includes(normalizedLogoType) && !logoTypeFilter.includes(opp.logoType)) return false;
+      }
 
       // Year filter (multi-select)
       if (yearFilter.length > 0) {
@@ -612,16 +669,37 @@ export default function SalesPage() {
 
       return true;
     });
-  }, [revenueType, yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter, channelFilter]);
+  }, [yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter, segmentFilter, channelFilter, logoTypeFilter]);
 
-  // Calculate metrics
+  // Calculate metrics with proper Closed ACV rules
   const metrics = useMemo(() => {
     const closedWon = filteredOpportunities.filter(o => o.status === 'Won');
     const closedLost = filteredOpportunities.filter(o => o.status === 'Lost');
     const allClosed = [...closedWon, ...closedLost];
     const activeDeals = filteredOpportunities.filter(o => o.status === 'Active' || o.status === 'Stalled');
 
-    const totalClosedACV = closedWon.reduce((sum, o) => sum + o.dealValue, 0);
+    // Calculate Closed ACV using business rules:
+    // - License: only count if Logo Type in (New Logo, Upsell, Cross-Sell)
+    // - Implementation: always count regardless of Logo Type
+    // - Extension = Renewal (both excluded from license ACV)
+    const calculateDealClosedACV = (deal: Opportunity): number => {
+      const licenseCountsTowardACV = LICENSE_ACV_LOGO_TYPES.includes(deal.logoType);
+      return (licenseCountsTowardACV ? deal.licenseValue : 0) + deal.implementationValue;
+    };
+
+    const totalClosedACV = closedWon.reduce((sum, o) => sum + calculateDealClosedACV(o), 0);
+
+    // Breakdown by component
+    const newBusinessLicenseACV = closedWon
+      .filter(o => LICENSE_ACV_LOGO_TYPES.includes(o.logoType))
+      .reduce((sum, o) => sum + o.licenseValue, 0);
+
+    const implementationACV = closedWon.reduce((sum, o) => sum + o.implementationValue, 0);
+
+    const extensionRenewalLicense = closedWon
+      .filter(o => o.logoType === 'Extension' || o.logoType === 'Renewal')
+      .reduce((sum, o) => sum + o.licenseValue, 0);
+
     const weightedForecast = activeDeals.reduce((sum, o) => sum + o.weightedValue, 0);
     const totalPipelineValue = activeDeals.reduce((sum, o) => sum + o.dealValue, 0);
 
@@ -650,6 +728,9 @@ export default function SalesPage() {
       salesVelocity,
       gapToTarget,
       totalClosedACV,
+      newBusinessLicenseACV,
+      implementationACV,
+      extensionRenewalLicense,
       forecastACV,
       weightedForecast,
       totalPipelineValue,
@@ -1105,7 +1186,7 @@ export default function SalesPage() {
               <thead className="bg-secondary-50">
                 <tr>
                   <SortableHeader label="Region" sortKey="region" currentSort={sortConfig} onSort={handleSort} />
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase tracking-wider">Actual</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase tracking-wider">Closed ACV</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase tracking-wider">Forecast</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase tracking-wider">Target</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase tracking-wider">Variance</th>
@@ -1117,7 +1198,7 @@ export default function SalesPage() {
                 {regionalForecastData.map((region) => (
                   <tr key={region.region} className="hover:bg-secondary-50">
                     <td className="px-4 py-4 font-medium text-secondary-900">{region.region}</td>
-                    <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(region.actual)}</td>
+                    <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(region.closedACV)}</td>
                     <td className="px-4 py-4 text-right font-medium text-secondary-900">{formatCurrency(region.forecast)}</td>
                     <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(region.target)}</td>
                     <td className={`px-4 py-4 text-right font-medium ${region.variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -1284,8 +1365,11 @@ export default function SalesPage() {
               <Bar
                 dataKey="bottom"
                 stackId="waterfall"
-                fill="transparent"
+                fill="#ffffff"
+                fillOpacity={0}
+                stroke="none"
                 radius={0}
+                isAnimationActive={false}
               />
 
               {/* Visible value bar - stacked on top of spacer */}
@@ -1487,7 +1571,8 @@ export default function SalesPage() {
     </div>
   );
 
-  const renderQuotaTab = () => {
+  // Sorted salespeople data - moved outside render function for proper reactivity
+  const sortedSalespeople = useMemo(() => {
     // Calculate totals for managers and derived fields
     const salespeopleWithTotals = salespeople.map(sp => {
       const remainingTarget = sp.annualTarget - sp.closedYTD;
@@ -1531,11 +1616,22 @@ export default function SalesPage() {
           bVal = bVal?.toLowerCase() || '';
         }
 
+        // Handle numeric comparison
+        if (typeof aVal === 'number' && typeof bVal === 'number') {
+          return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+
         if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
         if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
       });
     }
+
+    return { filteredSalespeople, salespeopleWithTotals };
+  }, [tableColumnFilters, sortConfig]);
+
+  const renderQuotaTab = () => {
+    const { filteredSalespeople, salespeopleWithTotals } = sortedSalespeople;
 
     return (
       <div className="space-y-6">
@@ -1855,14 +1951,6 @@ export default function SalesPage() {
           </div>
 
           <MultiSelectDropdown
-            label="Revenue Types"
-            options={['License', 'Implementation']}
-            selected={revenueType}
-            onChange={setRevenueType}
-            placeholder="All Revenue Types"
-          />
-
-          <MultiSelectDropdown
             label="Years"
             options={['2024', '2025', '2026']}
             selected={yearFilter}
@@ -1903,6 +1991,22 @@ export default function SalesPage() {
           />
 
           <MultiSelectDropdown
+            label="Segments"
+            options={SEGMENTS}
+            selected={segmentFilter}
+            onChange={setSegmentFilter}
+            placeholder="All Segments"
+          />
+
+          <MultiSelectDropdown
+            label="Logo Types"
+            options={['New Logo', 'Upsell', 'Cross-Sell', 'Extension/Renewal']}
+            selected={logoTypeFilter}
+            onChange={setLogoTypeFilter}
+            placeholder="All Logo Types"
+          />
+
+          <MultiSelectDropdown
             label="Channels"
             options={CHANNELS}
             selected={channelFilter}
@@ -1911,15 +2015,16 @@ export default function SalesPage() {
           />
 
           {/* Clear All Filters Button */}
-          {(revenueType.length > 0 || yearFilter.length > 0 || quarterFilter.length > 0 || monthFilter.length > 0 || regionFilter.length > 0 || verticalFilter.length > 0 || channelFilter.length > 0) && (
+          {(yearFilter.length > 0 || quarterFilter.length > 0 || monthFilter.length > 0 || regionFilter.length > 0 || verticalFilter.length > 0 || segmentFilter.length > 0 || logoTypeFilter.length > 0 || channelFilter.length > 0) && (
             <button
               onClick={() => {
-                setRevenueType([]);
                 setYearFilter([]);
                 setQuarterFilter([]);
                 setMonthFilter([]);
                 setRegionFilter([]);
                 setVerticalFilter([]);
+                setSegmentFilter([]);
+                setLogoTypeFilter([]);
                 setChannelFilter([]);
               }}
               className="px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg"

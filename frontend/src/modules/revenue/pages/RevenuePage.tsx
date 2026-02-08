@@ -23,18 +23,22 @@ import {
 interface Customer {
   id: string;
   name: string;
+  sowId: string;                  // Unique contract identifier
   currentARR: number;
   previousARR: number;
   region: string;
   vertical: string;
+  segment: 'Enterprise' | 'SMB';
+  platform: string;               // Quantum, SMART, Cost Drivers, Opus
   products: string[];
   productARR: Record<string, number>;
+  productSubCategory: string;     // From Product Category Mapping
   contractStartDate: string;
+  contractEndDate: string;
   renewalDate: string;
   renewalRiskLevel?: 'Low' | 'Medium' | 'High' | 'Critical';
   movementType?: 'New' | 'Expansion' | 'Contraction' | 'Churn' | 'Flat';
   movementReason?: string;
-  revenueType: 'License' | 'Implementation';
 }
 
 interface Product {
@@ -70,8 +74,25 @@ interface SortConfig {
 }
 
 // ==================== CONSTANTS ====================
-const REGIONS = ['North America', 'EMEA', 'APAC', 'LATAM', 'Middle East'];
-const VERTICALS = ['Technology', 'Healthcare', 'Financial Services', 'Retail', 'Manufacturing', 'Education', 'Government'];
+// Standard filter options as per requirements document
+const REGIONS = ['North America', 'Europe', 'LATAM', 'Middle East', 'APAC'];
+const VERTICALS = [
+  'Life Sciences',
+  'Other Services',
+  'CPG & Retail',
+  'Chemicals/Oil/Gas/Resources',
+  'Automotive and Industrial',
+  'BFSI',
+  'Telecom/Media/Tech',
+  'Public Sector',
+  'Energy & Utilities',
+  'Private Equity',
+  'Unilever',
+];
+const SEGMENTS = ['Enterprise', 'SMB'];
+const PLATFORMS = ['Quantum', 'SMART', 'Cost Drivers', 'Opus'];
+const DEFAULT_PLATFORMS = ['Quantum', 'SMART', 'Cost Drivers']; // Default selected platforms
+
 const PRODUCT_CATEGORIES = ['Platform', 'Analytics', 'Integration', 'Services', 'Add-ons'];
 const PRODUCT_SUB_CATEGORIES: Record<string, string[]> = {
   'Platform': ['Core Platform', 'Enterprise Edition', 'Cloud Suite'],
@@ -131,6 +152,8 @@ const generateCustomers = (): Customer[] => {
     const previousARR = currentARR * (0.7 + Math.random() * 0.6); // -30% to +30%
     const region = REGIONS[Math.floor(Math.random() * REGIONS.length)];
     const vertical = VERTICALS[Math.floor(Math.random() * VERTICALS.length)];
+    const segment = SEGMENTS[Math.floor(Math.random() * SEGMENTS.length)] as 'Enterprise' | 'SMB';
+    const platform = PLATFORMS[Math.floor(Math.random() * PLATFORMS.length)];
 
     // Assign 1-4 products to each customer
     const numProducts = Math.floor(Math.random() * 4) + 1;
@@ -147,10 +170,19 @@ const generateCustomers = (): Customer[] => {
       }
     });
 
+    // Generate contract dates
+    const contractStartYear = 2021 + Math.floor(Math.random() * 3);
+    const contractStartMonth = Math.floor(Math.random() * 12) + 1;
+    const contractStartDate = `${contractStartYear}-${String(contractStartMonth).padStart(2, '0')}-01`;
+
     // Generate renewal date (some in 2026)
     const renewalYear = Math.random() > 0.5 ? 2026 : currentYear;
     const renewalMonth = Math.floor(Math.random() * 12) + 1;
     const renewalDate = `${renewalYear}-${String(renewalMonth).padStart(2, '0')}-15`;
+    const contractEndDate = renewalDate;
+
+    // Product sub-category
+    const productSubCategory = customerProducts[0] || 'Core Platform';
 
     // Determine movement type
     let movementType: Customer['movementType'] = 'Flat';
@@ -175,19 +207,23 @@ const generateCustomers = (): Customer[] => {
 
     customers.push({
       id: `CUST-${String(idx + 1).padStart(4, '0')}`,
+      sowId: `SOW-${String(idx + 1).padStart(5, '0')}`,
       name,
       currentARR: movementType === 'Churn' ? 0 : currentARR,
       previousARR: Math.round(previousARR),
       region,
       vertical,
+      segment,
+      platform,
       products: customerProducts,
       productARR,
-      contractStartDate: `202${Math.floor(Math.random() * 3) + 1}-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-01`,
+      productSubCategory,
+      contractStartDate,
+      contractEndDate,
       renewalDate,
       renewalRiskLevel,
       movementType,
       movementReason,
-      revenueType: Math.random() > 0.3 ? 'License' : 'Implementation',
     });
   });
 
@@ -584,12 +620,13 @@ const ChartWrapper: React.FC<ChartWrapperProps> = ({ title, subtitle, children, 
 
 // ==================== MAIN COMPONENT ====================
 export default function RevenuePage() {
-  // Filters - Multi-select support
-  const [revenueTypeFilter, setRevenueTypeFilter] = useState<string[]>([]);
+  // Filters - Multi-select support (standard filters per requirements)
   const [yearFilterMulti, setYearFilterMulti] = useState<string[]>([]);
   const [monthFilterMulti, setMonthFilterMulti] = useState<string[]>([]);
   const [regionFilter, setRegionFilter] = useState<string[]>([]);
   const [verticalFilter, setVerticalFilter] = useState<string[]>([]);
+  const [segmentFilter, setSegmentFilter] = useState<string[]>([]);
+  const [platformFilter, setPlatformFilter] = useState<string[]>(DEFAULT_PLATFORMS); // Default selected
 
   // Tabs
   const [activeTab, setActiveTab] = useState<'overview' | 'movement' | 'customers' | 'products'>('overview');
@@ -613,17 +650,20 @@ export default function RevenuePage() {
     setSortConfig({ key, direction });
   };
 
-  // Filter customers (multi-select support)
+  // Filter customers (multi-select support with standard filters)
   const filteredCustomers = useMemo(() => {
     return customers.filter(c => {
-      // Revenue type filter (multi-select)
-      if (revenueTypeFilter.length > 0 && !revenueTypeFilter.includes(c.revenueType)) return false;
-
       // Region filter (multi-select)
       if (regionFilter.length > 0 && !regionFilter.includes(c.region)) return false;
 
       // Vertical filter (multi-select)
       if (verticalFilter.length > 0 && !verticalFilter.includes(c.vertical)) return false;
+
+      // Segment filter (multi-select) - for Sales Performance & ARR Analytics
+      if (segmentFilter.length > 0 && !segmentFilter.includes(c.segment)) return false;
+
+      // Platform filter (multi-select) - for ARR Analytics only
+      if (platformFilter.length > 0 && !platformFilter.includes(c.platform)) return false;
 
       // Year filter on renewal date (multi-select)
       if (yearFilterMulti.length > 0) {
@@ -640,7 +680,7 @@ export default function RevenuePage() {
 
       return true;
     });
-  }, [revenueTypeFilter, regionFilter, verticalFilter, yearFilterMulti, monthFilterMulti]);
+  }, [regionFilter, verticalFilter, segmentFilter, platformFilter, yearFilterMulti, monthFilterMulti]);
 
   // Calculate metrics
   const metrics = useMemo(() => {
@@ -826,17 +866,44 @@ export default function RevenuePage() {
     };
   }, [lookbackPeriod, metrics.currentARR]);
 
-  // Customers with movement
+  // Customers with movement - with sorting support
   const customersWithMovement = useMemo(() => {
-    return filteredCustomers
+    let data = filteredCustomers
       .filter(c => c.movementType && c.movementType !== 'Flat')
       .map(c => ({
         ...c,
         change: c.currentARR - c.previousARR,
         changePercent: c.previousARR > 0 ? ((c.currentARR - c.previousARR) / c.previousARR) * 100 : 100,
-      }))
-      .sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
-  }, [filteredCustomers]);
+      }));
+
+    // Apply sorting if set
+    if (sortConfig) {
+      data = [...data].sort((a: any, b: any) => {
+        let aVal = a[sortConfig.key];
+        let bVal = b[sortConfig.key];
+
+        // Handle string comparison
+        if (typeof aVal === 'string') {
+          aVal = aVal.toLowerCase();
+          bVal = bVal?.toLowerCase() || '';
+        }
+
+        // Handle numeric comparison
+        if (typeof aVal === 'number' && typeof bVal === 'number') {
+          return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    } else {
+      // Default sort by absolute change
+      data = data.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
+    }
+
+    return data;
+  }, [filteredCustomers, sortConfig]);
 
   // 2026 Renewals
   const renewals2026 = useMemo(() => {
@@ -1102,8 +1169,11 @@ export default function RevenuePage() {
               <Bar
                 dataKey="bottom"
                 stackId="waterfall"
-                fill="transparent"
+                fill="#ffffff"
+                fillOpacity={0}
+                stroke="none"
                 radius={0}
+                isAnimationActive={false}
               />
 
               {/* Visible value bar - stacked on top of spacer */}
@@ -1341,9 +1411,10 @@ export default function RevenuePage() {
 
   // Render Customers Tab
   const renderCustomersTab = () => {
+    // Use sortedCustomersList for proper sorting support
     const displayedCustomers = show2026RenewalsOnly
       ? renewals2026
-      : filteredCustomers.filter(c => c.currentARR > 0);
+      : sortedCustomersList;
 
     return (
       <div className="space-y-6">
@@ -1538,14 +1609,75 @@ export default function RevenuePage() {
     );
   };
 
-  // Render Products Tab
-  const renderProductsTab = () => {
-    // Filter products
-    const filteredProducts = products.filter(p => {
+  // Filtered and sorted products - moved outside render for proper reactivity
+  const filteredProducts = useMemo(() => {
+    let data = products.filter(p => {
       if (productCategoryFilter !== 'All' && p.category !== productCategoryFilter) return false;
       if (productSubCategoryFilter !== 'All' && p.subCategory !== productSubCategoryFilter) return false;
       return true;
     });
+
+    // Apply sorting if set
+    if (sortConfig) {
+      data = [...data].sort((a: any, b: any) => {
+        let aVal = a[sortConfig.key];
+        let bVal = b[sortConfig.key];
+
+        // Handle string comparison
+        if (typeof aVal === 'string') {
+          aVal = aVal.toLowerCase();
+          bVal = bVal?.toLowerCase() || '';
+        }
+
+        // Handle numeric comparison
+        if (typeof aVal === 'number' && typeof bVal === 'number') {
+          return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return data;
+  }, [productCategoryFilter, productSubCategoryFilter, sortConfig]);
+
+  // Sorted customers list for Customers tab
+  const sortedCustomersList = useMemo(() => {
+    let data = filteredCustomers.filter(c => c.currentARR > 0);
+
+    // Apply sorting if set
+    if (sortConfig) {
+      data = [...data].sort((a: any, b: any) => {
+        let aVal = a[sortConfig.key];
+        let bVal = b[sortConfig.key];
+
+        // Handle string comparison
+        if (typeof aVal === 'string') {
+          aVal = aVal.toLowerCase();
+          bVal = bVal?.toLowerCase() || '';
+        }
+
+        // Handle numeric comparison
+        if (typeof aVal === 'number' && typeof bVal === 'number') {
+          return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    } else {
+      // Default sort by ARR
+      data = data.sort((a, b) => b.currentARR - a.currentARR);
+    }
+
+    return data;
+  }, [filteredCustomers, sortConfig]);
+
+  // Render Products Tab
+  const renderProductsTab = () => {
 
     // Customer product matrix
     const customerProductMatrix: Array<{
@@ -1863,7 +1995,7 @@ export default function RevenuePage() {
         </button>
       </div>
 
-      {/* Global Filters - Multi-Select */}
+      {/* Global Filters - Multi-Select (Standard filters per requirements) */}
       <div className="card p-4">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2 text-secondary-600">
@@ -1872,14 +2004,6 @@ export default function RevenuePage() {
             </svg>
             <span className="font-medium">Filters:</span>
           </div>
-
-          <MultiSelectDropdown
-            label="Revenue Types"
-            options={['License', 'Implementation']}
-            selected={revenueTypeFilter}
-            onChange={setRevenueTypeFilter}
-            placeholder="All Revenue Types"
-          />
 
           <MultiSelectDropdown
             label="Years"
@@ -1913,15 +2037,32 @@ export default function RevenuePage() {
             placeholder="All Verticals"
           />
 
+          <MultiSelectDropdown
+            label="Segments"
+            options={SEGMENTS}
+            selected={segmentFilter}
+            onChange={setSegmentFilter}
+            placeholder="All Segments"
+          />
+
+          <MultiSelectDropdown
+            label="Platforms"
+            options={PLATFORMS}
+            selected={platformFilter}
+            onChange={setPlatformFilter}
+            placeholder="All Platforms"
+          />
+
           {/* Clear All Filters Button */}
-          {(revenueTypeFilter.length > 0 || yearFilterMulti.length > 0 || monthFilterMulti.length > 0 || regionFilter.length > 0 || verticalFilter.length > 0) && (
+          {(yearFilterMulti.length > 0 || monthFilterMulti.length > 0 || regionFilter.length > 0 || verticalFilter.length > 0 || segmentFilter.length > 0 || platformFilter.length !== DEFAULT_PLATFORMS.length) && (
             <button
               onClick={() => {
-                setRevenueTypeFilter([]);
                 setYearFilterMulti([]);
                 setMonthFilterMulti([]);
                 setRegionFilter([]);
                 setVerticalFilter([]);
+                setSegmentFilter([]);
+                setPlatformFilter([...DEFAULT_PLATFORMS]);
               }}
               className="px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg"
             >
