@@ -23,8 +23,10 @@ interface ImportHistory {
 const importTemplates: ImportTemplate[] = [
   { id: 'financial_metrics', name: 'Financial Metrics', description: 'Revenue, expenses, EBITDA, margins, and cash flow metrics by region/segment', fileType: 'CSV', lastImport: '2025-01-28T14:30:00Z', recordCount: 156 },
   { id: 'profitability', name: 'Profitability Data', description: 'Account-level profitability with region, segment, vertical, costs and margins', fileType: 'CSV', lastImport: '2025-01-28T14:30:00Z', recordCount: 250 },
-  { id: 'sales_performance', name: 'Sales Performance', description: 'Sales pipeline, forecasts, opportunities by channel and region', fileType: 'CSV', lastImport: '2025-01-30T11:00:00Z', recordCount: 87 },
-  { id: 'revenue_analytics', name: 'Revenue Analytics', description: 'ARR data, bookings, churn, expansion by segment and region', fileType: 'CSV', lastImport: '2025-01-25T09:15:00Z', recordCount: 423 },
+  { id: 'sales_performance', name: 'Sales Performance', description: 'Pipeline opportunities with ACV, conversion, quota tracking by rep and region', fileType: 'CSV', lastImport: '2025-01-30T11:00:00Z', recordCount: 87 },
+  { id: 'revenue_analytics', name: 'Revenue Analytics', description: 'ARR by customer and product, renewals, movement tracking by region/vertical', fileType: 'CSV', lastImport: '2025-01-25T09:15:00Z', recordCount: 423 },
+  { id: 'salespeople', name: 'Sales Team', description: 'Salesperson targets, quotas, and performance metrics', fileType: 'CSV', lastImport: '2025-01-25T09:15:00Z', recordCount: 12 },
+  { id: 'products', name: 'Products', description: 'Product catalog with categories, sub-categories, and ARR', fileType: 'CSV', lastImport: '2025-01-25T09:15:00Z', recordCount: 15 },
   { id: 'cost_data', name: 'Cost Data', description: 'Cost line items with categories, vendors, and cost centers', fileType: 'CSV', lastImport: '2025-01-25T09:15:00Z', recordCount: 423 },
   { id: 'vendors', name: 'Vendors', description: 'Vendor master data with contacts, contracts, and spend info', fileType: 'CSV', lastImport: null, recordCount: null },
   { id: 'cost_centers', name: 'Cost Centers', description: 'Hierarchical cost center structure with budgets', fileType: 'CSV', lastImport: '2025-01-20T16:45:00Z', recordCount: 34 },
@@ -35,33 +37,49 @@ const templateCSVData: Record<string, { headers: string[]; sampleRows: string[][
   'financial_metrics': {
     headers: ['Date', 'Region', 'Segment', 'Vertical', 'Revenue', 'Expenses', 'EBITDA', 'Gross_Margin_Pct', 'Net_Margin_Pct', 'Cash_Flow'],
     sampleRows: [
-      ['2025-01-01', 'North America', 'Enterprise', 'CPG', '1500000', '1200000', '300000', '0.72', '0.20', '250000'],
-      ['2025-01-01', 'Europe', 'Mid-Market', 'TMT', '850000', '680000', '170000', '0.68', '0.18', '140000'],
-      ['2025-02-01', 'Asia Pacific', 'Enterprise', 'LS', '1200000', '950000', '250000', '0.70', '0.19', '200000'],
+      ['2025-01-01', 'North America', 'Enterprise', 'Technology', '1500000', '1200000', '300000', '0.72', '0.20', '250000'],
+      ['2025-01-01', 'EMEA', 'Mid-Market', 'Healthcare', '850000', '680000', '170000', '0.68', '0.18', '140000'],
+      ['2025-02-01', 'APAC', 'Enterprise', 'Financial Services', '1200000', '950000', '250000', '0.70', '0.19', '200000'],
     ]
   },
   'profitability': {
     headers: ['Account_ID', 'Account_Name', 'Region', 'Segment', 'Vertical', 'Revenue', 'Cloud_Infra_Cost', 'Resource_Cost', 'TSO_Cost', 'Engineering_Cost', 'Gross_Margin_Value', 'Gross_Margin_Pct', 'Contribution_Margin_Pct', 'Health_Score', 'Renewal_Date', 'Report_Type'],
     sampleRows: [
-      ['ACC-1001', 'Acme Corp', 'North America', 'Enterprise', 'CPG', '1500000', '225000', '150000', '0', '0', '1125000', '0.75', '0.60', '85', '2025-06-15', 'License'],
-      ['ACC-1002', 'Global Solutions', 'Europe', 'Mid-Market', 'TMT', '850000', '0', '0', '340000', '170000', '340000', '0.40', '0.25', '72', '2025-09-20', 'Implementation'],
-      ['ACC-1003', 'Tech Industries', 'Asia Pacific', 'Enterprise', 'AIM', '2200000', '330000', '220000', '0', '0', '1650000', '0.75', '0.58', '91', '2025-03-10', 'License'],
+      ['ACC-1001', 'Acme Corp', 'North America', 'Enterprise', 'Technology', '1500000', '225000', '150000', '0', '0', '1125000', '0.75', '0.60', '85', '2025-06-15', 'License'],
+      ['ACC-1002', 'Global Solutions', 'EMEA', 'Mid-Market', 'Healthcare', '850000', '0', '0', '340000', '170000', '340000', '0.40', '0.25', '72', '2025-09-20', 'Implementation'],
+      ['ACC-1003', 'Tech Industries', 'APAC', 'Enterprise', 'Financial Services', '2200000', '330000', '220000', '0', '0', '1650000', '0.75', '0.58', '91', '2025-03-10', 'License'],
     ]
   },
   'sales_performance': {
-    headers: ['Opportunity_ID', 'Account_Name', 'Region', 'LOB', 'Vertical', 'Channel', 'Stage', 'Probability_Pct', 'Deal_Value', 'Weighted_Value', 'Expected_Close_Date', 'Days_In_Stage', 'Owner', 'Status', 'Loss_Reason'],
+    headers: ['Opportunity_ID', 'Account_Name', 'Region', 'Vertical', 'Channel', 'Stage', 'Probability_Pct', 'Deal_ACV', 'Weighted_Value', 'Expected_Close_Date', 'Days_In_Stage', 'Owner', 'Status', 'Loss_Reason', 'Revenue_Type', 'Sales_Cycle_Days', 'Created_Date', 'Previous_Value', 'Movement_Reason'],
     sampleRows: [
-      ['OPP-001', 'Acme Corp', 'North America', 'Software', 'CPG', 'Direct', 'Qualified', '40', '500000', '200000', '2025-03-15', '12', 'John Smith', 'Active', ''],
-      ['OPP-002', 'Global Tech', 'Europe', 'Services', 'TMT', 'Partner', 'Proposal', '60', '750000', '450000', '2025-02-28', '25', 'Jane Doe', 'Active', ''],
-      ['OPP-003', 'Beta Industries', 'Asia Pacific', 'Software', 'LS', 'Direct', 'Closed Lost', '0', '320000', '0', '2025-01-20', '45', 'Mike Wilson', 'Lost', 'Budget Constraints'],
+      ['OPP-001', 'Acme Corp', 'North America', 'Technology', 'Direct', 'Proposal', '50', '500000', '250000', '2025-03-15', '12', 'Sarah Johnson', 'Active', '', 'License', '90', '2024-12-01', '', ''],
+      ['OPP-002', 'Global Tech', 'EMEA', 'Healthcare', 'Partner', 'Negotiation', '75', '750000', '562500', '2025-02-28', '25', 'Mike Wilson', 'Active', '', 'License', '120', '2024-10-15', '650000', 'Expanded Scope'],
+      ['OPP-003', 'Beta Industries', 'APAC', 'Financial Services', 'Direct', 'Closed Lost', '0', '320000', '0', '2025-01-20', '45', 'Emily Davis', 'Lost', 'Budget Constraints', 'Implementation', '60', '2024-11-20', '', ''],
     ]
   },
   'revenue_analytics': {
-    headers: ['Date', 'Region', 'Segment', 'Product_Line', 'Beginning_ARR', 'New_Bookings', 'Expansion', 'Contraction', 'Churn', 'Ending_ARR', 'Net_New_ARR', 'NRR_Pct', 'GRR_Pct'],
+    headers: ['Customer_ID', 'Customer_Name', 'Current_ARR', 'Previous_ARR', 'Region', 'Vertical', 'Products', 'Contract_Start_Date', 'Renewal_Date', 'Renewal_Risk_Level', 'Movement_Type', 'Movement_Reason', 'Revenue_Type'],
     sampleRows: [
-      ['2025-01-01', 'North America', 'Enterprise', 'Platform', '45000000', '3500000', '2200000', '800000', '1200000', '48700000', '3700000', '0.103', '0.097'],
-      ['2025-01-01', 'Europe', 'Mid-Market', 'Analytics', '28000000', '2100000', '1400000', '500000', '700000', '30300000', '2300000', '0.107', '0.096'],
-      ['2025-01-01', 'Asia Pacific', 'Enterprise', 'Platform', '32000000', '2800000', '1800000', '600000', '900000', '35100000', '3100000', '0.109', '0.095'],
+      ['CUST-0001', 'Enterprise Corp', '2400000', '2100000', 'North America', 'Technology', 'Core Platform|Analytics', '2023-01-15', '2026-01-15', 'Low', 'Expansion', 'Additional Users', 'License'],
+      ['CUST-0002', 'TechGiant Inc', '1800000', '1900000', 'EMEA', 'Healthcare', 'Core Platform', '2023-06-01', '2026-06-01', 'Medium', 'Contraction', 'Reduced Users', 'License'],
+      ['CUST-0003', 'Global Finance', '1500000', '0', 'APAC', 'Financial Services', 'Enterprise Edition|API Gateway', '2025-01-01', '2026-01-01', 'Low', 'New', 'New Logo', 'License'],
+    ]
+  },
+  'salespeople': {
+    headers: ['Salesperson_ID', 'Name', 'Region', 'Is_Manager', 'Manager_ID', 'Annual_Target', 'Closed_YTD', 'Forecast', 'Pipeline_Value'],
+    sampleRows: [
+      ['SP-001', 'Sarah Johnson', 'North America', 'true', '', '5000000', '2500000', '1500000', '4500000'],
+      ['SP-002', 'Mike Wilson', 'EMEA', 'true', '', '4000000', '1800000', '1200000', '3200000'],
+      ['SP-003', 'Emily Davis', 'North America', 'false', 'SP-001', '2000000', '950000', '600000', '1800000'],
+    ]
+  },
+  'products': {
+    headers: ['Product_ID', 'Name', 'Category', 'Sub_Category', 'Total_ARR', 'Customer_Count', 'Avg_ARR_Per_Customer', 'Growth_Percent'],
+    sampleRows: [
+      ['PROD-001', 'Core Platform', 'Platform', 'Core Platform', '25000000', '45', '555556', '15'],
+      ['PROD-002', 'Business Intelligence', 'Analytics', 'Business Intelligence', '12000000', '32', '375000', '22'],
+      ['PROD-003', 'API Gateway', 'Integration', 'API Gateway', '8000000', '28', '285714', '18'],
     ]
   },
   'cost_data': {
