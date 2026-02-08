@@ -1,175 +1,290 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../database/prisma.service';
 
 @Injectable()
 export class TrainingService {
-  async getTrainingModules() {
-    return {
-      modules: [
-        {
-          id: 'overview',
-          title: 'System Architecture',
-          description: 'Project Aether Overview and Core Capabilities',
-          duration: '10 min',
-          category: 'fundamentals',
-          order: 1,
-        },
-        {
-          id: 'sales',
-          title: 'Sales Performance',
-          description: 'The Revenue Engine - Pipeline and Forecasting',
-          duration: '8 min',
-          category: 'modules',
-          order: 2,
-        },
-        {
-          id: 'reports',
-          title: 'Profitability Reports',
-          description: 'Strategic Profitability Analysis',
-          duration: '7 min',
-          category: 'modules',
-          order: 3,
-        },
-        {
-          id: 'marketing',
-          title: 'Marketing Metrics',
-          description: 'Acquisition Engine and Channel Performance',
-          duration: '6 min',
-          category: 'modules',
-          order: 4,
-        },
-        {
-          id: 'gtm',
-          title: 'Go-To-Market (GTM)',
-          description: 'Unit Economics and SaaS Metrics',
-          duration: '5 min',
-          category: 'modules',
-          order: 5,
-        },
-        {
-          id: 'revenue',
-          title: 'Revenue & Profitability',
-          description: 'Profitability & SaaS Metrics Deep Dive',
-          duration: '8 min',
-          category: 'modules',
-          order: 6,
-        },
-        {
-          id: 'cost',
-          title: 'Cost Intelligence',
-          description: 'The Efficiency Engine - Cost Control',
-          duration: '7 min',
-          category: 'modules',
-          order: 7,
-        },
-        {
-          id: 'intelligence',
-          title: 'The Intelligent Core',
-          description: 'Central Neural Engine and ML Operations',
-          duration: '9 min',
-          category: 'advanced',
-          order: 8,
-        },
-        {
-          id: 'scenarios',
-          title: 'Scenario Planning',
-          description: 'Monte Carlo Simulation and Risk Analysis',
-          duration: '8 min',
-          category: 'advanced',
-          order: 9,
-        },
-        {
-          id: 'governance',
-          title: 'Governance & Lineage',
-          description: 'Trust, Compliance, and Audit Trails',
-          duration: '6 min',
-          category: 'advanced',
-          order: 10,
-        },
-      ],
-      totalDuration: '74 min',
-      categories: ['fundamentals', 'modules', 'advanced'],
-    };
-  }
+  constructor(private readonly prisma: PrismaService) {}
 
-  async getModuleDetails(moduleId: string) {
-    const moduleContent = {
-      overview: {
-        id: 'overview',
-        title: 'System Architecture',
-        content: 'Aether is an Autonomous Financial Operating System...',
-        sections: [
-          {
-            title: 'Core Capabilities',
-            items: ['Digital Twin', 'Generative Reasoning', 'Auto-Correction', 'Explainable AI'],
-          },
-          {
-            title: 'Architecture Layers',
-            items: ['Executive Experience Layer', 'Agent Orchestration', 'Intelligent Core', 'Unified Data Fabric'],
-          },
-        ],
-        resources: [
-          { type: 'video', title: 'Architecture Overview', url: '/videos/architecture.mp4' },
-          { type: 'pdf', title: 'Technical Whitepaper', url: '/docs/whitepaper.pdf' },
-        ],
+  async getTrainingModules(userId: string, category?: string) {
+    const where: Record<string, unknown> = { isActive: true };
+    if (category) {
+      where.category = category;
+    }
+
+    const modules = await this.prisma.trainingModule.findMany({
+      where,
+      orderBy: { sortOrder: 'asc' },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        description: true,
+        category: true,
+        duration: true,
+        sortOrder: true,
       },
-    };
+    });
 
-    return moduleContent[moduleId] || {
-      id: moduleId,
-      title: moduleId.charAt(0).toUpperCase() + moduleId.slice(1),
-      content: 'Module content loading...',
-      sections: [],
-      resources: [],
-    };
-  }
+    const completions = await this.prisma.trainingCompletion.findMany({
+      where: { userId },
+      select: { moduleId: true },
+    });
+    const completedIds = new Set(completions.map((c) => c.moduleId));
 
-  async getUserProgress() {
-    // Mock user progress - would come from database
+    const categories = [...new Set(modules.map((m) => m.category))];
+    const totalMinutes = modules.reduce((sum, m) => {
+      const match = m.duration.match(/(\d+)/);
+      return sum + (match ? parseInt(match[1], 10) : 0);
+    }, 0);
+
     return {
-      completedModules: ['overview', 'sales'],
-      totalModules: 10,
-      percentComplete: 20,
-      lastActivity: new Date(Date.now() - 86400000).toISOString(),
-      streak: 3,
-      totalTimeSpent: 18, // minutes
+      modules: modules.map((m) => ({
+        ...m,
+        isCompleted: completedIds.has(m.id),
+      })),
+      totalDuration: `${totalMinutes} min`,
+      categories,
     };
   }
 
-  async markModuleComplete(moduleId: string) {
-    // Mock implementation - would update database
+  async getModuleDetails(moduleId: string, userId: string) {
+    const module = await this.prisma.trainingModule.findFirst({
+      where: {
+        OR: [{ id: moduleId }, { slug: moduleId }],
+        isActive: true,
+      },
+    });
+
+    if (!module) {
+      throw new NotFoundException(`Training module "${moduleId}" not found`);
+    }
+
+    const completion = await this.prisma.trainingCompletion.findUnique({
+      where: {
+        userId_moduleId: { userId, moduleId: module.id },
+      },
+    });
+
+    return {
+      ...module,
+      isCompleted: !!completion,
+      completedAt: completion?.completedAt?.toISOString() ?? null,
+    };
+  }
+
+  async getUserProgress(userId: string) {
+    const [totalModules, completions] = await Promise.all([
+      this.prisma.trainingModule.count({ where: { isActive: true } }),
+      this.prisma.trainingCompletion.findMany({
+        where: { userId },
+        include: { module: { select: { slug: true } } },
+        orderBy: { completedAt: 'desc' },
+      }),
+    ]);
+
+    const completedSlugs = completions.map((c) => c.module.slug);
+    const totalTimeSpentMin = completions.reduce(
+      (sum, c) => sum + (c.timeSpentMin ?? 0),
+      0,
+    );
+    const lastActivity = completions[0]?.completedAt ?? null;
+
+    // Calculate streak (consecutive days with completions)
+    let streak = 0;
+    if (completions.length > 0) {
+      const dates = [
+        ...new Set(
+          completions.map((c) =>
+            c.completedAt.toISOString().split('T')[0],
+          ),
+        ),
+      ].sort((a, b) => b.localeCompare(a));
+
+      const today = new Date().toISOString().split('T')[0];
+      if (dates[0] === today || dates[0] === getPreviousDay(today)) {
+        streak = 1;
+        for (let i = 1; i < dates.length; i++) {
+          if (dates[i] === getPreviousDay(dates[i - 1])) {
+            streak++;
+          } else {
+            break;
+          }
+        }
+      }
+    }
+
+    return {
+      completedModules: completedSlugs,
+      totalModules,
+      percentComplete:
+        totalModules > 0
+          ? Math.round((completions.length / totalModules) * 100)
+          : 0,
+      lastActivity: lastActivity?.toISOString() ?? null,
+      totalTimeSpentMin,
+      streak,
+    };
+  }
+
+  async markModuleComplete(
+    moduleSlugOrId: string,
+    userId: string,
+    timeSpentMin?: number,
+  ) {
+    const module = await this.prisma.trainingModule.findFirst({
+      where: {
+        OR: [{ id: moduleSlugOrId }, { slug: moduleSlugOrId }],
+        isActive: true,
+      },
+    });
+
+    if (!module) {
+      throw new NotFoundException(
+        `Training module "${moduleSlugOrId}" not found`,
+      );
+    }
+
+    const completion = await this.prisma.trainingCompletion.upsert({
+      where: {
+        userId_moduleId: { userId, moduleId: module.id },
+      },
+      update: {
+        timeSpentMin: timeSpentMin ?? undefined,
+      },
+      create: {
+        userId,
+        moduleId: module.id,
+        timeSpentMin: timeSpentMin ?? null,
+      },
+    });
+
+    // Check if any certificates are now earned
+    const newCertificates = await this.checkAndIssueCertificates(userId);
+
     return {
       success: true,
-      moduleId,
-      completedAt: new Date().toISOString(),
-      message: `Module "${moduleId}" marked as complete`,
+      moduleId: module.id,
+      moduleSlug: module.slug,
+      completedAt: completion.completedAt.toISOString(),
+      newCertificates,
     };
   }
 
-  async getUserCertificates() {
-    return {
-      certificates: [
-        {
-          id: 'cert-001',
-          title: 'Aether Fundamentals',
-          issuedAt: '2025-01-10',
-          validUntil: '2026-01-10',
-          status: 'active',
-        },
-      ],
-      available: [
-        {
-          id: 'cert-002',
-          title: 'Advanced Analytics',
-          requiredModules: ['revenue', 'cost', 'scenarios'],
-          progress: 33,
-        },
-        {
-          id: 'cert-003',
-          title: 'ML Operations',
-          requiredModules: ['intelligence', 'governance'],
-          progress: 0,
-        },
-      ],
-    };
+  async uncompleteModule(moduleSlugOrId: string, userId: string) {
+    const module = await this.prisma.trainingModule.findFirst({
+      where: {
+        OR: [{ id: moduleSlugOrId }, { slug: moduleSlugOrId }],
+        isActive: true,
+      },
+    });
+
+    if (!module) {
+      throw new NotFoundException(
+        `Training module "${moduleSlugOrId}" not found`,
+      );
+    }
+
+    await this.prisma.trainingCompletion.deleteMany({
+      where: { userId, moduleId: module.id },
+    });
+
+    return { success: true, moduleId: module.id, moduleSlug: module.slug };
   }
+
+  async getUserCertificates(userId: string) {
+    const certificates = await this.prisma.trainingCertificate.findMany({
+      where: { isActive: true },
+      include: {
+        requirements: {
+          include: { module: { select: { id: true, slug: true, title: true } } },
+        },
+        issuances: {
+          where: { userId },
+        },
+      },
+    });
+
+    const completions = await this.prisma.trainingCompletion.findMany({
+      where: { userId },
+      select: { moduleId: true },
+    });
+    const completedIds = new Set(completions.map((c) => c.moduleId));
+
+    return certificates.map((cert) => {
+      const requiredModuleSlugs = cert.requirements.map((r) => r.module.slug);
+      const completedModuleSlugs = cert.requirements
+        .filter((r) => completedIds.has(r.moduleId))
+        .map((r) => r.module.slug);
+      const issuance = cert.issuances[0];
+
+      const progress =
+        cert.requirements.length > 0
+          ? Math.round(
+              (completedModuleSlugs.length / cert.requirements.length) * 100,
+            )
+          : 0;
+
+      return {
+        id: cert.id,
+        title: cert.title,
+        description: cert.description,
+        status: issuance ? ('earned' as const) : ('available' as const),
+        progress,
+        requiredModules: requiredModuleSlugs,
+        completedModules: completedModuleSlugs,
+        issuedAt: issuance?.issuedAt?.toISOString(),
+        expiresAt: issuance?.expiresAt?.toISOString() ?? null,
+      };
+    });
+  }
+
+  private async checkAndIssueCertificates(userId: string): Promise<string[]> {
+    const completions = await this.prisma.trainingCompletion.findMany({
+      where: { userId },
+      select: { moduleId: true },
+    });
+    const completedIds = new Set(completions.map((c) => c.moduleId));
+
+    const certificates = await this.prisma.trainingCertificate.findMany({
+      where: { isActive: true },
+      include: {
+        requirements: true,
+        issuances: { where: { userId } },
+      },
+    });
+
+    const newlyEarned: string[] = [];
+
+    for (const cert of certificates) {
+      // Skip if already issued
+      if (cert.issuances.length > 0) continue;
+
+      const allComplete = cert.requirements.every((r) =>
+        completedIds.has(r.moduleId),
+      );
+
+      if (allComplete && cert.requirements.length > 0) {
+        const expiresAt = cert.validityDays
+          ? new Date(Date.now() + cert.validityDays * 86400000)
+          : null;
+
+        await this.prisma.certificateIssuance.create({
+          data: {
+            userId,
+            certificateId: cert.id,
+            expiresAt,
+          },
+        });
+        newlyEarned.push(cert.title);
+      }
+    }
+
+    return newlyEarned;
+  }
+}
+
+function getPreviousDay(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().split('T')[0];
 }
