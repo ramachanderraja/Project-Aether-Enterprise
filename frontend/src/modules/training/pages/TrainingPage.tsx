@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   BookOpen,
   TrendingUp,
@@ -26,8 +26,13 @@ import {
   Megaphone,
   CheckCircle2,
   Clock,
-  Award
+  Award,
+  Trophy,
+  Loader2,
+  AlertCircle,
+  Flame
 } from 'lucide-react';
+import { useTrainingStore } from '../store/trainingStore';
 
 // Architecture Diagram Component
 const ArchitectureDiagram: React.FC = () => (
@@ -286,7 +291,7 @@ const SECTIONS: Section[] = [
           <div className="card p-6">
             <h4 className="font-bold text-secondary-900 mb-2">Marketing Funnel</h4>
             <p className="text-sm text-secondary-600">
-              Visualize the complete journey from Leads → MQLs → SQLs → Opportunities → Customers with conversion rates at each stage.
+              Visualize the complete journey from Leads &rarr; MQLs &rarr; SQLs &rarr; Opportunities &rarr; Customers with conversion rates at each stage.
             </p>
           </div>
           <div className="card p-6">
@@ -629,7 +634,7 @@ const SECTIONS: Section[] = [
           <h3 className="text-xl font-bold text-secondary-900 mb-2">Data Import Guide</h3>
           <p className="text-secondary-500">
             Learn how to import your data into Aether using our standardized CSV templates.
-            Navigate to <strong className="text-secondary-900">Settings → Data Import</strong> to access the import functionality.
+            Navigate to <strong className="text-secondary-900">Settings &rarr; Data Import</strong> to access the import functionality.
           </p>
         </div>
 
@@ -706,39 +711,39 @@ const SECTIONS: Section[] = [
             <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
               <h5 className="font-bold text-blue-900 mb-2">Regions</h5>
               <ul className="text-sm text-blue-700 space-y-1">
-                <li>• North America (NA)</li>
-                <li>• Europe (EU)</li>
-                <li>• Asia Pacific (APAC)</li>
-                <li>• Middle East (ME)</li>
-                <li>• Latin America (LATAM)</li>
+                <li>- North America (NA)</li>
+                <li>- Europe (EU)</li>
+                <li>- Asia Pacific (APAC)</li>
+                <li>- Middle East (ME)</li>
+                <li>- Latin America (LATAM)</li>
               </ul>
             </div>
             <div className="p-4 bg-green-50 rounded-lg border border-green-200">
               <h5 className="font-bold text-green-900 mb-2">Segments</h5>
               <ul className="text-sm text-green-700 space-y-1">
-                <li>• Enterprise (High-value accounts)</li>
-                <li>• Mid-Market (Growth accounts)</li>
+                <li>- Enterprise (High-value accounts)</li>
+                <li>- Mid-Market (Growth accounts)</li>
               </ul>
             </div>
             <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
               <h5 className="font-bold text-purple-900 mb-2">Verticals</h5>
               <ul className="text-sm text-purple-700 space-y-1">
-                <li>• CPG (Consumer Packaged Goods)</li>
-                <li>• AIM (Automotive, Industrial, Manufacturing)</li>
-                <li>• TMT (Technology, Media, Telecom)</li>
-                <li>• E&U (Energy & Utilities)</li>
-                <li>• LS (Life Sciences)</li>
-                <li>• Others</li>
+                <li>- CPG (Consumer Packaged Goods)</li>
+                <li>- AIM (Automotive, Industrial, Manufacturing)</li>
+                <li>- TMT (Technology, Media, Telecom)</li>
+                <li>- E&U (Energy & Utilities)</li>
+                <li>- LS (Life Sciences)</li>
+                <li>- Others</li>
               </ul>
             </div>
             <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
               <h5 className="font-bold text-orange-900 mb-2">Channels (Sales)</h5>
               <ul className="text-sm text-orange-700 space-y-1">
-                <li>• Direct (In-house sales)</li>
-                <li>• Partner (Channel partners)</li>
-                <li>• Reseller (Third-party)</li>
-                <li>• Organic (Inbound)</li>
-                <li>• Referral (Customer referrals)</li>
+                <li>- Direct (In-house sales)</li>
+                <li>- Partner (Channel partners)</li>
+                <li>- Reseller (Third-party)</li>
+                <li>- Organic (Inbound)</li>
+                <li>- Referral (Customer referrals)</li>
               </ul>
             </div>
           </div>
@@ -774,24 +779,142 @@ const SECTIONS: Section[] = [
   }
 ];
 
+// Map section IDs to content lookup
+const SECTION_CONTENT_MAP = new Map(SECTIONS.map(s => [s.id, s]));
+
+// Icon map for server-driven module list
+const ICON_MAP: Record<string, React.ComponentType<{ size?: number | string; className?: string }>> = {
+  'overview': BookOpen,
+  'sales': TrendingUp,
+  'reports': FileBarChart,
+  'marketing': Megaphone,
+  'gtm': Rocket,
+  'revenue': PieChart,
+  'cost': Banknote,
+  'intelligence': BrainCircuit,
+  'scenarios': LineChart,
+  'governance': ShieldCheck,
+  'data-import': Database,
+};
+
+const COLOR_MAP: Record<string, string> = {
+  'overview': 'text-primary-600',
+  'sales': 'text-green-500',
+  'reports': 'text-primary-600',
+  'marketing': 'text-purple-500',
+  'gtm': 'text-orange-500',
+  'revenue': 'text-primary-600',
+  'cost': 'text-red-500',
+  'intelligence': 'text-purple-500',
+  'scenarios': 'text-indigo-500',
+  'governance': 'text-yellow-500',
+  'data-import': 'text-blue-500',
+};
+
+// Certificate toast notification
+const CertificateToast: React.FC<{ titles: string[]; onClose: () => void }> = ({ titles, onClose }) => (
+  <div className="fixed bottom-6 right-6 z-50 animate-fade-in">
+    <div className="bg-white rounded-xl shadow-2xl border border-yellow-200 p-6 max-w-sm">
+      <div className="flex items-start gap-3">
+        <div className="p-2 bg-yellow-50 rounded-lg">
+          <Trophy size={24} className="text-yellow-500" />
+        </div>
+        <div className="flex-1">
+          <h4 className="font-bold text-secondary-900">Certificate Earned!</h4>
+          {titles.map((title) => (
+            <p key={title} className="text-sm text-secondary-600 mt-1">{title}</p>
+          ))}
+        </div>
+        <button onClick={onClose} className="text-secondary-400 hover:text-secondary-600">&times;</button>
+      </div>
+    </div>
+  </div>
+);
+
 const TrainingPage: React.FC = () => {
+  const {
+    modules,
+    progress,
+    certificates,
+    isLoadingModules,
+    isLoadingProgress,
+    error,
+    fetchModules,
+    fetchProgress,
+    fetchCertificates,
+    completeModule,
+    uncompleteModule,
+  } = useTrainingStore();
+
   const [activeSectionId, setActiveSectionId] = useState(SECTIONS[0].id);
-  const [completedSections, setCompletedSections] = useState<Set<string>>(new Set());
+  const [certToast, setCertToast] = useState<string[] | null>(null);
+  const [showCerts, setShowCerts] = useState(false);
 
-  const activeSection = SECTIONS.find(s => s.id === activeSectionId) || SECTIONS[0];
+  useEffect(() => {
+    fetchModules();
+    fetchProgress();
+    fetchCertificates();
+  }, [fetchModules, fetchProgress, fetchCertificates]);
 
-  const markComplete = () => {
-    setCompletedSections(prev => new Set([...prev, activeSectionId]));
-    const currentIndex = SECTIONS.findIndex(s => s.id === activeSectionId);
-    if (currentIndex < SECTIONS.length - 1) {
-      setActiveSectionId(SECTIONS[currentIndex + 1].id);
+  // Build completion set from server data
+  const completedSlugs = new Set(
+    modules.filter((m) => m.isCompleted).map((m) => m.slug),
+  );
+
+  // Use server modules for sidebar order, fall back to static SECTIONS for content
+  const sidebarModules = modules.length > 0 ? modules : SECTIONS.map((s) => ({
+    id: s.id,
+    slug: s.id,
+    title: s.title,
+    description: null,
+    category: '',
+    duration: s.duration,
+    sortOrder: 0,
+    isCompleted: false,
+  }));
+
+  const activeSection = SECTION_CONTENT_MAP.get(activeSectionId) || SECTIONS[0];
+  const progressPercent = progress?.percentComplete ?? (modules.length > 0
+    ? Math.round((completedSlugs.size / modules.length) * 100)
+    : 0);
+  const completedCount = progress?.completedModules.length ?? completedSlugs.size;
+  const totalCount = progress?.totalModules ?? sidebarModules.length;
+
+  const handleMarkComplete = useCallback(async () => {
+    const newCerts = await completeModule(activeSectionId);
+    if (newCerts.length > 0) {
+      setCertToast(newCerts);
+      setTimeout(() => setCertToast(null), 5000);
     }
-  };
+    // Auto-advance to next section
+    const currentIndex = sidebarModules.findIndex((s) => s.slug === activeSectionId);
+    if (currentIndex < sidebarModules.length - 1) {
+      setActiveSectionId(sidebarModules[currentIndex + 1].slug);
+    }
+  }, [activeSectionId, completeModule, sidebarModules]);
 
-  const progress = (completedSections.size / SECTIONS.length) * 100;
+  const handleUncomplete = useCallback(async () => {
+    await uncompleteModule(activeSectionId);
+  }, [activeSectionId, uncompleteModule]);
+
+  if (error && modules.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <AlertCircle size={48} className="text-red-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-secondary-900 mb-2">Failed to load training</h2>
+          <p className="text-secondary-500 mb-4">{error}</p>
+          <button onClick={() => fetchModules()} className="btn-primary">Retry</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
+      {/* Certificate Toast */}
+      {certToast && <CertificateToast titles={certToast} onClose={() => setCertToast(null)} />}
+
       {/* Header */}
       <div className="mb-6">
         <div className="flex justify-between items-start">
@@ -802,22 +925,96 @@ const TrainingPage: React.FC = () => {
             </h1>
             <p className="text-secondary-500 mt-1">System documentation, feature guides, and architectural overview.</p>
           </div>
-          <div className="text-right">
-            <div className="flex items-center gap-2 mb-2">
-              <Award size={18} className="text-yellow-500" />
-              <span className="text-sm text-secondary-500">
-                {completedSections.size} of {SECTIONS.length} modules completed
+          <div className="flex items-center gap-4">
+            {/* Streak */}
+            {progress && progress.streak > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 rounded-lg border border-orange-200">
+                <Flame size={16} className="text-orange-500" />
+                <span className="text-sm font-semibold text-orange-700">{progress.streak} day streak</span>
+              </div>
+            )}
+            {/* Certificates button */}
+            <button
+              onClick={() => setShowCerts(!showCerts)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-50 rounded-lg border border-yellow-200 hover:bg-yellow-100 transition-colors"
+            >
+              <Trophy size={16} className="text-yellow-500" />
+              <span className="text-sm font-semibold text-yellow-700">
+                {certificates.filter((c) => c.status === 'earned').length} Certificates
               </span>
-            </div>
-            <div className="w-48 h-2 bg-secondary-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-yellow-500 to-green-500 transition-all duration-500"
-                style={{ width: `${progress}%` }}
-              />
+            </button>
+            {/* Progress */}
+            <div className="text-right">
+              <div className="flex items-center gap-2 mb-2">
+                <Award size={18} className="text-yellow-500" />
+                <span className="text-sm text-secondary-500">
+                  {isLoadingProgress ? '...' : `${completedCount} of ${totalCount} modules completed`}
+                </span>
+              </div>
+              <div className="w-48 h-2 bg-secondary-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-yellow-500 to-green-500 transition-all duration-500"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Certificates Panel */}
+      {showCerts && (
+        <div className="mb-6 card p-6 animate-fade-in">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-secondary-900 flex items-center gap-2">
+              <Trophy size={20} className="text-yellow-500" />
+              Certificates
+            </h3>
+            <button onClick={() => setShowCerts(false)} className="text-secondary-400 hover:text-secondary-600">&times;</button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {certificates.map((cert) => (
+              <div
+                key={cert.id}
+                className={`p-4 rounded-xl border ${
+                  cert.status === 'earned'
+                    ? 'bg-green-50 border-green-200'
+                    : 'bg-secondary-50 border-secondary-200'
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  {cert.status === 'earned' ? (
+                    <CheckCircle2 size={18} className="text-green-500" />
+                  ) : (
+                    <Award size={18} className="text-secondary-400" />
+                  )}
+                  <h4 className="font-bold text-secondary-900 text-sm">{cert.title}</h4>
+                </div>
+                {cert.description && (
+                  <p className="text-xs text-secondary-500 mb-2">{cert.description}</p>
+                )}
+                {cert.status === 'earned' ? (
+                  <p className="text-xs text-green-600 font-medium">
+                    Earned {cert.issuedAt ? new Date(cert.issuedAt).toLocaleDateString() : ''}
+                  </p>
+                ) : (
+                  <div>
+                    <div className="w-full h-1.5 bg-secondary-200 rounded-full overflow-hidden mb-1">
+                      <div
+                        className="h-full bg-primary-500 transition-all duration-300"
+                        style={{ width: `${cert.progress}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-secondary-400">
+                      {cert.completedModules.length}/{cert.requiredModules.length} modules ({cert.progress}%)
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-1 overflow-hidden card shadow-lg">
         {/* Sidebar Navigation */}
@@ -825,41 +1022,48 @@ const TrainingPage: React.FC = () => {
           <div className="p-4 bg-white border-b border-secondary-200">
             <span className="text-xs font-bold text-secondary-400 uppercase tracking-wider">Modules</span>
           </div>
-          <div className="px-2 space-y-1 py-4 flex-1">
-            {SECTIONS.map((section) => {
-              const Icon = section.icon;
-              const isActive = activeSectionId === section.id;
-              const isCompleted = completedSections.has(section.id);
+          {isLoadingModules && modules.length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 size={24} className="animate-spin text-primary-500" />
+            </div>
+          ) : (
+            <div className="px-2 space-y-1 py-4 flex-1">
+              {sidebarModules.map((mod) => {
+                const Icon = ICON_MAP[mod.slug] || BookOpen;
+                const color = COLOR_MAP[mod.slug] || 'text-secondary-500';
+                const isActive = activeSectionId === mod.slug;
+                const isCompleted = completedSlugs.has(mod.slug);
 
-              return (
-                <button
-                  key={section.id}
-                  onClick={() => setActiveSectionId(section.id)}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                    isActive
-                      ? 'bg-primary-50 text-primary-700 border border-primary-200 shadow-sm'
-                      : 'text-secondary-600 hover:bg-secondary-100 hover:text-secondary-900'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    {isCompleted ? (
-                      <CheckCircle2 size={18} className="mr-3 text-green-500" />
-                    ) : (
-                      <Icon size={18} className={`mr-3 ${isActive ? section.color : 'text-secondary-400'}`} />
-                    )}
-                    <div className="text-left">
-                      <span className="block">{section.title}</span>
-                      <span className="text-[10px] text-secondary-400 flex items-center mt-0.5">
-                        <Clock size={10} className="mr-1" />
-                        {section.duration}
-                      </span>
+                return (
+                  <button
+                    key={mod.slug}
+                    onClick={() => setActiveSectionId(mod.slug)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      isActive
+                        ? 'bg-primary-50 text-primary-700 border border-primary-200 shadow-sm'
+                        : 'text-secondary-600 hover:bg-secondary-100 hover:text-secondary-900'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      {isCompleted ? (
+                        <CheckCircle2 size={18} className="mr-3 text-green-500" />
+                      ) : (
+                        <Icon size={18} className={`mr-3 ${isActive ? color : 'text-secondary-400'}`} />
+                      )}
+                      <div className="text-left">
+                        <span className="block">{mod.title}</span>
+                        <span className="text-[10px] text-secondary-400 flex items-center mt-0.5">
+                          <Clock size={10} className="mr-1" />
+                          {mod.duration}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  {isActive && <ChevronRight size={14} className="text-primary-600" />}
-                </button>
-              );
-            })}
-          </div>
+                    {isActive && <ChevronRight size={14} className="text-primary-600" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Content Area */}
@@ -870,7 +1074,10 @@ const TrainingPage: React.FC = () => {
               <div className="flex items-center justify-between mb-8 pb-6 border-b border-secondary-200">
                 <div className="flex items-center space-x-4">
                   <div className="p-4 bg-secondary-50 rounded-xl border border-secondary-200 shadow-sm">
-                    {React.createElement(activeSection.icon, { size: 32, className: activeSection.color })}
+                    {React.createElement(
+                      ICON_MAP[activeSectionId] || activeSection.icon,
+                      { size: 32, className: COLOR_MAP[activeSectionId] || activeSection.color },
+                    )}
                   </div>
                   <div>
                     <h2 className="text-3xl font-bold text-secondary-900 tracking-tight">{activeSection.title}</h2>
@@ -881,20 +1088,22 @@ const TrainingPage: React.FC = () => {
                   </div>
                 </div>
 
-                {!completedSections.has(activeSectionId) && (
+                {!completedSlugs.has(activeSectionId) ? (
                   <button
-                    onClick={markComplete}
+                    onClick={handleMarkComplete}
                     className="btn-primary flex items-center gap-2"
                   >
                     <CheckCircle2 size={18} />
                     Mark Complete
                   </button>
-                )}
-                {completedSections.has(activeSectionId) && (
-                  <span className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg border border-green-200">
+                ) : (
+                  <button
+                    onClick={handleUncomplete}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg border border-green-200 hover:bg-green-100 transition-colors"
+                  >
                     <CheckCircle2 size={18} />
                     Completed
-                  </span>
+                  </button>
                 )}
               </div>
 
@@ -907,10 +1116,10 @@ const TrainingPage: React.FC = () => {
               <div className="flex justify-between mt-10 pt-6 border-t border-secondary-200">
                 <button
                   onClick={() => {
-                    const idx = SECTIONS.findIndex(s => s.id === activeSectionId);
-                    if (idx > 0) setActiveSectionId(SECTIONS[idx - 1].id);
+                    const idx = sidebarModules.findIndex((s) => s.slug === activeSectionId);
+                    if (idx > 0) setActiveSectionId(sidebarModules[idx - 1].slug);
                   }}
-                  disabled={SECTIONS.findIndex(s => s.id === activeSectionId) === 0}
+                  disabled={sidebarModules.findIndex((s) => s.slug === activeSectionId) === 0}
                   className="flex items-center gap-2 px-4 py-2 text-secondary-500 hover:text-secondary-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronRight size={16} className="rotate-180" />
@@ -918,10 +1127,10 @@ const TrainingPage: React.FC = () => {
                 </button>
                 <button
                   onClick={() => {
-                    const idx = SECTIONS.findIndex(s => s.id === activeSectionId);
-                    if (idx < SECTIONS.length - 1) setActiveSectionId(SECTIONS[idx + 1].id);
+                    const idx = sidebarModules.findIndex((s) => s.slug === activeSectionId);
+                    if (idx < sidebarModules.length - 1) setActiveSectionId(sidebarModules[idx + 1].slug);
                   }}
-                  disabled={SECTIONS.findIndex(s => s.id === activeSectionId) === SECTIONS.length - 1}
+                  disabled={sidebarModules.findIndex((s) => s.slug === activeSectionId) === sidebarModules.length - 1}
                   className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Next Module

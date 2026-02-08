@@ -50,14 +50,16 @@ model User {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  tenant          Tenant           @relation(fields: [tenantId], references: [id])
-  roles           UserRole[]
-  refreshTokens   RefreshToken[]
-  preferences     UserPreference?
-  scenarios       Scenario[]       @relation("ScenarioOwner")
-  approvals       Approval[]       @relation("ApprovalApprover")
-  conversations   AIConversation[]
-  auditLogs       AuditLog[]
+  tenant               Tenant               @relation(fields: [tenantId], references: [id])
+  roles                UserRole[]
+  refreshTokens        RefreshToken[]
+  preferences          UserPreference?
+  scenarios            Scenario[]            @relation("ScenarioOwner")
+  approvals            Approval[]            @relation("ApprovalApprover")
+  conversations        AIConversation[]
+  auditLogs            AuditLog[]
+  trainingCompletions  TrainingCompletion[]
+  certificateIssuances CertificateIssuance[]
 
   @@index([tenantId])
   @@index([email])
@@ -428,6 +430,88 @@ model SyncJob {
 
   @@index([dataSourceId])
   @@map("sync_jobs")
+}
+
+// ============================================
+// TRAINING & ONBOARDING
+// ============================================
+
+model TrainingModule {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  title       String
+  description String?
+  category    String   // fundamentals, modules, advanced
+  duration    String   // e.g. "10 min"
+  sortOrder   Int
+  content     Json?    // structured content sections
+  resources   Json?    // links to videos, PDFs, etc.
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  completions TrainingCompletion[]
+  certificateRequirements CertificateRequirement[]
+
+  @@index([category])
+  @@map("training_modules")
+}
+
+model TrainingCompletion {
+  id          String   @id @default(uuid())
+  userId      String
+  moduleId    String
+  completedAt DateTime @default(now())
+  timeSpentMin Int?
+
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  module TrainingModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, moduleId])
+  @@index([userId])
+  @@map("training_completions")
+}
+
+model TrainingCertificate {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  isActive    Boolean   @default(true)
+  validityDays Int?     // null = never expires
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  requirements CertificateRequirement[]
+  issuances    CertificateIssuance[]
+
+  @@map("training_certificates")
+}
+
+model CertificateRequirement {
+  certificateId String
+  moduleId      String
+
+  certificate TrainingCertificate @relation(fields: [certificateId], references: [id], onDelete: Cascade)
+  module      TrainingModule      @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@id([certificateId, moduleId])
+  @@map("certificate_requirements")
+}
+
+model CertificateIssuance {
+  id            String    @id @default(uuid())
+  userId        String
+  certificateId String
+  issuedAt      DateTime  @default(now())
+  expiresAt     DateTime?
+  status        String    @default("active") // active, expired, revoked
+
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  certificate TrainingCertificate @relation(fields: [certificateId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, certificateId])
+  @@index([userId])
+  @@map("certificate_issuances")
 }
 
 // ============================================
