@@ -1,0 +1,31 @@
+ARR Customer Name,Pipeline Customer Name,Mapping Type,Notes
+International Business Machines Corporation,IBM,Legal to Common,Legal name to common abbreviation
+General Electric Company,GE,Legal to Common,Legal name to common abbreviation
+Johnson & Johnson,Johnson and Johnson,Punctuation,Ampersand vs spelled out
+Google LLC,Alphabet Inc,Subsidiary,Subsidiary to parent company
+Amazon Web Services,AWS,Legal to Abbreviation,Full name to common abbreviation
+Microsoft Corporation,Microsoft,Legal to Common,Drop Corporation suffix
+Apple Inc.,Apple,Legal to Common,Drop Inc. suffix
+Meta Platforms Inc,Facebook,Rebrand,Company rebrand mapping
+Acme Corporation,Acme Corp,Abbreviation,Corporation to Corp
+TechFlow Industries Inc,TechFlow Industries,Legal to Common,Drop Inc suffix
+Global Pharma Incorporated,Global Pharma Inc,Variation,Incorporated vs Inc
+RetailMax Holdings LLC,RetailMax Holdings,Legal to Common,Drop LLC suffix
+EnergyPlus Corporation,EnergyPlus Corp,Abbreviation,Corporation to Corp
+FinServ Partners LP,FinServ Partners,Legal to Common,Drop LP suffix
+ChemCo Industries Ltd,ChemCo Industries,Legal to Common,Drop Ltd suffix
+GovTech Solutions Inc,GovTech Solutions,Legal to Common,Drop Inc suffix
+MediaCorp International SA,MediaCorp International,Legal to Common,Drop SA suffix
+Blackstone Ventures LP,Blackstone Ventures,Legal to Common,Drop LP suffix
+Unilever PLC,Unilever Global,Legal to Common,Different naming conventions
+APAC Banking Corporation,APAC Banking Corp,Abbreviation,Corporation to Corp
+LatAm Retail Group SA de CV,LatAm Retail Group,Legal to Common,Drop legal suffix
+MEA Energy Holdings PJSC,MEA Energy Holdings,Legal to Common,Drop PJSC suffix
+TechStart Incorporated,TechStart Inc,Variation,Incorporated to Inc
+AutoParts Global GmbH,AutoParts Global,Legal to Common,Drop GmbH suffix
+Procter and Gamble,P&G,Legal to Common,Full name to abbreviation
+The Coca-Cola Company,Coca-Cola,Legal to Common,Drop The and Company
+PepsiCo Inc,Pepsi,Legal to Common,Parent to brand name
+Nestle SA,Nestlé,Legal to Common,Character encoding difference
+Toyota Motor Corporation,Toyota,Legal to Common,Drop Motor Corporation
+Volkswagen AG,VW,Legal to Abbreviation,Full name to abbreviation

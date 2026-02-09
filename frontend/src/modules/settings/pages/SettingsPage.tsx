@@ -21,67 +21,107 @@ interface ImportHistory {
 }
 
 const importTemplates: ImportTemplate[] = [
-  { id: 'financial_metrics', name: 'Financial Metrics', description: 'Revenue, expenses, EBITDA, margins, and cash flow metrics by region/segment', fileType: 'CSV', lastImport: '2025-01-28T14:30:00Z', recordCount: 156 },
-  { id: 'profitability', name: 'Profitability Data', description: 'Account-level profitability with region, segment, vertical, costs and margins', fileType: 'CSV', lastImport: '2025-01-28T14:30:00Z', recordCount: 250 },
-  { id: 'sales_performance', name: 'Sales Performance', description: 'Pipeline opportunities with ACV, conversion, quota tracking by rep and region', fileType: 'CSV', lastImport: '2025-01-30T11:00:00Z', recordCount: 87 },
-  { id: 'revenue_analytics', name: 'Revenue Analytics', description: 'ARR by customer and product, renewals, movement tracking by region/vertical', fileType: 'CSV', lastImport: '2025-01-25T09:15:00Z', recordCount: 423 },
-  { id: 'salespeople', name: 'Sales Team', description: 'Salesperson targets, quotas, and performance metrics', fileType: 'CSV', lastImport: '2025-01-25T09:15:00Z', recordCount: 12 },
-  { id: 'products', name: 'Products', description: 'Product catalog with categories, sub-categories, and ARR', fileType: 'CSV', lastImport: '2025-01-25T09:15:00Z', recordCount: 15 },
+  // Sales & Pipeline Templates
+  { id: 'closed_acv', name: 'Closed ACV', description: 'Closed deals with License/Implementation split, Logo Type, and ACV calculation rules', fileType: 'CSV', lastImport: '2025-01-30T14:30:00Z', recordCount: 24 },
+  { id: 'monthly_pipeline_snapshot', name: 'Monthly Pipeline Snapshots', description: '12 months of deal progression showing new, growing, shrinking, and closing deals', fileType: 'CSV', lastImport: '2025-01-30T11:00:00Z', recordCount: 65 },
+  { id: 'sales_team_structure', name: 'Sales Team Structure', description: 'Team hierarchy with quotas by rep, region, and manager relationships', fileType: 'CSV', lastImport: '2025-01-25T09:15:00Z', recordCount: 20 },
+  { id: 'prior_year_performance', name: 'Prior Year Performance', description: 'Historical sales data with attainment, win rates, and deal counts by rep', fileType: 'CSV', lastImport: '2025-01-25T09:15:00Z', recordCount: 21 },
+  // Revenue & ARR Templates
+  { id: 'monthly_arr_snapshot', name: 'Monthly ARR Snapshots', description: '12 months of SOW-level ARR with movements (New, Expansion, Contraction, Churn)', fileType: 'CSV', lastImport: '2025-01-28T14:30:00Z', recordCount: 95 },
+  { id: 'arr_subcategory_breakdown', name: 'ARR Sub-Category Breakdown', description: 'SOW-level annual contribution % by product sub-category for 2024-2026', fileType: 'CSV', lastImport: '2025-01-28T14:30:00Z', recordCount: 22 },
+  // Mapping & Reference Templates
+  { id: 'customer_name_mapping', name: 'Customer Name Mapping', description: 'Mapping between ARR and Pipeline customer names (legal vs common names)', fileType: 'CSV', lastImport: '2025-01-25T09:15:00Z', recordCount: 30 },
+  { id: 'product_category_mapping', name: 'Product Category Mapping', description: 'Sub-category to category mapping - the ONLY place Product Category is stored', fileType: 'CSV', lastImport: '2025-01-25T09:15:00Z', recordCount: 20 },
+  // Legacy Templates (kept for backward compatibility)
   { id: 'cost_data', name: 'Cost Data', description: 'Cost line items with categories, vendors, and cost centers', fileType: 'CSV', lastImport: '2025-01-25T09:15:00Z', recordCount: 423 },
   { id: 'vendors', name: 'Vendors', description: 'Vendor master data with contacts, contracts, and spend info', fileType: 'CSV', lastImport: null, recordCount: null },
   { id: 'cost_centers', name: 'Cost Centers', description: 'Hierarchical cost center structure with budgets', fileType: 'CSV', lastImport: '2025-01-20T16:45:00Z', recordCount: 34 },
 ];
 
 // CSV Template definitions with proper data structures for all reports
-const templateCSVData: Record<string, { headers: string[]; sampleRows: string[][] }> = {
-  'financial_metrics': {
-    headers: ['Date', 'Region', 'Segment', 'Vertical', 'Revenue', 'Expenses', 'EBITDA', 'Gross_Margin_Pct', 'Net_Margin_Pct', 'Cash_Flow'],
+const templateCSVData: Record<string, { headers: string[]; sampleRows: string[][]; notes?: string }> = {
+  // ============== SALES & PIPELINE TEMPLATES ==============
+  'closed_acv': {
+    headers: ['Closed_ACV_ID', 'Pipeline_Deal_ID', 'Deal_Name', 'Customer_Name', 'Close_Date', 'Logo_Type', 'Value_Type', 'Amount', 'License_ACV', 'Implementation_Value', 'Region', 'Vertical', 'Segment', 'Platform', 'Sales_Rep', 'Notes'],
     sampleRows: [
-      ['2025-01-01', 'North America', 'Enterprise', 'Technology', '1500000', '1200000', '300000', '0.72', '0.20', '250000'],
-      ['2025-01-01', 'EMEA', 'Mid-Market', 'Healthcare', '850000', '680000', '170000', '0.68', '0.18', '140000'],
-      ['2025-02-01', 'APAC', 'Enterprise', 'Financial Services', '1200000', '950000', '250000', '0.70', '0.19', '200000'],
-    ]
+      ['CACV-001', 'PD-101', 'Acme Corp Digital Transformation', 'Acme Corporation', '2024-01-15', 'New Logo', 'License', '450000', '450000', '0', 'North America', 'Life Sciences', 'Enterprise', 'Quantum', 'John Smith', 'New enterprise deal - License component'],
+      ['CACV-001', 'PD-101', 'Acme Corp Digital Transformation', 'Acme Corporation', '2024-01-15', 'New Logo', 'Implementation', '150000', '0', '150000', 'North America', 'Life Sciences', 'Enterprise', 'Quantum', 'John Smith', 'New enterprise deal - Implementation component'],
+      ['CACV-002', '', 'FinServ Direct Deal', 'FinServ Partners', '2024-03-22', 'New Logo', 'License', '520000', '520000', '0', 'APAC', 'BFSI', 'Enterprise', 'Opus', 'Wei Zhang', 'Direct deal - not from pipeline (NULL Pipeline Deal ID)'],
+      ['CACV-003', 'PD-104', 'RetailMax Contract Extension', 'RetailMax Holdings', '2024-02-28', 'Extension', 'License', '200000', '0', '0', 'LATAM', 'CPG & Retail', 'Enterprise', 'Quantum', 'Ana Rodriguez', 'Extension - License EXCLUDED from ACV'],
+      ['CACV-003', 'PD-104', 'RetailMax Contract Extension', 'RetailMax Holdings', '2024-02-28', 'Extension', 'Implementation', '50000', '0', '50000', 'LATAM', 'CPG & Retail', 'Enterprise', 'Quantum', 'Ana Rodriguez', 'Extension - Implementation COUNTS'],
+    ],
+    notes: 'Logo Types: New Logo, Upsell, Cross-Sell (License counts) | Extension, Renewal (License excluded, Implementation counts)'
   },
-  'profitability': {
-    headers: ['Account_ID', 'Account_Name', 'Region', 'Segment', 'Vertical', 'Revenue', 'Cloud_Infra_Cost', 'Resource_Cost', 'TSO_Cost', 'Engineering_Cost', 'Gross_Margin_Value', 'Gross_Margin_Pct', 'Contribution_Margin_Pct', 'Health_Score', 'Renewal_Date', 'Report_Type'],
+  'monthly_pipeline_snapshot': {
+    headers: ['Snapshot_Month', 'Pipeline_Deal_ID', 'Deal_Name', 'Customer_Name', 'Deal_Value', 'License_ACV', 'Implementation_Value', 'Logo_Type', 'Deal_Stage', 'Current_Stage', 'Probability', 'Expected_Close_Date', 'Region', 'Vertical', 'Segment', 'Product_Sub_Category'],
     sampleRows: [
-      ['ACC-1001', 'Acme Corp', 'North America', 'Enterprise', 'Technology', '1500000', '225000', '150000', '0', '0', '1125000', '0.75', '0.60', '85', '2025-06-15', 'License'],
-      ['ACC-1002', 'Global Solutions', 'EMEA', 'Mid-Market', 'Healthcare', '850000', '0', '0', '340000', '170000', '340000', '0.40', '0.25', '72', '2025-09-20', 'Implementation'],
-      ['ACC-1003', 'Tech Industries', 'APAC', 'Enterprise', 'Financial Services', '2200000', '330000', '220000', '0', '0', '1650000', '0.75', '0.58', '91', '2025-03-10', 'License'],
-    ]
+      ['2024-01', 'PD-201', 'Acme Digital Platform', 'Acme Corporation', '500000', '400000', '100000', 'New Logo', 'Discovery', 'Discovery', '30%', '2024-06-30', 'North America', 'Life Sciences', 'Enterprise', 'Quantum Platform'],
+      ['2024-02', 'PD-201', 'Acme Digital Platform', 'Acme Corporation', '550000', '440000', '110000', 'New Logo', 'Qualification', 'Qualification', '30%', '2024-06-30', 'North America', 'Life Sciences', 'Enterprise', 'Quantum Platform'],
+      ['2024-03', 'PD-201', 'Acme Digital Platform', 'Acme Corporation', '600000', '450000', '150000', 'New Logo', 'Proposal', 'Proposal', '50%', '2024-06-30', 'North America', 'Life Sciences', 'Enterprise', 'Quantum Platform'],
+      ['2024-04', 'PD-201', 'Acme Digital Platform', 'Acme Corporation', '600000', '450000', '150000', 'New Logo', 'Negotiation', 'Negotiation', '70%', '2024-06-30', 'North America', 'Life Sciences', 'Enterprise', 'Quantum Platform'],
+      ['2024-05', 'PD-201', 'Acme Digital Platform', 'Acme Corporation', '600000', '450000', '150000', 'New Logo', 'Closed Won', 'Closed Won', '100%', '2024-05-15', 'North America', 'Life Sciences', 'Enterprise', 'Quantum Platform'],
+    ],
+    notes: 'Shows deal progression over 12 months. Latest month feeds Pipeline Report. NO Product Category field - only Sub-Category.'
   },
-  'sales_performance': {
-    headers: ['Opportunity_ID', 'Account_Name', 'Region', 'Vertical', 'Channel', 'Stage', 'Probability_Pct', 'Deal_ACV', 'Weighted_Value', 'Expected_Close_Date', 'Days_In_Stage', 'Owner', 'Status', 'Loss_Reason', 'Revenue_Type', 'Sales_Cycle_Days', 'Created_Date', 'Previous_Value', 'Movement_Reason'],
+  'sales_team_structure': {
+    headers: ['Sales_Rep_ID', 'Name', 'Email', 'Role', 'Region', 'Vertical_Focus', 'Segment', 'Manager_ID', 'Manager_Name', 'Annual_Quota', 'Q1_Quota', 'Q2_Quota', 'Q3_Quota', 'Q4_Quota', 'Hire_Date', 'Status'],
     sampleRows: [
-      ['OPP-001', 'Acme Corp', 'North America', 'Technology', 'Direct', 'Proposal', '50', '500000', '250000', '2025-03-15', '12', 'Sarah Johnson', 'Active', '', 'License', '90', '2024-12-01', '', ''],
-      ['OPP-002', 'Global Tech', 'EMEA', 'Healthcare', 'Partner', 'Negotiation', '75', '750000', '562500', '2025-02-28', '25', 'Mike Wilson', 'Active', '', 'License', '120', '2024-10-15', '650000', 'Expanded Scope'],
-      ['OPP-003', 'Beta Industries', 'APAC', 'Financial Services', 'Direct', 'Closed Lost', '0', '320000', '0', '2025-01-20', '45', 'Emily Davis', 'Lost', 'Budget Constraints', 'Implementation', '60', '2024-11-20', '', ''],
-    ]
+      ['SR-001', 'John Smith', 'john.smith@company.com', 'VP Sales', 'Global', 'All', 'All', '', 'None', '25000000', '5500000', '6000000', '6500000', '7000000', '2018-03-15', 'Active'],
+      ['SR-002', 'Sarah Johnson', 'sarah.johnson@company.com', 'Regional Director', 'North America', 'All', 'Enterprise', 'SR-001', 'John Smith', '8000000', '1800000', '1950000', '2100000', '2150000', '2019-06-01', 'Active'],
+      ['SR-003', 'Mike Chen', 'mike.chen@company.com', 'Senior AE', 'North America', 'Life Sciences', 'Enterprise', 'SR-002', 'Sarah Johnson', '3500000', '800000', '850000', '900000', '950000', '2020-01-15', 'Active'],
+    ],
+    notes: 'Team hierarchy with quotas. Manager_ID links to parent Sales_Rep_ID.'
   },
-  'revenue_analytics': {
-    headers: ['Customer_ID', 'Customer_Name', 'Current_ARR', 'Previous_ARR', 'Region', 'Vertical', 'Products', 'Contract_Start_Date', 'Renewal_Date', 'Renewal_Risk_Level', 'Movement_Type', 'Movement_Reason', 'Revenue_Type'],
+  'prior_year_performance': {
+    headers: ['Year', 'Sales_Rep_ID', 'Sales_Rep_Name', 'Region', 'Vertical', 'Segment', 'Annual_Quota', 'Q1_Closed', 'Q2_Closed', 'Q3_Closed', 'Q4_Closed', 'Total_Closed', 'Attainment_Pct', 'New_Logo_Count', 'Upsell_Count', 'Cross_Sell_Count', 'Renewal_Count', 'Extension_Count', 'Avg_Deal_Size', 'Win_Rate_Pct'],
     sampleRows: [
-      ['CUST-0001', 'Enterprise Corp', '2400000', '2100000', 'North America', 'Technology', 'Core Platform|Analytics', '2023-01-15', '2026-01-15', 'Low', 'Expansion', 'Additional Users', 'License'],
-      ['CUST-0002', 'TechGiant Inc', '1800000', '1900000', 'EMEA', 'Healthcare', 'Core Platform', '2023-06-01', '2026-06-01', 'Medium', 'Contraction', 'Reduced Users', 'License'],
-      ['CUST-0003', 'Global Finance', '1500000', '0', 'APAC', 'Financial Services', 'Enterprise Edition|API Gateway', '2025-01-01', '2026-01-01', 'Low', 'New', 'New Logo', 'License'],
-    ]
+      ['2023', 'SR-002', 'Sarah Johnson', 'North America', 'All', 'Enterprise', '7200000', '1650000', '1780000', '1920000', '2100000', '7450000', '103.5', '4', '8', '3', '12', '2', '258621', '42'],
+      ['2023', 'SR-003', 'Mike Chen', 'North America', 'Life Sciences', 'Enterprise', '3000000', '680000', '740000', '810000', '920000', '3150000', '105.0', '2', '5', '2', '6', '1', '225000', '38'],
+      ['2022', 'SR-002', 'Sarah Johnson', 'North America', 'All', 'Enterprise', '6500000', '1420000', '1560000', '1680000', '1850000', '6510000', '100.2', '3', '7', '3', '10', '2', '232500', '40'],
+    ],
+    notes: 'Historical performance by rep. Used for forecasting and trend analysis.'
   },
-  'salespeople': {
-    headers: ['Salesperson_ID', 'Name', 'Region', 'Is_Manager', 'Manager_ID', 'Annual_Target', 'Closed_YTD', 'Forecast', 'Pipeline_Value'],
+  // ============== REVENUE & ARR TEMPLATES ==============
+  'monthly_arr_snapshot': {
+    headers: ['Snapshot_Month', 'SOW_ID', 'Customer_Name', 'Product_Sub_Category', 'Starting_ARR', 'New_ARR', 'Expansion_ARR', 'Contraction_ARR', 'Churn_ARR', 'Ending_ARR', 'Region', 'Vertical', 'Segment', 'Contract_Start_Date', 'Contract_End_Date', 'Renewal_Risk'],
     sampleRows: [
-      ['SP-001', 'Sarah Johnson', 'North America', 'true', '', '5000000', '2500000', '1500000', '4500000'],
-      ['SP-002', 'Mike Wilson', 'EMEA', 'true', '', '4000000', '1800000', '1200000', '3200000'],
-      ['SP-003', 'Emily Davis', 'North America', 'false', 'SP-001', '2000000', '950000', '600000', '1800000'],
-    ]
+      ['2024-01', 'SOW-001', 'Acme Corporation', 'Quantum Platform', '0', '450000', '0', '0', '0', '450000', 'North America', 'Life Sciences', 'Enterprise', '2024-01-15', '2027-01-15', 'Low'],
+      ['2024-02', 'SOW-001', 'Acme Corporation', 'Quantum Platform', '450000', '0', '0', '0', '0', '450000', 'North America', 'Life Sciences', 'Enterprise', '2024-01-15', '2027-01-15', 'Low'],
+      ['2024-03', 'SOW-001', 'Acme Corporation', 'Quantum Platform', '450000', '0', '100000', '0', '0', '550000', 'North America', 'Life Sciences', 'Enterprise', '2024-01-15', '2027-01-15', 'Low'],
+    ],
+    notes: 'SOW/contract level ARR. Customer_Name links to Pipeline via customer_name_mapping. NO Product Category - only Sub-Category.'
   },
-  'products': {
-    headers: ['Product_ID', 'Name', 'Category', 'Sub_Category', 'Total_ARR', 'Customer_Count', 'Avg_ARR_Per_Customer', 'Growth_Percent'],
+  'arr_subcategory_breakdown': {
+    headers: ['SOW_ID', 'Customer_Name', 'Product_Sub_Category', '2024_Contribution_Pct', '2025_Contribution_Pct', '2026_Contribution_Pct', 'Notes'],
     sampleRows: [
-      ['PROD-001', 'Core Platform', 'Platform', 'Core Platform', '25000000', '45', '555556', '15'],
-      ['PROD-002', 'Business Intelligence', 'Analytics', 'Business Intelligence', '12000000', '32', '375000', '22'],
-      ['PROD-003', 'API Gateway', 'Integration', 'API Gateway', '8000000', '28', '285714', '18'],
-    ]
+      ['SOW-001', 'Acme Corporation', 'Quantum Platform', '100', '85', '70', 'Migrating some workloads to SMART Analytics'],
+      ['SOW-001', 'Acme Corporation', 'SMART Analytics', '0', '15', '30', 'New analytics adoption starting 2025'],
+      ['SOW-003', 'Global Pharma Inc', 'Cost Drivers Suite', '80', '70', '60', 'Gradual shift to multi-product'],
+    ],
+    notes: 'Annual contribution % by sub-category. Total per SOW per year must = 100%.'
   },
+  // ============== MAPPING & REFERENCE TEMPLATES ==============
+  'customer_name_mapping': {
+    headers: ['ARR_Customer_Name', 'Pipeline_Customer_Name', 'Mapping_Type', 'Notes'],
+    sampleRows: [
+      ['International Business Machines Corporation', 'IBM', 'Legal to Common', 'Legal name to common abbreviation'],
+      ['Johnson & Johnson', 'Johnson and Johnson', 'Punctuation', 'Ampersand vs spelled out'],
+      ['Google LLC', 'Alphabet Inc', 'Subsidiary', 'Subsidiary to parent company'],
+      ['Acme Corporation', 'Acme Corp', 'Abbreviation', 'Corporation to Corp'],
+    ],
+    notes: 'Maps ARR customer names to Pipeline names. Essential for linking ARR to Pipeline data.'
+  },
+  'product_category_mapping': {
+    headers: ['Product_Sub_Category', 'Product_Category', 'Description', 'Status'],
+    sampleRows: [
+      ['Quantum Platform', 'Platform', 'Core enterprise platform for digital transformation', 'Active'],
+      ['SMART Analytics', 'Analytics', 'Advanced analytics and business intelligence suite', 'Active'],
+      ['Cost Drivers Suite', 'Cost Management', 'Cost optimization and spend analytics platform', 'Active'],
+      ['Opus Enterprise', 'Enterprise Solutions', 'Full-stack enterprise solution with AI capabilities', 'Active'],
+    ],
+    notes: 'ONLY place Product Category is stored. All other templates use Sub-Category only.'
+  },
+  // ============== LEGACY TEMPLATES (kept for backward compatibility) ==============
   'cost_data': {
     headers: ['Date', 'Cost_Center_ID', 'Cost_Center_Name', 'Category', 'Sub_Category', 'Vendor', 'Amount', 'Budget', 'Variance', 'Region', 'Department'],
     sampleRows: [
@@ -109,11 +149,16 @@ const templateCSVData: Record<string, { headers: string[]; sampleRows: string[][
 };
 
 const importHistory: ImportHistory[] = [
-  { id: '1', templateName: 'Sales Performance', fileName: 'sales_q1_2025.csv', status: 'completed', recordsImported: 87, errors: 0, importedAt: '2025-01-30T11:00:00Z', importedBy: 'John Smith' },
-  { id: '2', templateName: 'Profitability Data', fileName: 'profitability_jan_2025.csv', status: 'completed', recordsImported: 250, errors: 2, importedAt: '2025-01-28T14:30:00Z', importedBy: 'Jane Doe' },
-  { id: '3', templateName: 'Revenue Analytics', fileName: 'revenue_2024_final.csv', status: 'completed', recordsImported: 423, errors: 5, importedAt: '2025-01-25T09:15:00Z', importedBy: 'John Smith' },
-  { id: '4', templateName: 'Cost Centers', fileName: 'cost_centers_v2.csv', status: 'failed', recordsImported: 0, errors: 12, importedAt: '2025-01-22T10:30:00Z', importedBy: 'Mike Wilson' },
-  { id: '5', templateName: 'Cost Centers', fileName: 'cost_centers_fixed.csv', status: 'completed', recordsImported: 34, errors: 0, importedAt: '2025-01-20T16:45:00Z', importedBy: 'Mike Wilson' },
+  { id: '1', templateName: 'Closed ACV', fileName: 'closed_acv_2024.csv', status: 'completed', recordsImported: 24, errors: 0, importedAt: '2025-01-30T14:30:00Z', importedBy: 'John Smith' },
+  { id: '2', templateName: 'Monthly Pipeline Snapshots', fileName: 'pipeline_snapshots_2024.csv', status: 'completed', recordsImported: 65, errors: 0, importedAt: '2025-01-30T11:00:00Z', importedBy: 'John Smith' },
+  { id: '3', templateName: 'Monthly ARR Snapshots', fileName: 'arr_snapshots_2024.csv', status: 'completed', recordsImported: 95, errors: 2, importedAt: '2025-01-28T14:30:00Z', importedBy: 'Jane Doe' },
+  { id: '4', templateName: 'Customer Name Mapping', fileName: 'customer_mapping_v2.csv', status: 'completed', recordsImported: 30, errors: 0, importedAt: '2025-01-25T09:15:00Z', importedBy: 'Jane Doe' },
+  { id: '5', templateName: 'Product Category Mapping', fileName: 'product_categories.csv', status: 'completed', recordsImported: 20, errors: 0, importedAt: '2025-01-25T09:15:00Z', importedBy: 'John Smith' },
+  { id: '6', templateName: 'Sales Team Structure', fileName: 'sales_team_2025.csv', status: 'completed', recordsImported: 20, errors: 0, importedAt: '2025-01-25T09:15:00Z', importedBy: 'Mike Wilson' },
+  { id: '7', templateName: 'Prior Year Performance', fileName: 'historical_performance_2022_2023.csv', status: 'completed', recordsImported: 21, errors: 0, importedAt: '2025-01-25T09:15:00Z', importedBy: 'Mike Wilson' },
+  { id: '8', templateName: 'ARR Sub-Category Breakdown', fileName: 'arr_breakdown_2024_2026.csv', status: 'completed', recordsImported: 22, errors: 1, importedAt: '2025-01-28T14:30:00Z', importedBy: 'Jane Doe' },
+  { id: '9', templateName: 'Cost Centers', fileName: 'cost_centers_v2.csv', status: 'failed', recordsImported: 0, errors: 12, importedAt: '2025-01-22T10:30:00Z', importedBy: 'Mike Wilson' },
+  { id: '10', templateName: 'Cost Centers', fileName: 'cost_centers_fixed.csv', status: 'completed', recordsImported: 34, errors: 0, importedAt: '2025-01-20T16:45:00Z', importedBy: 'Mike Wilson' },
 ];
 
 interface User {
@@ -195,11 +240,28 @@ export default function SettingsPage() {
       return;
     }
 
-    // Generate CSV content with headers and sample rows
-    const csvContent = [
-      templateData.headers.join(','),
-      ...templateData.sampleRows.map(row => row.join(','))
-    ].join('\n');
+    // Generate CSV content with headers, notes (as comment), and sample rows
+    const csvLines: string[] = [];
+
+    // Add notes as a comment at the top if available
+    if (templateData.notes) {
+      csvLines.push(`# NOTES: ${templateData.notes}`);
+      csvLines.push('# Delete this line and the notes line before importing');
+    }
+
+    // Add headers
+    csvLines.push(templateData.headers.join(','));
+
+    // Add sample rows
+    templateData.sampleRows.forEach(row => {
+      // Escape fields that contain commas by wrapping in quotes
+      const escapedRow = row.map(field =>
+        field.includes(',') || field.includes('"') ? `"${field.replace(/"/g, '""')}"` : field
+      );
+      csvLines.push(escapedRow.join(','));
+    });
+
+    const csvContent = csvLines.join('\n');
 
     // Create blob and download
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -487,29 +549,110 @@ export default function SettingsPage() {
                   Upload CSV files to import historical data into Aether. Select a template type and upload your file.
                 </p>
 
-                {/* Template Selection */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-secondary-700 mb-2">Select Data Type</label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {importTemplates.map((template) => (
-                      <button
-                        key={template.id}
-                        onClick={() => setSelectedTemplate(template.id)}
-                        className={`p-4 rounded-lg border-2 text-left transition-all ${
-                          selectedTemplate === template.id
-                            ? 'border-primary-500 bg-primary-50'
-                            : 'border-secondary-200 hover:border-secondary-300'
-                        }`}
-                      >
-                        <p className="font-medium text-secondary-900">{template.name}</p>
-                        <p className="text-xs text-secondary-500 mt-1">{template.description}</p>
-                        {template.lastImport && (
-                          <p className="text-xs text-primary-600 mt-2">
-                            Last import: {new Date(template.lastImport).toLocaleDateString()}
-                          </p>
-                        )}
-                      </button>
-                    ))}
+                {/* Template Selection - Grouped by Category */}
+                <div className="mb-6 space-y-6">
+                  {/* Sales & Pipeline Templates */}
+                  <div>
+                    <label className="block text-sm font-semibold text-secondary-800 mb-2">📊 Sales & Pipeline</label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {importTemplates.filter(t => ['closed_acv', 'monthly_pipeline_snapshot', 'sales_team_structure', 'prior_year_performance'].includes(t.id)).map((template) => (
+                        <button
+                          key={template.id}
+                          onClick={() => setSelectedTemplate(template.id)}
+                          className={`p-4 rounded-lg border-2 text-left transition-all ${
+                            selectedTemplate === template.id
+                              ? 'border-primary-500 bg-primary-50'
+                              : 'border-secondary-200 hover:border-secondary-300'
+                          }`}
+                        >
+                          <p className="font-medium text-secondary-900 text-sm">{template.name}</p>
+                          <p className="text-xs text-secondary-500 mt-1 line-clamp-2">{template.description}</p>
+                          {template.lastImport && (
+                            <p className="text-xs text-primary-600 mt-2">
+                              Last: {new Date(template.lastImport).toLocaleDateString()}
+                            </p>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Revenue & ARR Templates */}
+                  <div>
+                    <label className="block text-sm font-semibold text-secondary-800 mb-2">💰 Revenue & ARR</label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {importTemplates.filter(t => ['monthly_arr_snapshot', 'arr_subcategory_breakdown'].includes(t.id)).map((template) => (
+                        <button
+                          key={template.id}
+                          onClick={() => setSelectedTemplate(template.id)}
+                          className={`p-4 rounded-lg border-2 text-left transition-all ${
+                            selectedTemplate === template.id
+                              ? 'border-primary-500 bg-primary-50'
+                              : 'border-secondary-200 hover:border-secondary-300'
+                          }`}
+                        >
+                          <p className="font-medium text-secondary-900 text-sm">{template.name}</p>
+                          <p className="text-xs text-secondary-500 mt-1 line-clamp-2">{template.description}</p>
+                          {template.lastImport && (
+                            <p className="text-xs text-primary-600 mt-2">
+                              Last: {new Date(template.lastImport).toLocaleDateString()}
+                            </p>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Mapping & Reference Templates */}
+                  <div>
+                    <label className="block text-sm font-semibold text-secondary-800 mb-2">🔗 Mapping & Reference</label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {importTemplates.filter(t => ['customer_name_mapping', 'product_category_mapping'].includes(t.id)).map((template) => (
+                        <button
+                          key={template.id}
+                          onClick={() => setSelectedTemplate(template.id)}
+                          className={`p-4 rounded-lg border-2 text-left transition-all ${
+                            selectedTemplate === template.id
+                              ? 'border-primary-500 bg-primary-50'
+                              : 'border-secondary-200 hover:border-secondary-300'
+                          }`}
+                        >
+                          <p className="font-medium text-secondary-900 text-sm">{template.name}</p>
+                          <p className="text-xs text-secondary-500 mt-1 line-clamp-2">{template.description}</p>
+                          {template.lastImport && (
+                            <p className="text-xs text-primary-600 mt-2">
+                              Last: {new Date(template.lastImport).toLocaleDateString()}
+                            </p>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Cost & Operations Templates */}
+                  <div>
+                    <label className="block text-sm font-semibold text-secondary-800 mb-2">🏢 Cost & Operations</label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {importTemplates.filter(t => ['cost_data', 'vendors', 'cost_centers'].includes(t.id)).map((template) => (
+                        <button
+                          key={template.id}
+                          onClick={() => setSelectedTemplate(template.id)}
+                          className={`p-4 rounded-lg border-2 text-left transition-all ${
+                            selectedTemplate === template.id
+                              ? 'border-primary-500 bg-primary-50'
+                              : 'border-secondary-200 hover:border-secondary-300'
+                          }`}
+                        >
+                          <p className="font-medium text-secondary-900 text-sm">{template.name}</p>
+                          <p className="text-xs text-secondary-500 mt-1 line-clamp-2">{template.description}</p>
+                          {template.lastImport && (
+                            <p className="text-xs text-primary-600 mt-2">
+                              Last: {new Date(template.lastImport).toLocaleDateString()}
+                            </p>
+                          )}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -665,19 +808,60 @@ export default function SettingsPage() {
               <div className="card p-6">
                 <h2 className="text-lg font-semibold text-secondary-900 mb-4">Download Templates</h2>
                 <p className="text-sm text-secondary-500 mb-4">
-                  Download CSV templates with the correct format for each data type.
+                  Download CSV templates with the correct format and sample data for each data type.
                 </p>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+
+                {/* Quick Download Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
                   {importTemplates.map((template) => (
                     <button
                       key={template.id}
                       onClick={() => downloadTemplate(template.id)}
-                      className="flex items-center gap-2 p-3 border border-secondary-200 rounded-lg hover:bg-secondary-50 transition-colors"
+                      className="flex items-center gap-2 p-3 border border-secondary-200 rounded-lg hover:bg-secondary-50 hover:border-primary-300 transition-colors"
                     >
-                      <span className="text-xl">📥</span>
-                      <span className="text-sm font-medium text-secondary-700">{template.name}</span>
+                      <span className="text-lg">📥</span>
+                      <span className="text-xs font-medium text-secondary-700 truncate">{template.name}</span>
                     </button>
                   ))}
+                </div>
+
+                {/* Template Field Reference */}
+                <div className="border-t border-secondary-200 pt-4">
+                  <h3 className="text-sm font-semibold text-secondary-800 mb-3">📋 Key Template Notes</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-secondary-600">
+                    <div className="bg-blue-50 p-3 rounded-lg">
+                      <p className="font-semibold text-blue-800 mb-1">Closed ACV Calculation Rules</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        <li><strong>License counts</strong>: New Logo, Upsell, Cross-Sell</li>
+                        <li><strong>License excluded</strong>: Extension, Renewal</li>
+                        <li><strong>Implementation</strong>: Always counts for ALL logo types</li>
+                      </ul>
+                    </div>
+                    <div className="bg-green-50 p-3 rounded-lg">
+                      <p className="font-semibold text-green-800 mb-1">Product Category Rules</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>Only <strong>Product Sub-Category</strong> in Pipeline & ARR templates</li>
+                        <li><strong>product_category_mapping</strong> is the ONLY place Category is stored</li>
+                        <li>Sub-Categories: Quantum Platform, SMART Analytics, Cost Drivers Suite, Opus Enterprise</li>
+                      </ul>
+                    </div>
+                    <div className="bg-yellow-50 p-3 rounded-lg">
+                      <p className="font-semibold text-yellow-800 mb-1">Customer Name Mapping</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>Links ARR customer names to Pipeline names</li>
+                        <li>Handles legal vs common names (e.g., IBM vs International Business Machines)</li>
+                        <li>Essential for joining ARR and Pipeline data</li>
+                      </ul>
+                    </div>
+                    <div className="bg-purple-50 p-3 rounded-lg">
+                      <p className="font-semibold text-purple-800 mb-1">Standard Filter Values</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        <li><strong>Regions</strong>: North America, Europe, LATAM, Middle East, APAC</li>
+                        <li><strong>Segments</strong>: Enterprise, SMB</li>
+                        <li><strong>Logo Types</strong>: New Logo, Upsell, Cross-Sell, Extension, Renewal</li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

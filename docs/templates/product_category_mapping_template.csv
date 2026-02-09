@@ -1,0 +1,21 @@
+Product Sub-Category,Product Category,Description,Status
+Quantum Platform,Platform,Core enterprise platform for digital transformation,Active
+SMART Analytics,Analytics,Advanced analytics and business intelligence suite,Active
+Cost Drivers Suite,Cost Management,Cost optimization and spend analytics platform,Active
+Opus Enterprise,Enterprise Solutions,Full-stack enterprise solution with AI capabilities,Active
+Quantum Platform - Lite,Platform,Entry-level platform for SMB customers,Active
+SMART Analytics - Basic,Analytics,Basic analytics for mid-market customers,Active
+Cost Drivers Suite - Essentials,Cost Management,Essential cost management features,Active
+Opus Enterprise - Pro,Enterprise Solutions,Premium enterprise solution with advanced features,Active
+API Gateway,Integration,API management and integration services,Active
+Data Fabric,Data Management,Data integration and management layer,Active
+Workflow Automation,Automation,Business process automation tools,Active
+Security Suite,Security,Enterprise security and compliance tools,Active
+Mobile Platform,Platform,Mobile-first platform experience,Active
+Cloud Infrastructure,Infrastructure,Cloud hosting and infrastructure services,Active
+Professional Services,Services,Implementation and consulting services,Active
+Training & Enablement,Services,Training and customer success programs,Active
+Support - Premium,Services,24/7 premium support package,Active
+Support - Standard,Services,Business hours support package,Active
+Custom Development,Services,Custom feature development,Active
+Legacy Platform,Platform,Deprecated legacy platform (sunset 2025),Deprecated

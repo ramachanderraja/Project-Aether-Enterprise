@@ -1,0 +1,23 @@
+SOW ID,Customer Name,Product Sub-Category,2024 Contribution %,2025 Contribution %,2026 Contribution %,Notes
+SOW-001,Acme Corporation,Quantum Platform,100,85,70,Migrating some workloads to SMART Analytics
+SOW-001,Acme Corporation,SMART Analytics,0,15,30,New analytics adoption starting 2025
+SOW-002,TechFlow Industries,SMART Analytics,100,100,80,Stable until 2026 diversification
+SOW-002,TechFlow Industries,Cost Drivers Suite,0,0,20,Planned expansion in 2026
+SOW-003,Global Pharma Inc,Cost Drivers Suite,80,70,60,Gradual shift to multi-product
+SOW-003,Global Pharma Inc,Quantum Platform,20,30,40,Increasing platform adoption
+SOW-004,RetailMax Holdings,Quantum Platform,100,100,100,Single product customer
+SOW-005,EnergyPlus Corp,SMART Analytics,90,80,75,Diversifying product mix
+SOW-005,EnergyPlus Corp,Cost Drivers Suite,10,20,25,Growing cost management focus
+SOW-006,FinServ Partners,Opus Enterprise,100,90,80,Core product remains dominant
+SOW-006,FinServ Partners,SMART Analytics,0,10,20,Adding analytics capabilities
+SOW-007,ChemCo Industries,SMART Analytics,70,65,60,Balanced product strategy
+SOW-007,ChemCo Industries,Quantum Platform,30,35,40,Growing platform usage
+SOW-008,GovTech Solutions,Cost Drivers Suite,100,85,75,Adding complementary products
+SOW-008,GovTech Solutions,Quantum Platform,0,15,25,Platform rollout in progress
+SOW-009,Blackstone Ventures,SMART Analytics,100,100,90,Analytics focused customer
+SOW-009,Blackstone Ventures,Opus Enterprise,0,0,10,Considering enterprise upgrade
+SOW-010,MediaCorp International,Quantum Platform,100,80,70,Expanding product portfolio
+SOW-010,MediaCorp International,SMART Analytics,0,20,30,Analytics adoption growing
+SOW-011,Unilever Global,Quantum Platform,60,55,50,Strategic multi-product customer
+SOW-011,Unilever Global,SMART Analytics,25,25,25,Stable analytics usage
+SOW-011,Unilever Global,Cost Drivers Suite,15,20,25,Growing cost management

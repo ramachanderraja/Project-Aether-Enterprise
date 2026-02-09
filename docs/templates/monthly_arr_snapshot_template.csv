@@ -1,0 +1,101 @@
+Snapshot Month,SOW ID,Customer Name,Product Sub-Category,Starting ARR,New ARR,Expansion ARR,Contraction ARR,Churn ARR,Ending ARR,Region,Vertical,Segment,Contract Start Date,Contract End Date,Renewal Risk
+2024-01,SOW-001,Acme Corporation,Quantum Platform,0,450000,0,0,0,450000,North America,Life Sciences,Enterprise,2024-01-15,2027-01-15,Low
+2024-01,SOW-002,TechFlow Industries,SMART Analytics,380000,0,0,0,0,380000,Europe,Telecom/Media/Tech,Enterprise,2023-06-01,2026-06-01,Low
+2024-01,SOW-003,Global Pharma Inc,Cost Drivers Suite,520000,0,0,0,0,520000,North America,Life Sciences,Enterprise,2023-03-15,2026-03-15,Low
+2024-01,SOW-004,RetailMax Holdings,Quantum Platform,280000,0,0,0,0,280000,LATAM,CPG & Retail,Enterprise,2023-09-01,2026-09-01,Medium
+2024-01,SOW-005,EnergyPlus Corp,SMART Analytics,225000,0,0,0,0,225000,Middle East,Energy & Utilities,Enterprise,2023-07-01,2026-07-01,Low
+2024-02,SOW-001,Acme Corporation,Quantum Platform,450000,0,0,0,0,450000,North America,Life Sciences,Enterprise,2024-01-15,2027-01-15,Low
+2024-02,SOW-002,TechFlow Industries,SMART Analytics,380000,0,50000,0,0,430000,Europe,Telecom/Media/Tech,Enterprise,2023-06-01,2026-06-01,Low
+2024-02,SOW-003,Global Pharma Inc,Cost Drivers Suite,520000,0,0,0,0,520000,North America,Life Sciences,Enterprise,2023-03-15,2026-03-15,Low
+2024-02,SOW-004,RetailMax Holdings,Quantum Platform,280000,0,0,0,0,280000,LATAM,CPG & Retail,Enterprise,2023-09-01,2026-09-01,Medium
+2024-02,SOW-005,EnergyPlus Corp,SMART Analytics,225000,0,0,0,0,225000,Middle East,Energy & Utilities,Enterprise,2023-07-01,2026-07-01,Low
+2024-02,SOW-006,FinServ Partners,Opus Enterprise,0,650000,0,0,0,650000,APAC,BFSI,Enterprise,2024-02-01,2027-02-01,Low
+2024-03,SOW-001,Acme Corporation,Quantum Platform,450000,0,100000,0,0,550000,North America,Life Sciences,Enterprise,2024-01-15,2027-01-15,Low
+2024-03,SOW-002,TechFlow Industries,SMART Analytics,430000,0,0,0,0,430000,Europe,Telecom/Media/Tech,Enterprise,2023-06-01,2026-06-01,Low
+2024-03,SOW-003,Global Pharma Inc,Cost Drivers Suite,520000,0,80000,0,0,600000,North America,Life Sciences,Enterprise,2023-03-15,2026-03-15,Low
+2024-03,SOW-004,RetailMax Holdings,Quantum Platform,280000,0,0,0,0,280000,LATAM,CPG & Retail,Enterprise,2023-09-01,2026-09-01,Low
+2024-03,SOW-005,EnergyPlus Corp,SMART Analytics,225000,0,0,0,0,225000,Middle East,Energy & Utilities,Enterprise,2023-07-01,2026-07-01,Low
+2024-03,SOW-006,FinServ Partners,Opus Enterprise,650000,0,0,0,0,650000,APAC,BFSI,Enterprise,2024-02-01,2027-02-01,Low
+2024-04,SOW-001,Acme Corporation,Quantum Platform,550000,0,0,0,0,550000,North America,Life Sciences,Enterprise,2024-01-15,2027-01-15,Low
+2024-04,SOW-002,TechFlow Industries,SMART Analytics,430000,0,0,50000,0,380000,Europe,Telecom/Media/Tech,Enterprise,2023-06-01,2026-06-01,Medium
+2024-04,SOW-003,Global Pharma Inc,Cost Drivers Suite,600000,0,0,0,0,600000,North America,Life Sciences,Enterprise,2023-03-15,2026-03-15,Low
+2024-04,SOW-004,RetailMax Holdings,Quantum Platform,280000,0,0,0,0,280000,LATAM,CPG & Retail,Enterprise,2023-09-01,2026-09-01,Medium
+2024-04,SOW-005,EnergyPlus Corp,SMART Analytics,225000,0,0,0,0,225000,Middle East,Energy & Utilities,Enterprise,2023-07-01,2026-07-01,Low
+2024-04,SOW-006,FinServ Partners,Opus Enterprise,650000,0,0,0,0,650000,APAC,BFSI,Enterprise,2024-02-01,2027-02-01,Low
+2024-04,SOW-007,ChemCo Industries,SMART Analytics,0,600000,0,0,0,600000,North America,Chemicals/Oil/Gas/Resources,Enterprise,2024-04-18,2027-04-18,Low
+2024-05,SOW-001,Acme Corporation,Quantum Platform,550000,0,50000,0,0,600000,North America,Life Sciences,Enterprise,2024-01-15,2027-01-15,Low
+2024-05,SOW-002,TechFlow Industries,SMART Analytics,380000,0,0,0,0,380000,Europe,Telecom/Media/Tech,Enterprise,2023-06-01,2026-06-01,Medium
+2024-05,SOW-003,Global Pharma Inc,Cost Drivers Suite,600000,0,0,0,0,600000,North America,Life Sciences,Enterprise,2023-03-15,2026-03-15,Low
+2024-05,SOW-004,RetailMax Holdings,Quantum Platform,280000,0,0,0,0,280000,LATAM,CPG & Retail,Enterprise,2023-09-01,2026-09-01,Low
+2024-05,SOW-005,EnergyPlus Corp,SMART Analytics,225000,0,0,0,0,225000,Middle East,Energy & Utilities,Enterprise,2023-07-01,2026-07-01,Low
+2024-05,SOW-006,FinServ Partners,Opus Enterprise,650000,0,0,0,0,650000,APAC,BFSI,Enterprise,2024-02-01,2027-02-01,Low
+2024-05,SOW-007,ChemCo Industries,SMART Analytics,600000,0,0,0,0,600000,North America,Chemicals/Oil/Gas/Resources,Enterprise,2024-04-18,2027-04-18,Low
+2024-05,SOW-008,GovTech Solutions,Cost Drivers Suite,0,500000,0,0,0,500000,North America,Public Sector,Enterprise,2024-05-01,2027-05-01,Low
+2024-06,SOW-001,Acme Corporation,Quantum Platform,600000,0,0,0,0,600000,North America,Life Sciences,Enterprise,2024-01-15,2027-01-15,Low
+2024-06,SOW-002,TechFlow Industries,SMART Analytics,380000,0,0,0,0,380000,Europe,Telecom/Media/Tech,Enterprise,2023-06-01,2026-06-01,Low
+2024-06,SOW-003,Global Pharma Inc,Cost Drivers Suite,600000,0,0,0,0,600000,North America,Life Sciences,Enterprise,2023-03-15,2026-03-15,Low
+2024-06,SOW-004,RetailMax Holdings,Quantum Platform,280000,0,0,0,0,280000,LATAM,CPG & Retail,Enterprise,2023-09-01,2026-09-01,Low
+2024-06,SOW-005,EnergyPlus Corp,SMART Analytics,225000,0,0,0,0,225000,Middle East,Energy & Utilities,Enterprise,2023-07-01,2026-07-01,Low
+2024-06,SOW-006,FinServ Partners,Opus Enterprise,650000,0,100000,0,0,750000,APAC,BFSI,Enterprise,2024-02-01,2027-02-01,Low
+2024-06,SOW-007,ChemCo Industries,SMART Analytics,600000,0,0,0,0,600000,North America,Chemicals/Oil/Gas/Resources,Enterprise,2024-04-18,2027-04-18,Low
+2024-06,SOW-008,GovTech Solutions,Cost Drivers Suite,500000,0,0,0,0,500000,North America,Public Sector,Enterprise,2024-05-01,2027-05-01,Low
+2024-06,SOW-009,Blackstone Ventures,SMART Analytics,0,225000,0,0,0,225000,North America,Private Equity,Enterprise,2024-06-10,2027-06-10,Low
+2024-07,SOW-001,Acme Corporation,Quantum Platform,600000,0,0,0,0,600000,North America,Life Sciences,Enterprise,2024-01-15,2027-01-15,Low
+2024-07,SOW-002,TechFlow Industries,SMART Analytics,380000,0,0,0,0,380000,Europe,Telecom/Media/Tech,Enterprise,2023-06-01,2026-06-01,Low
+2024-07,SOW-003,Global Pharma Inc,Cost Drivers Suite,600000,0,0,0,0,600000,North America,Life Sciences,Enterprise,2023-03-15,2026-03-15,Low
+2024-07,SOW-004,RetailMax Holdings,Quantum Platform,280000,0,0,30000,0,250000,LATAM,CPG & Retail,Enterprise,2023-09-01,2026-09-01,High
+2024-07,SOW-005,EnergyPlus Corp,SMART Analytics,225000,0,0,0,0,225000,Middle East,Energy & Utilities,Enterprise,2023-07-01,2026-07-01,Low
+2024-07,SOW-006,FinServ Partners,Opus Enterprise,750000,0,0,0,0,750000,APAC,BFSI,Enterprise,2024-02-01,2027-02-01,Low
+2024-07,SOW-007,ChemCo Industries,SMART Analytics,600000,0,0,0,0,600000,North America,Chemicals/Oil/Gas/Resources,Enterprise,2024-04-18,2027-04-18,Low
+2024-07,SOW-008,GovTech Solutions,Cost Drivers Suite,500000,0,0,0,0,500000,North America,Public Sector,Enterprise,2024-05-01,2027-05-01,Low
+2024-07,SOW-009,Blackstone Ventures,SMART Analytics,225000,0,0,0,0,225000,North America,Private Equity,Enterprise,2024-06-10,2027-06-10,Low
+2024-08,SOW-001,Acme Corporation,Quantum Platform,600000,0,0,0,0,600000,North America,Life Sciences,Enterprise,2024-01-15,2027-01-15,Low
+2024-08,SOW-002,TechFlow Industries,SMART Analytics,380000,0,0,0,0,380000,Europe,Telecom/Media/Tech,Enterprise,2023-06-01,2026-06-01,Low
+2024-08,SOW-003,Global Pharma Inc,Cost Drivers Suite,600000,0,0,0,0,600000,North America,Life Sciences,Enterprise,2023-03-15,2026-03-15,Low
+2024-08,SOW-004,RetailMax Holdings,Quantum Platform,250000,0,0,0,0,250000,LATAM,CPG & Retail,Enterprise,2023-09-01,2026-09-01,High
+2024-08,SOW-005,EnergyPlus Corp,SMART Analytics,225000,0,0,0,0,225000,Middle East,Energy & Utilities,Enterprise,2023-07-01,2026-07-01,Low
+2024-08,SOW-006,FinServ Partners,Opus Enterprise,750000,0,0,0,0,750000,APAC,BFSI,Enterprise,2024-02-01,2027-02-01,Low
+2024-08,SOW-007,ChemCo Industries,SMART Analytics,600000,0,0,0,0,600000,North America,Chemicals/Oil/Gas/Resources,Enterprise,2024-04-18,2027-04-18,Low
+2024-08,SOW-008,GovTech Solutions,Cost Drivers Suite,500000,0,0,0,0,500000,North America,Public Sector,Enterprise,2024-05-01,2027-05-01,Low
+2024-08,SOW-009,Blackstone Ventures,SMART Analytics,225000,0,0,0,0,225000,North America,Private Equity,Enterprise,2024-06-10,2027-06-10,Low
+2024-08,SOW-010,MediaCorp International,Quantum Platform,0,900000,0,0,0,900000,Europe,Telecom/Media/Tech,Enterprise,2024-08-20,2027-08-20,Low
+2024-09,SOW-001,Acme Corporation,Quantum Platform,600000,0,0,0,0,600000,North America,Life Sciences,Enterprise,2024-01-15,2027-01-15,Low
+2024-09,SOW-002,TechFlow Industries,SMART Analytics,380000,0,0,0,0,380000,Europe,Telecom/Media/Tech,Enterprise,2023-06-01,2026-06-01,Low
+2024-09,SOW-003,Global Pharma Inc,Cost Drivers Suite,600000,0,0,0,0,600000,North America,Life Sciences,Enterprise,2023-03-15,2026-03-15,Low
+2024-09,SOW-004,RetailMax Holdings,Quantum Platform,250000,0,0,0,250000,0,LATAM,CPG & Retail,Enterprise,2023-09-01,2026-09-01,Churned
+2024-09,SOW-005,EnergyPlus Corp,SMART Analytics,225000,0,0,0,0,225000,Middle East,Energy & Utilities,Enterprise,2023-07-01,2026-07-01,Low
+2024-09,SOW-006,FinServ Partners,Opus Enterprise,750000,0,0,0,0,750000,APAC,BFSI,Enterprise,2024-02-01,2027-02-01,Low
+2024-09,SOW-007,ChemCo Industries,SMART Analytics,600000,0,0,0,0,600000,North America,Chemicals/Oil/Gas/Resources,Enterprise,2024-04-18,2027-04-18,Low
+2024-09,SOW-008,GovTech Solutions,Cost Drivers Suite,500000,0,0,0,0,500000,North America,Public Sector,Enterprise,2024-05-01,2027-05-01,Low
+2024-09,SOW-009,Blackstone Ventures,SMART Analytics,225000,0,0,0,0,225000,North America,Private Equity,Enterprise,2024-06-10,2027-06-10,Low
+2024-09,SOW-010,MediaCorp International,Quantum Platform,900000,0,0,0,0,900000,Europe,Telecom/Media/Tech,Enterprise,2024-08-20,2027-08-20,Low
+2024-10,SOW-001,Acme Corporation,Quantum Platform,600000,0,0,0,0,600000,North America,Life Sciences,Enterprise,2024-01-15,2027-01-15,Low
+2024-10,SOW-002,TechFlow Industries,SMART Analytics,380000,0,70000,0,0,450000,Europe,Telecom/Media/Tech,Enterprise,2023-06-01,2026-06-01,Low
+2024-10,SOW-003,Global Pharma Inc,Cost Drivers Suite,600000,0,0,0,0,600000,North America,Life Sciences,Enterprise,2023-03-15,2026-03-15,Low
+2024-10,SOW-005,EnergyPlus Corp,SMART Analytics,225000,0,0,0,0,225000,Middle East,Energy & Utilities,Enterprise,2023-07-01,2026-07-01,Low
+2024-10,SOW-006,FinServ Partners,Opus Enterprise,750000,0,0,0,0,750000,APAC,BFSI,Enterprise,2024-02-01,2027-02-01,Low
+2024-10,SOW-007,ChemCo Industries,SMART Analytics,600000,0,0,0,0,600000,North America,Chemicals/Oil/Gas/Resources,Enterprise,2024-04-18,2027-04-18,Low
+2024-10,SOW-008,GovTech Solutions,Cost Drivers Suite,500000,0,0,0,0,500000,North America,Public Sector,Enterprise,2024-05-01,2027-05-01,Low
+2024-10,SOW-009,Blackstone Ventures,SMART Analytics,225000,0,0,0,0,225000,North America,Private Equity,Enterprise,2024-06-10,2027-06-10,Low
+2024-10,SOW-010,MediaCorp International,Quantum Platform,900000,0,0,0,0,900000,Europe,Telecom/Media/Tech,Enterprise,2024-08-20,2027-08-20,Low
+2024-10,SOW-011,Unilever Global,Quantum Platform,0,1200000,0,0,0,1200000,Europe,Unilever,Enterprise,2024-10-25,2027-10-25,Low
+2024-11,SOW-001,Acme Corporation,Quantum Platform,600000,0,0,0,0,600000,North America,Life Sciences,Enterprise,2024-01-15,2027-01-15,Low
+2024-11,SOW-002,TechFlow Industries,SMART Analytics,450000,0,0,0,0,450000,Europe,Telecom/Media/Tech,Enterprise,2023-06-01,2026-06-01,Low
+2024-11,SOW-003,Global Pharma Inc,Cost Drivers Suite,600000,0,0,0,0,600000,North America,Life Sciences,Enterprise,2023-03-15,2026-03-15,Low
+2024-11,SOW-005,EnergyPlus Corp,SMART Analytics,225000,0,0,0,0,225000,Middle East,Energy & Utilities,Enterprise,2023-07-01,2026-07-01,Low
+2024-11,SOW-006,FinServ Partners,Opus Enterprise,750000,0,0,0,0,750000,APAC,BFSI,Enterprise,2024-02-01,2027-02-01,Low
+2024-11,SOW-007,ChemCo Industries,SMART Analytics,600000,0,0,0,0,600000,North America,Chemicals/Oil/Gas/Resources,Enterprise,2024-04-18,2027-04-18,Low
+2024-11,SOW-008,GovTech Solutions,Cost Drivers Suite,500000,0,0,0,0,500000,North America,Public Sector,Enterprise,2024-05-01,2027-05-01,Low
+2024-11,SOW-009,Blackstone Ventures,SMART Analytics,225000,0,0,0,0,225000,North America,Private Equity,Enterprise,2024-06-10,2027-06-10,Low
+2024-11,SOW-010,MediaCorp International,Quantum Platform,900000,0,0,0,0,900000,Europe,Telecom/Media/Tech,Enterprise,2024-08-20,2027-08-20,Low
+2024-11,SOW-011,Unilever Global,Quantum Platform,1200000,0,0,0,0,1200000,Europe,Unilever,Enterprise,2024-10-25,2027-10-25,Low
+2024-12,SOW-001,Acme Corporation,Quantum Platform,600000,0,0,0,0,600000,North America,Life Sciences,Enterprise,2024-01-15,2027-01-15,Low
+2024-12,SOW-002,TechFlow Industries,SMART Analytics,450000,0,0,0,0,450000,Europe,Telecom/Media/Tech,Enterprise,2023-06-01,2026-06-01,Low
+2024-12,SOW-003,Global Pharma Inc,Cost Drivers Suite,600000,0,0,0,0,600000,North America,Life Sciences,Enterprise,2023-03-15,2026-03-15,Low
+2024-12,SOW-005,EnergyPlus Corp,SMART Analytics,225000,0,0,0,0,225000,Middle East,Energy & Utilities,Enterprise,2023-07-01,2026-07-01,Low
+2024-12,SOW-006,FinServ Partners,Opus Enterprise,750000,0,50000,0,0,800000,APAC,BFSI,Enterprise,2024-02-01,2027-02-01,Low
+2024-12,SOW-007,ChemCo Industries,SMART Analytics,600000,0,0,0,0,600000,North America,Chemicals/Oil/Gas/Resources,Enterprise,2024-04-18,2027-04-18,Low
+2024-12,SOW-008,GovTech Solutions,Cost Drivers Suite,500000,0,0,0,0,500000,North America,Public Sector,Enterprise,2024-05-01,2027-05-01,Low
+2024-12,SOW-009,Blackstone Ventures,SMART Analytics,225000,0,0,0,0,225000,North America,Private Equity,Enterprise,2024-06-10,2027-06-10,Low
+2024-12,SOW-010,MediaCorp International,Quantum Platform,900000,0,0,0,0,900000,Europe,Telecom/Media/Tech,Enterprise,2024-08-20,2027-08-20,Low
+2024-12,SOW-011,Unilever Global,Quantum Platform,1200000,0,0,0,0,1200000,Europe,Unilever,Enterprise,2024-10-25,2027-10-25,Low

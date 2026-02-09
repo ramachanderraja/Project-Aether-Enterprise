@@ -1,0 +1,63 @@
+Snapshot Month,Pipeline Deal ID,Deal Name,Customer Name,Deal Value,License ACV,Implementation Value,Logo Type,Deal Stage,Current Stage,Probability,Expected Close Date,Region,Vertical,Segment,Product Sub-Category
+2024-01,PD-201,Acme Digital Platform,Acme Corporation,500000,400000,100000,New Logo,Discovery,Discovery,30%,2024-06-30,North America,Life Sciences,Enterprise,Quantum Platform
+2024-01,PD-202,TechFlow Expansion,TechFlow Industries,300000,250000,50000,Upsell,Qualification,Qualification,30%,2024-05-15,Europe,Telecom/Media/Tech,Enterprise,SMART Analytics
+2024-01,PD-203,Global Pharma Cross-Sell,Global Pharma Inc,400000,320000,80000,Cross-Sell,Proposal,Proposal,50%,2024-04-30,North America,Life Sciences,Enterprise,Cost Drivers Suite
+2024-01,PD-204,RetailMax Extension,RetailMax Holdings,250000,200000,50000,Extension,Negotiation,Negotiation,70%,2024-03-31,LATAM,CPG & Retail,Enterprise,Quantum Platform
+2024-01,PD-205,EnergyPlus Renewal,EnergyPlus Corp,225000,180000,45000,Renewal,Proposal,Proposal,50%,2024-04-15,Middle East,Energy & Utilities,Enterprise,SMART Analytics
+2024-02,PD-201,Acme Digital Platform,Acme Corporation,550000,440000,110000,New Logo,Qualification,Qualification,30%,2024-06-30,North America,Life Sciences,Enterprise,Quantum Platform
+2024-02,PD-202,TechFlow Expansion,TechFlow Industries,350000,280000,70000,Upsell,Proposal,Proposal,50%,2024-05-15,Europe,Telecom/Media/Tech,Enterprise,SMART Analytics
+2024-02,PD-203,Global Pharma Cross-Sell,Global Pharma Inc,400000,320000,80000,Cross-Sell,Negotiation,Negotiation,70%,2024-04-30,North America,Life Sciences,Enterprise,Cost Drivers Suite
+2024-02,PD-204,RetailMax Extension,RetailMax Holdings,250000,200000,50000,Extension,Closed Won,Closed Won,100%,2024-02-28,LATAM,CPG & Retail,Enterprise,Quantum Platform
+2024-02,PD-205,EnergyPlus Renewal,EnergyPlus Corp,225000,180000,45000,Renewal,Negotiation,Negotiation,70%,2024-03-15,Middle East,Energy & Utilities,Enterprise,SMART Analytics
+2024-02,PD-206,FinServ New Platform,FinServ Partners,650000,520000,130000,New Logo,Discovery,Discovery,30%,2024-07-31,APAC,BFSI,Enterprise,Opus Enterprise
+2024-03,PD-201,Acme Digital Platform,Acme Corporation,600000,450000,150000,New Logo,Proposal,Proposal,50%,2024-06-30,North America,Life Sciences,Enterprise,Quantum Platform
+2024-03,PD-202,TechFlow Expansion,TechFlow Industries,350000,280000,70000,Upsell,Negotiation,Negotiation,70%,2024-05-15,Europe,Telecom/Media/Tech,Enterprise,SMART Analytics
+2024-03,PD-203,Global Pharma Cross-Sell,Global Pharma Inc,400000,320000,80000,Cross-Sell,Closed Won,Closed Won,100%,2024-03-10,North America,Life Sciences,Enterprise,Cost Drivers Suite
+2024-03,PD-205,EnergyPlus Renewal,EnergyPlus Corp,225000,180000,45000,Renewal,Closed Won,Closed Won,100%,2024-03-15,Middle East,Energy & Utilities,Enterprise,SMART Analytics
+2024-03,PD-206,FinServ New Platform,FinServ Partners,650000,520000,130000,New Logo,Qualification,Qualification,30%,2024-07-31,APAC,BFSI,Enterprise,Opus Enterprise
+2024-03,PD-207,AutoParts SMB Deal,AutoParts Global,95000,75000,20000,Upsell,Discovery,Discovery,30%,2024-06-30,Europe,Automotive and Industrial,SMB,Quantum Platform
+2024-04,PD-201,Acme Digital Platform,Acme Corporation,600000,450000,150000,New Logo,Negotiation,Negotiation,70%,2024-06-30,North America,Life Sciences,Enterprise,Quantum Platform
+2024-04,PD-202,TechFlow Expansion,TechFlow Industries,350000,280000,70000,Upsell,Closed Won,Closed Won,100%,2024-04-22,Europe,Telecom/Media/Tech,Enterprise,SMART Analytics
+2024-04,PD-206,FinServ New Platform,FinServ Partners,650000,520000,130000,New Logo,Proposal,Proposal,50%,2024-07-31,APAC,BFSI,Enterprise,Opus Enterprise
+2024-04,PD-207,AutoParts SMB Deal,AutoParts Global,95000,75000,20000,Upsell,Qualification,Qualification,30%,2024-06-30,Europe,Automotive and Industrial,SMB,Quantum Platform
+2024-04,PD-208,ChemCo Migration,ChemCo Industries,600000,410000,190000,Cross-Sell,Discovery,Discovery,30%,2024-08-31,North America,Chemicals/Oil/Gas/Resources,Enterprise,SMART Analytics
+2024-05,PD-201,Acme Digital Platform,Acme Corporation,600000,450000,150000,New Logo,Closed Won,Closed Won,100%,2024-05-15,North America,Life Sciences,Enterprise,Quantum Platform
+2024-05,PD-206,FinServ New Platform,FinServ Partners,650000,520000,130000,New Logo,Negotiation,Negotiation,70%,2024-07-31,APAC,BFSI,Enterprise,Opus Enterprise
+2024-05,PD-207,AutoParts SMB Deal,AutoParts Global,95000,75000,20000,Upsell,Proposal,Proposal,50%,2024-06-30,Europe,Automotive and Industrial,SMB,Quantum Platform
+2024-05,PD-208,ChemCo Migration,ChemCo Industries,600000,410000,190000,Cross-Sell,Qualification,Qualification,30%,2024-08-31,North America,Chemicals/Oil/Gas/Resources,Enterprise,SMART Analytics
+2024-05,PD-209,GovTech Renewal,GovTech Solutions,500000,340000,160000,Renewal,Discovery,Discovery,30%,2024-09-30,North America,Public Sector,Enterprise,Cost Drivers Suite
+2024-06,PD-206,FinServ New Platform,FinServ Partners,650000,520000,130000,New Logo,Closed Won,Closed Won,100%,2024-06-25,APAC,BFSI,Enterprise,Opus Enterprise
+2024-06,PD-207,AutoParts SMB Deal,AutoParts Global,95000,75000,20000,Upsell,Negotiation,Negotiation,70%,2024-06-30,Europe,Automotive and Industrial,SMB,Quantum Platform
+2024-06,PD-208,ChemCo Migration,ChemCo Industries,600000,410000,190000,Cross-Sell,Proposal,Proposal,50%,2024-08-31,North America,Chemicals/Oil/Gas/Resources,Enterprise,SMART Analytics
+2024-06,PD-209,GovTech Renewal,GovTech Solutions,500000,340000,160000,Renewal,Qualification,Qualification,30%,2024-09-30,North America,Public Sector,Enterprise,Cost Drivers Suite
+2024-06,PD-210,MediaCorp Platform,MediaCorp International,900000,680000,220000,New Logo,Discovery,Discovery,30%,2024-10-31,Europe,Telecom/Media/Tech,Enterprise,Quantum Platform
+2024-07,PD-207,AutoParts SMB Deal,AutoParts Global,95000,75000,20000,Upsell,Closed Lost,Closed Lost,0%,2024-07-15,Europe,Automotive and Industrial,SMB,Quantum Platform
+2024-07,PD-208,ChemCo Migration,ChemCo Industries,600000,410000,190000,Cross-Sell,Negotiation,Negotiation,70%,2024-08-31,North America,Chemicals/Oil/Gas/Resources,Enterprise,SMART Analytics
+2024-07,PD-209,GovTech Renewal,GovTech Solutions,500000,340000,160000,Renewal,Proposal,Proposal,50%,2024-09-30,North America,Public Sector,Enterprise,Cost Drivers Suite
+2024-07,PD-210,MediaCorp Platform,MediaCorp International,900000,680000,220000,New Logo,Qualification,Qualification,30%,2024-10-31,Europe,Telecom/Media/Tech,Enterprise,Quantum Platform
+2024-07,PD-211,PE Portfolio Deal,Blackstone Ventures,225000,150000,75000,Extension,Discovery,Discovery,30%,2024-11-30,North America,Private Equity,Enterprise,SMART Analytics
+2024-08,PD-208,ChemCo Migration,ChemCo Industries,600000,410000,190000,Cross-Sell,Closed Won,Closed Won,100%,2024-08-18,North America,Chemicals/Oil/Gas/Resources,Enterprise,SMART Analytics
+2024-08,PD-209,GovTech Renewal,GovTech Solutions,500000,340000,160000,Renewal,Negotiation,Negotiation,70%,2024-09-30,North America,Public Sector,Enterprise,Cost Drivers Suite
+2024-08,PD-210,MediaCorp Platform,MediaCorp International,900000,680000,220000,New Logo,Proposal,Proposal,50%,2024-10-31,Europe,Telecom/Media/Tech,Enterprise,Quantum Platform
+2024-08,PD-211,PE Portfolio Deal,Blackstone Ventures,225000,150000,75000,Extension,Qualification,Qualification,30%,2024-11-30,North America,Private Equity,Enterprise,SMART Analytics
+2024-08,PD-212,Unilever Strategic,Unilever Global,1200000,890000,310000,Upsell,Discovery,Discovery,30%,2024-12-31,Europe,Unilever,Enterprise,Quantum Platform
+2024-09,PD-209,GovTech Renewal,GovTech Solutions,500000,340000,160000,Renewal,Closed Won,Closed Won,100%,2024-09-01,North America,Public Sector,Enterprise,Cost Drivers Suite
+2024-09,PD-210,MediaCorp Platform,MediaCorp International,850000,640000,210000,New Logo,Negotiation,Negotiation,70%,2024-10-31,Europe,Telecom/Media/Tech,Enterprise,Quantum Platform
+2024-09,PD-211,PE Portfolio Deal,Blackstone Ventures,225000,150000,75000,Extension,Proposal,Proposal,50%,2024-11-30,North America,Private Equity,Enterprise,SMART Analytics
+2024-09,PD-212,Unilever Strategic,Unilever Global,1200000,890000,310000,Upsell,Qualification,Qualification,30%,2024-12-31,Europe,Unilever,Enterprise,Quantum Platform
+2024-09,PD-213,APAC Bank New,APAC Banking Corp,450000,360000,90000,New Logo,Discovery,Discovery,30%,2025-01-31,APAC,BFSI,Enterprise,Opus Enterprise
+2024-10,PD-210,MediaCorp Platform,MediaCorp International,850000,640000,210000,New Logo,Closed Won,Closed Won,100%,2024-10-20,Europe,Telecom/Media/Tech,Enterprise,Quantum Platform
+2024-10,PD-211,PE Portfolio Deal,Blackstone Ventures,225000,150000,75000,Extension,Negotiation,Negotiation,70%,2024-11-30,North America,Private Equity,Enterprise,SMART Analytics
+2024-10,PD-212,Unilever Strategic,Unilever Global,1200000,890000,310000,Upsell,Proposal,Proposal,50%,2024-12-31,Europe,Unilever,Enterprise,Quantum Platform
+2024-10,PD-213,APAC Bank New,APAC Banking Corp,450000,360000,90000,New Logo,Qualification,Qualification,30%,2025-01-31,APAC,BFSI,Enterprise,Opus Enterprise
+2024-10,PD-214,LatAm Retail Renewal,LatAm Retail Group,180000,140000,40000,Renewal,Discovery,Discovery,30%,2025-02-28,LATAM,CPG & Retail,SMB,SMART Analytics
+2024-11,PD-211,PE Portfolio Deal,Blackstone Ventures,225000,150000,75000,Extension,Closed Won,Closed Won,100%,2024-11-10,North America,Private Equity,Enterprise,SMART Analytics
+2024-11,PD-212,Unilever Strategic,Unilever Global,1200000,890000,310000,Upsell,Negotiation,Negotiation,70%,2024-12-31,Europe,Unilever,Enterprise,Quantum Platform
+2024-11,PD-213,APAC Bank New,APAC Banking Corp,500000,400000,100000,New Logo,Proposal,Proposal,50%,2025-01-31,APAC,BFSI,Enterprise,Opus Enterprise
+2024-11,PD-214,LatAm Retail Renewal,LatAm Retail Group,180000,140000,40000,Renewal,Qualification,Qualification,30%,2025-02-28,LATAM,CPG & Retail,SMB,SMART Analytics
+2024-11,PD-215,MEA Energy Extension,MEA Energy Holdings,320000,250000,70000,Extension,Discovery,Discovery,30%,2025-03-31,Middle East,Energy & Utilities,Enterprise,Cost Drivers Suite
+2024-12,PD-212,Unilever Strategic,Unilever Global,1200000,890000,310000,Upsell,Closed Won,Closed Won,100%,2024-12-25,Europe,Unilever,Enterprise,Quantum Platform
+2024-12,PD-213,APAC Bank New,APAC Banking Corp,500000,400000,100000,New Logo,Negotiation,Negotiation,70%,2025-01-31,APAC,BFSI,Enterprise,Opus Enterprise
+2024-12,PD-214,LatAm Retail Renewal,LatAm Retail Group,180000,140000,40000,Renewal,Proposal,Proposal,50%,2025-02-28,LATAM,CPG & Retail,SMB,SMART Analytics
+2024-12,PD-215,MEA Energy Extension,MEA Energy Holdings,320000,250000,70000,Extension,Qualification,Qualification,30%,2025-03-31,Middle East,Energy & Utilities,Enterprise,Cost Drivers Suite
+2024-12,PD-216,TechStart New Logo,TechStart Inc,280000,220000,60000,New Logo,Discovery,Discovery,30%,2025-04-30,North America,Telecom/Media/Tech,SMB,SMART Analytics

@@ -1,0 +1,24 @@
+Closed ACV ID,Pipeline Deal ID,Deal Name,Customer Name,Close Date,Logo Type,Value Type,Amount,License ACV,Implementation Value,Region,Vertical,Segment,Platform,Sales Rep,Notes
+CACV-001,PD-101,Acme Corp Digital Transformation,Acme Corporation,2024-01-15,New Logo,License,450000,450000,0,North America,Life Sciences,Enterprise,Quantum,John Smith,New enterprise deal - License component
+CACV-001,PD-101,Acme Corp Digital Transformation,Acme Corporation,2024-01-15,New Logo,Implementation,150000,0,150000,North America,Life Sciences,Enterprise,Quantum,John Smith,New enterprise deal - Implementation component
+CACV-002,PD-102,TechFlow Platform Expansion,TechFlow Industries,2024-01-22,Upsell,License,280000,280000,0,Europe,Telecom/Media/Tech,Enterprise,SMART,Sarah Johnson,Existing customer expansion - License
+CACV-002,PD-102,TechFlow Platform Expansion,TechFlow Industries,2024-01-22,Upsell,Implementation,70000,0,70000,Europe,Telecom/Media/Tech,Enterprise,SMART,Sarah Johnson,Existing customer expansion - Implementation
+CACV-003,PD-103,Global Pharma Cross-Sell,Global Pharma Inc,2024-02-10,Cross-Sell,License,320000,320000,0,North America,Life Sciences,Enterprise,Cost Drivers,Mike Chen,Cross-sell new product line - License
+CACV-003,PD-103,Global Pharma Cross-Sell,Global Pharma Inc,2024-02-10,Cross-Sell,Implementation,80000,0,80000,North America,Life Sciences,Enterprise,Cost Drivers,Mike Chen,Cross-sell new product line - Implementation
+CACV-004,PD-104,RetailMax Contract Extension,RetailMax Holdings,2024-02-28,Extension,License,200000,0,0,LATAM,CPG & Retail,Enterprise,Quantum,Ana Rodriguez,Extension - License excluded from ACV
+CACV-004,PD-104,RetailMax Contract Extension,RetailMax Holdings,2024-02-28,Extension,Implementation,50000,0,50000,LATAM,CPG & Retail,Enterprise,Quantum,Ana Rodriguez,Extension - Implementation counts
+CACV-005,PD-105,EnergyPlus Annual Renewal,EnergyPlus Corp,2024-03-15,Renewal,License,180000,0,0,Middle East,Energy & Utilities,Enterprise,SMART,Ahmed Hassan,Renewal - License excluded (same as Extension)
+CACV-005,PD-105,EnergyPlus Annual Renewal,EnergyPlus Corp,2024-03-15,Renewal,Implementation,45000,0,45000,Middle East,Energy & Utilities,Enterprise,SMART,Ahmed Hassan,Renewal - Implementation counts
+CACV-006,,FinServ Direct Deal,FinServ Partners,2024-03-22,New Logo,License,520000,520000,0,APAC,BFSI,Enterprise,Opus,Wei Zhang,Direct deal - not from pipeline (NULL Pipeline Deal ID)
+CACV-006,,FinServ Direct Deal,FinServ Partners,2024-03-22,New Logo,Implementation,130000,0,130000,APAC,BFSI,Enterprise,Opus,Wei Zhang,Direct deal - Implementation component
+CACV-007,,AutoParts Quick Win,AutoParts Global,2024-04-05,Upsell,License,95000,95000,0,Europe,Automotive and Industrial,SMB,Quantum,Hans Mueller,SMB upsell - no pipeline tracking
+CACV-008,PD-108,ChemCo Platform Migration,ChemCo Industries,2024-04-18,Cross-Sell,License,410000,410000,0,North America,Chemicals/Oil/Gas/Resources,Enterprise,SMART,Jennifer Lee,Major cross-sell - License
+CACV-008,PD-108,ChemCo Platform Migration,ChemCo Industries,2024-04-18,Cross-Sell,Implementation,190000,0,190000,North America,Chemicals/Oil/Gas/Resources,Enterprise,SMART,Jennifer Lee,Major cross-sell - Implementation
+CACV-009,PD-109,GovTech Renewal Plus,GovTech Solutions,2024-05-01,Renewal,License,340000,0,0,North America,Public Sector,Enterprise,Cost Drivers,David Wilson,Renewal with added services - License excluded
+CACV-009,PD-109,GovTech Renewal Plus,GovTech Solutions,2024-05-01,Renewal,Implementation,160000,0,160000,North America,Public Sector,Enterprise,Cost Drivers,David Wilson,Renewal - Implementation counts
+CACV-010,PD-110,MediaCorp New Platform,MediaCorp International,2024-05-20,New Logo,License,680000,680000,0,Europe,Telecom/Media/Tech,Enterprise,Quantum,Pierre Dubois,Large new logo win
+CACV-010,PD-110,MediaCorp New Platform,MediaCorp International,2024-05-20,New Logo,Implementation,220000,0,220000,Europe,Telecom/Media/Tech,Enterprise,Quantum,Pierre Dubois,Implementation services
+CACV-011,PD-111,PE Portfolio Extension,Blackstone Ventures,2024-06-10,Extension,License,150000,0,0,North America,Private Equity,Enterprise,SMART,Robert Taylor,PE firm extension - License excluded
+CACV-011,PD-111,PE Portfolio Extension,Blackstone Ventures,2024-06-10,Extension,Implementation,75000,0,75000,North America,Private Equity,Enterprise,SMART,Robert Taylor,Extension - Implementation counts
+CACV-012,,Unilever Direct,Unilever Global,2024-06-25,Upsell,License,890000,890000,0,Europe,Unilever,Enterprise,Quantum,Emma Thompson,Strategic account - direct booking
+CACV-012,,Unilever Direct,Unilever Global,2024-06-25,Upsell,Implementation,310000,0,310000,Europe,Unilever,Enterprise,Quantum,Emma Thompson,Implementation for strategic account

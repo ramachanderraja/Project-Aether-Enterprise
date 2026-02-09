@@ -1,0 +1,21 @@
+Sales Rep ID,Name,Email,Role,Region,Vertical Focus,Segment,Manager ID,Manager Name,Annual Quota,Q1 Quota,Q2 Quota,Q3 Quota,Q4 Quota,Hire Date,Status
+SR-001,John Smith,john.smith@company.com,VP Sales,Global,All,All,,None,25000000,5500000,6000000,6500000,7000000,2018-03-15,Active
+SR-002,Sarah Johnson,sarah.johnson@company.com,Regional Director,North America,All,Enterprise,SR-001,John Smith,8000000,1800000,1950000,2100000,2150000,2019-06-01,Active
+SR-003,Mike Chen,mike.chen@company.com,Senior AE,North America,Life Sciences,Enterprise,SR-002,Sarah Johnson,3500000,800000,850000,900000,950000,2020-01-15,Active
+SR-004,Jennifer Lee,jennifer.lee@company.com,Senior AE,North America,Chemicals/Oil/Gas/Resources,Enterprise,SR-002,Sarah Johnson,3200000,720000,780000,840000,860000,2020-08-01,Active
+SR-005,David Wilson,david.wilson@company.com,AE,North America,Public Sector,Enterprise,SR-002,Sarah Johnson,2500000,560000,610000,660000,670000,2021-03-01,Active
+SR-006,Emma Thompson,emma.thompson@company.com,Regional Director,Europe,All,Enterprise,SR-001,John Smith,6500000,1450000,1580000,1720000,1750000,2019-09-15,Active
+SR-007,Pierre Dubois,pierre.dubois@company.com,Senior AE,Europe,Telecom/Media/Tech,Enterprise,SR-006,Emma Thompson,2800000,630000,680000,740000,750000,2020-11-01,Active
+SR-008,Hans Mueller,hans.mueller@company.com,AE,Europe,Automotive and Industrial,SMB,SR-006,Emma Thompson,1800000,400000,440000,480000,480000,2021-06-01,Active
+SR-009,Ana Rodriguez,ana.rodriguez@company.com,Regional Director,LATAM,All,All,SR-001,John Smith,3500000,780000,850000,930000,940000,2020-02-01,Active
+SR-010,Carlos Mendez,carlos.mendez@company.com,AE,LATAM,CPG & Retail,Enterprise,SR-009,Ana Rodriguez,2000000,450000,490000,530000,530000,2021-09-01,Active
+SR-011,Ahmed Hassan,ahmed.hassan@company.com,Regional Director,Middle East,All,Enterprise,SR-001,John Smith,2500000,560000,610000,660000,670000,2020-04-15,Active
+SR-012,Fatima Al-Said,fatima.alsaid@company.com,AE,Middle East,Energy & Utilities,Enterprise,SR-011,Ahmed Hassan,1500000,340000,370000,400000,390000,2022-01-01,Active
+SR-013,Wei Zhang,wei.zhang@company.com,Regional Director,APAC,All,Enterprise,SR-001,John Smith,4000000,900000,980000,1060000,1060000,2019-11-01,Active
+SR-014,Yuki Tanaka,yuki.tanaka@company.com,Senior AE,APAC,BFSI,Enterprise,SR-013,Wei Zhang,2200000,490000,540000,580000,590000,2021-02-01,Active
+SR-015,Robert Taylor,robert.taylor@company.com,Strategic AE,North America,Private Equity,Enterprise,SR-002,Sarah Johnson,2800000,630000,680000,740000,750000,2020-05-01,Active
+SR-016,Lisa Park,lisa.park@company.com,AE,APAC,Telecom/Media/Tech,SMB,SR-013,Wei Zhang,1200000,270000,290000,320000,320000,2022-06-01,Active
+SR-017,Marcus Johnson,marcus.johnson@company.com,SDR Manager,Global,All,All,SR-001,John Smith,0,0,0,0,0,2021-01-15,Active
+SR-018,Rachel Green,rachel.green@company.com,SDR,North America,All,All,SR-017,Marcus Johnson,0,0,0,0,0,2022-03-01,Active
+SR-019,Tom Anderson,tom.anderson@company.com,SDR,Europe,All,All,SR-017,Marcus Johnson,0,0,0,0,0,2022-04-01,Active
+SR-020,Nina Patel,nina.patel@company.com,Strategic Account Director,Global,Unilever,Enterprise,SR-001,John Smith,5000000,1100000,1200000,1350000,1350000,2019-04-01,Active
