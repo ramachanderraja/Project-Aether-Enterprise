@@ -2,16 +2,16 @@
 # Project Aether - Azure Container Apps Deployment Workflow
 # =============================================================================
 # This workflow builds Docker images and pushes to ACR.
-# Container Apps will be updated manually or via Azure CLI after push.
+# Container Apps deployment requires manual update after push.
 #
 # Required secrets:
 #   ACR_LOGIN_SERVER    - Azure Container Registry login server
 #   ACR_USERNAME        - ACR admin username
 #   ACR_PASSWORD        - ACR admin password
 #
-# To deploy after images are pushed, run:
-#   az containerapp update --name aether-api --resource-group aether-dev-rg --image aetherdevacr04w9l0.azurecr.io/aether-backend:latest
-#   az containerapp update --name aether-web --resource-group aether-dev-rg --image aetherdevacr04w9l0.azurecr.io/aether-frontend:latest
+# After push, deploy manually with:
+#   az containerapp update --name aether-api --resource-group aether-dev-rg --image aetherdevacr04w9l0.azurecr.io/aether-backend:<commit-sha>
+#   az containerapp update --name aether-web --resource-group aether-dev-rg --image aetherdevacr04w9l0.azurecr.io/aether-frontend:<commit-sha>
 # =============================================================================
 
 name: Build and Push to ACR
@@ -89,36 +89,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Deploy to Container Apps
-        run: |
-          # Install Azure CLI
-          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-
-          # Login using service principal
-          az login --service-principal \
-            -u "${{ secrets.AZURE_CLIENT_ID }}" \
-            -p "${{ secrets.AZURE_CLIENT_SECRET }}" \
-            --tenant "${{ secrets.AZURE_TENANT_ID }}"
-
-          az account set --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
-
-          # Update Container Apps with new images
-          if [ "${{ github.event_name }}" == "push" ] || [ "${{ github.event.inputs.deploy_backend }}" == "true" ]; then
-            echo "Deploying backend..."
-            az containerapp update \
-              --name aether-api \
-              --resource-group aether-dev-rg \
-              --image ${{ env.REGISTRY }}/aether-backend:${{ github.sha }} || echo "Backend deploy failed - may need role assignment"
-          fi
-
-          if [ "${{ github.event_name }}" == "push" ] || [ "${{ github.event.inputs.deploy_frontend }}" == "true" ]; then
-            echo "Deploying frontend..."
-            az containerapp update \
-              --name aether-web \
-              --resource-group aether-dev-rg \
-              --image ${{ env.REGISTRY }}/aether-frontend:${{ github.sha }} || echo "Frontend deploy failed - may need role assignment"
-          fi
-
       - name: Deployment Summary
         run: |
           echo "=========================================="
@@ -128,12 +98,12 @@ jobs:
           echo "Backend:  ${{ env.REGISTRY }}/aether-backend:${{ github.sha }}"
           echo "Frontend: ${{ env.REGISTRY }}/aether-frontend:${{ github.sha }}"
           echo ""
+          echo "Deploy to Container Apps with:"
+          echo "  az containerapp update --name aether-api --resource-group aether-dev-rg --image ${{ env.REGISTRY }}/aether-backend:${{ github.sha }}"
+          echo "  az containerapp update --name aether-web --resource-group aether-dev-rg --image ${{ env.REGISTRY }}/aether-frontend:${{ github.sha }}"
+          echo ""
           echo "Container Apps URLs:"
           echo "  Frontend: https://aether-web.orangesea-d82907cf.westus2.azurecontainerapps.io"
           echo "  Backend:  https://aether-api.orangesea-d82907cf.westus2.azurecontainerapps.io"
           echo "  API Docs: https://aether-api.orangesea-d82907cf.westus2.azurecontainerapps.io/docs"
-          echo ""
-          echo "If deployment failed, manually update with:"
-          echo "  az containerapp update --name aether-api --resource-group aether-dev-rg --image ${{ env.REGISTRY }}/aether-backend:${{ github.sha }}"
-          echo "  az containerapp update --name aether-web --resource-group aether-dev-rg --image ${{ env.REGISTRY }}/aether-frontend:${{ github.sha }}"
           echo "=========================================="
