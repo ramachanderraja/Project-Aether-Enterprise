@@ -1,21 +1,28 @@
 # =============================================================================
-# Project Aether - Azure App Service Deployment Workflow
+# Project Aether - Azure App Service Deployment Workflow (LEGACY)
 # =============================================================================
+# This workflow deploys to the original App Service infrastructure.
+# For the new Container Apps deployment, use: container-apps-deploy.yml
+#
 # This workflow builds Docker images and pushes to ACR.
 # App Service has Continuous Deployment enabled and will auto-pull
 # the latest images when they're pushed to ACR.
 #
 # Required secrets:
-#   ACR_LOGIN_SERVER    - Azure Container Registry login server
+#   ACR_LOGIN_SERVER    - Azure Container Registry login server (old ACR)
 #   ACR_USERNAME        - ACR admin username
 #   ACR_PASSWORD        - ACR admin password
 #
-# Note: Container Apps was attempted but requires VNet integration
-# to reach the private PostgreSQL database. App Service is pre-configured
-# with VNet integration.
+# App Service URLs:
+#   Frontend: https://aether-dev-web-04w9l0.azurewebsites.net
+#   Backend:  https://aether-dev-api-04w9l0.azurewebsites.net
+#
+# Container Apps URLs (use container-apps-deploy.yml):
+#   Frontend: https://ca-aether-ca-dev-web.wonderfulsea-4938652c.westus2.azurecontainerapps.io
+#   Backend:  https://ca-aether-ca-dev-api.wonderfulsea-4938652c.westus2.azurecontainerapps.io
 # =============================================================================
 
-name: Deploy to Azure
+name: Deploy to App Service (Legacy)
 
 on:
   push:

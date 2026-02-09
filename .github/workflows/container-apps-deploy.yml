@@ -1,0 +1,174 @@
+# =============================================================================
+# Project Aether - Azure Container Apps Deployment Workflow
+# =============================================================================
+# This workflow builds Docker images, pushes to ACR, and updates Container Apps.
+#
+# Required secrets:
+#   AZURE_CREDENTIALS       - Azure Service Principal credentials (JSON)
+#   ACR_CA_LOGIN_SERVER     - Container Apps ACR login server (acraetherdev.azurecr.io)
+#   ACR_CA_USERNAME         - ACR admin username
+#   ACR_CA_PASSWORD         - ACR admin password
+#
+# Infrastructure deployed via Bicep templates in infrastructure/bicep/
+# =============================================================================
+
+name: Deploy to Container Apps
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.gitignore'
+      - 'infrastructure/**'
+
+  workflow_dispatch:
+    inputs:
+      deploy_frontend:
+        description: 'Deploy Frontend'
+        required: true
+        default: true
+        type: boolean
+      deploy_backend:
+        description: 'Deploy Backend'
+        required: true
+        default: true
+        type: boolean
+
+env:
+  REGISTRY: ${{ secrets.ACR_CA_LOGIN_SERVER }}
+  RESOURCE_GROUP: rg-aether-ca-dev
+  API_APP_NAME: ca-aether-ca-dev-api
+  WEB_APP_NAME: ca-aether-ca-dev-web
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Build and Push Docker Images
+  # ---------------------------------------------------------------------------
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      backend_image: ${{ steps.meta-backend.outputs.tags }}
+      frontend_image: ${{ steps.meta-frontend.outputs.tags }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_CA_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_CA_USERNAME }}
+          password: ${{ secrets.ACR_CA_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker meta for backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/aether-backend
+          tags: |
+            type=sha
+            type=raw,value=latest
+
+      - name: Docker meta for frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/aether-frontend
+          tags: |
+            type=sha
+            type=raw,value=latest
+
+      - name: Build and push backend image
+        if: ${{ github.event_name == 'push' || github.event.inputs.deploy_backend == 'true' }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push frontend image
+        if: ${{ github.event_name == 'push' || github.event.inputs.deploy_frontend == 'true' }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------------------------------------------------------------------------
+  # Deploy to Container Apps
+  # ---------------------------------------------------------------------------
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Update API Container App
+        if: ${{ github.event_name == 'push' || github.event.inputs.deploy_backend == 'true' }}
+        run: |
+          az containerapp update \
+            --name ${{ env.API_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.REGISTRY }}/aether-backend:sha-${{ github.sha }}
+
+      - name: Update Web Container App
+        if: ${{ github.event_name == 'push' || github.event.inputs.deploy_frontend == 'true' }}
+        run: |
+          az containerapp update \
+            --name ${{ env.WEB_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.REGISTRY }}/aether-frontend:sha-${{ github.sha }}
+
+      - name: Wait for deployments
+        run: |
+          echo "Waiting for Container Apps to update..."
+          sleep 30
+
+          # Check API status
+          API_STATUS=$(az containerapp show --name ${{ env.API_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --query "properties.runningStatus" -o tsv)
+          echo "API Status: $API_STATUS"
+
+          # Check Web status
+          WEB_STATUS=$(az containerapp show --name ${{ env.WEB_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --query "properties.runningStatus" -o tsv)
+          echo "Web Status: $WEB_STATUS"
+
+      - name: Deployment Summary
+        run: |
+          API_URL=$(az containerapp show --name ${{ env.API_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --query "properties.configuration.ingress.fqdn" -o tsv)
+          WEB_URL=$(az containerapp show --name ${{ env.WEB_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --query "properties.configuration.ingress.fqdn" -o tsv)
+
+          echo "=========================================="
+          echo "🚀 Container Apps Deployment Complete!"
+          echo "=========================================="
+          echo ""
+          echo "URLs:"
+          echo "  Frontend: https://$WEB_URL"
+          echo "  Backend:  https://$API_URL"
+          echo "  API Docs: https://$API_URL/docs"
+          echo ""
+          echo "Images deployed:"
+          echo "  Backend:  ${{ env.REGISTRY }}/aether-backend:sha-${{ github.sha }}"
+          echo "  Frontend: ${{ env.REGISTRY }}/aether-frontend:sha-${{ github.sha }}"
+          echo "=========================================="
