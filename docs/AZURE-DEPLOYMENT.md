@@ -1,68 +1,86 @@
 # Project Aether - Azure Deployment Guide
 
-This guide explains how to deploy Project Aether to Microsoft Azure using Azure App Service.
+This guide explains how to deploy Project Aether to Microsoft Azure using **Azure Container Apps** (recommended) or Azure App Service (legacy).
 
 ## Table of Contents
 
 1. [Architecture Overview](#architecture-overview)
 2. [Prerequisites](#prerequisites)
-3. [Cost Estimation](#cost-estimation)
-4. [Quick Start](#quick-start)
-5. [Step-by-Step Deployment](#step-by-step-deployment)
-6. [CI/CD Setup](#cicd-setup)
-7. [Post-Deployment Configuration](#post-deployment-configuration)
-8. [Troubleshooting](#troubleshooting)
+3. [Quick Start - Container Apps](#quick-start---container-apps)
+4. [CI/CD Deployment](#cicd-deployment)
+5. [Manual Deployment](#manual-deployment)
+6. [Troubleshooting](#troubleshooting)
+7. [Legacy: App Service Deployment](#legacy-app-service-deployment)
 
 ---
 
 ## Architecture Overview
 
+### Container Apps Architecture (Current)
+
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Azure Cloud                               │
-│                                                                  │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐      │
-│  │   Frontend   │    │   Backend    │    │   Database   │      │
-│  │  App Service │───▶│  App Service │───▶│  PostgreSQL  │      │
-│  │   (React)    │    │   (NestJS)   │    │   Flexible   │      │
-│  └──────────────┘    └──────────────┘    └──────────────┘      │
-│         │                   │                    │               │
-│         │                   │                    │               │
-│         ▼                   ▼                    │               │
-│  ┌──────────────┐    ┌──────────────┐           │               │
-│  │     CDN      │    │    Redis     │           │               │
-│  │  (Optional)  │    │    Cache     │◀──────────┘               │
-│  └──────────────┘    └──────────────┘                           │
-│                             │                                    │
-│                             ▼                                    │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐      │
-│  │  Key Vault   │    │   App       │    │   Storage    │      │
-│  │  (Secrets)   │    │  Insights   │    │   Account    │      │
-│  └──────────────┘    └──────────────┘    └──────────────┘      │
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────┐      │
-│  │              Virtual Network (VNet)                   │      │
-│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐              │      │
-│  │  │App Svc  │  │Database │  │  Redis  │              │      │
-│  │  │ Subnet  │  │ Subnet  │  │ Subnet  │              │      │
-│  │  └─────────┘  └─────────┘  └─────────┘              │      │
-│  └──────────────────────────────────────────────────────┘      │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          Azure Cloud (West US 2)                         │
+│                                                                          │
+│  ┌────────────────────────────────────────────────────────────────────┐ │
+│  │                   Container Apps Environment                        │ │
+│  │                      (cae-aether-ca-dev)                           │ │
+│  │                                                                     │ │
+│  │   ┌─────────────────┐         ┌─────────────────┐                 │ │
+│  │   │   Web App       │  nginx  │    API App      │                 │ │
+│  │   │ (React/Nginx)   │ ──────▶ │   (NestJS)      │                 │ │
+│  │   │   Port 80       │  proxy  │   Port 3001     │                 │ │
+│  │   └─────────────────┘         └─────────────────┘                 │ │
+│  │           │                           │                            │ │
+│  └───────────┼───────────────────────────┼────────────────────────────┘ │
+│              │                           │                              │
+│  ┌───────────┼───────────────────────────┼────────────────────────────┐ │
+│  │           │      Virtual Network      │                            │ │
+│  │           │       (10.1.0.0/16)       │                            │ │
+│  │           │                           │                            │ │
+│  │  ┌────────▼────────┐    ┌─────────────▼───────────┐               │ │
+│  │  │  snet-apps      │    │     snet-data           │               │ │
+│  │  │  10.1.0.0/21    │    │     10.1.8.0/24         │               │ │
+│  │  │  (Container     │    │  ┌──────────────────┐   │               │ │
+│  │  │   Apps Env)     │    │  │   PostgreSQL     │   │               │ │
+│  │  └─────────────────┘    │  │  Flexible Server │   │               │ │
+│  │                         │  └──────────────────┘   │               │ │
+│  │                         │  ┌──────────────────┐   │               │ │
+│  │                         │  │   Redis Cache    │   │               │ │
+│  │                         │  │     (Basic)      │   │               │ │
+│  │                         │  └──────────────────┘   │               │ │
+│  │                         └─────────────────────────┘               │ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+│                                                                          │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐              │
+│  │     ACR      │    │  Key Vault   │    │ Azure OpenAI │              │
+│  │ acraetherdev │    │ (private)    │    │   (gpt-4o)   │              │
+│  └──────────────┘    └──────────────┘    └──────────────┘              │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Components
 
-| Component | Azure Service | Purpose |
+| Component | Azure Service | Details |
 |-----------|--------------|---------|
-| Frontend | App Service (Linux) | React SPA hosting |
-| Backend API | App Service (Linux) | NestJS API server |
-| Database | PostgreSQL Flexible Server | Primary data store |
-| Cache | Azure Cache for Redis | Session & data caching |
-| Secrets | Key Vault | Secure credential storage |
-| Container Registry | ACR | Docker image storage |
-| Monitoring | Application Insights | APM & logging |
-| Storage | Blob Storage | File uploads & backups |
+| Frontend | Container App | React SPA served via nginx with API proxy |
+| Backend API | Container App | NestJS API server |
+| Database | PostgreSQL Flexible Server | Private, VNet-integrated |
+| Cache | Azure Cache for Redis | Basic tier, TLS enabled |
+| Container Registry | ACR | `acraetherdev.azurecr.io` |
+| AI Services | Azure OpenAI | GPT-4o deployment |
+| Secrets | Key Vault | Private network access |
+
+### Current Deployment URLs
+
+| Environment | Service | URL |
+|-------------|---------|-----|
+| Dev | Frontend | https://ca-aether-ca-dev-web.wonderfulsea-4938652c.westus2.azurecontainerapps.io |
+| Dev | Backend | https://ca-aether-ca-dev-api.wonderfulsea-4938652c.westus2.azurecontainerapps.io |
+| Dev | API Docs | https://ca-aether-ca-dev-api.wonderfulsea-4938652c.westus2.azurecontainerapps.io/docs |
+
+**Default Credentials:** `admin@demo.com` / `Demo@2024`
 
 ---
 
@@ -72,318 +90,168 @@ This guide explains how to deploy Project Aether to Microsoft Azure using Azure 
 
 1. **Azure CLI** (v2.50+)
    ```bash
-   # Windows (PowerShell)
+   # Windows
    winget install Microsoft.AzureCLI
 
    # macOS
    brew install azure-cli
-
-   # Linux
-   curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
    ```
 
-2. **Terraform** (v1.5+)
+2. **Docker** (v24+)
+   - [Docker Desktop](https://www.docker.com/products/docker-desktop)
+
+3. **GitHub CLI** (for CI/CD setup)
    ```bash
-   # Windows (PowerShell)
-   winget install HashiCorp.Terraform
-
-   # macOS
-   brew install terraform
-
-   # Linux
-   sudo apt-get install terraform
+   winget install GitHub.cli
    ```
 
-3. **Docker** (v24+)
-   - [Docker Desktop for Windows/Mac](https://www.docker.com/products/docker-desktop)
-   - [Docker Engine for Linux](https://docs.docker.com/engine/install/)
-
-### Azure Requirements
-
-- Active Azure subscription
-- Contributor role on the subscription (or a resource group)
-- Ability to create service principals (for CI/CD)
-
-### Login to Azure
+### Azure Login
 
 ```bash
-# Login interactively
 az login
-
-# Set your subscription (if you have multiple)
-az account set --subscription "Your Subscription Name"
-
-# Verify
-az account show
+az account set --subscription "Your Subscription"
 ```
 
 ---
 
-## Cost Estimation
+## Quick Start - Container Apps
 
-### Development Environment (~$75/month)
-
-| Resource | SKU | Est. Cost |
-|----------|-----|-----------|
-| App Service Plan | B1 (Basic) | $13/month |
-| PostgreSQL | B_Standard_B1ms | $12/month |
-| Redis Cache | Basic C0 | $16/month |
-| Container Registry | Basic | $5/month |
-| Key Vault | Standard | $0.03/10k ops |
-| Storage | Standard LRS | ~$2/month |
-| Application Insights | Pay-as-you-go | ~$5/month |
-| **Total** | | **~$53-75/month** |
-
-### Production Environment (~$350/month)
-
-| Resource | SKU | Est. Cost |
-|----------|-----|-----------|
-| App Service Plan | P1V2 (Premium) | $81/month |
-| PostgreSQL | GP_Standard_D2s_v3 | $98/month |
-| Redis Cache | Standard C1 | $81/month |
-| Container Registry | Standard | $20/month |
-| Key Vault | Standard | ~$1/month |
-| Storage | Standard LRS | ~$5/month |
-| Application Insights | Pay-as-you-go | ~$20/month |
-| **Total** | | **~$300-400/month** |
-
----
-
-## Quick Start
-
-### Option 1: One-Command Deployment (PowerShell)
+### Deploy Infrastructure (Bicep)
 
 ```powershell
-cd infrastructure/azure
+cd infrastructure/scripts
 
-# Copy and configure variables
-cp terraform/terraform.tfvars.example terraform/terraform.tfvars
-# Edit terraform.tfvars with your values
+# Deploy with default parameters
+.\deploy.ps1 -Environment dev -Location westus2
 
-# Deploy everything
-.\deploy.ps1 -Action deploy-all -Environment dev
+# Or with custom parameters
+.\deploy.ps1 -Environment dev -Location westus2 -ProjectName aether
 ```
 
-### Option 2: One-Command Deployment (Bash)
-
-```bash
-cd infrastructure/azure
-
-# Copy and configure variables
-cp terraform/terraform.tfvars.example terraform/terraform.tfvars
-# Edit terraform.tfvars with your values
-
-# Make script executable
-chmod +x deploy.sh
-
-# Deploy everything
-./deploy.sh -a deploy-all -e dev
-```
-
----
-
-## Step-by-Step Deployment
-
-### Step 1: Configure Variables
-
-```bash
-cd infrastructure/azure/terraform
-cp terraform.tfvars.example terraform.tfvars
-```
-
-Edit `terraform.tfvars`:
-
-```hcl
-# Required settings
-project_name      = "aether"
-environment       = "dev"
-location          = "East US"
-
-# Database credentials
-db_admin_username = "aether_admin"
-db_admin_password = "YourSecurePassword123!"  # Min 12 chars
-
-# JWT Secret (generate with: openssl rand -base64 48)
-jwt_secret = "your-super-secret-jwt-key-at-least-32-characters-long"
-
-# Optional: Gemini API key for AI features
-gemini_api_key = ""
-```
-
-### Step 2: Deploy Infrastructure
-
-```bash
-# Initialize Terraform
-terraform init
-
-# Preview changes
-terraform plan -var="environment=dev"
-
-# Apply changes (creates all Azure resources)
-terraform apply -var="environment=dev"
-```
-
-This creates:
-- Resource Group
+This deploys:
+- Resource Group with GEP-required tags
 - Virtual Network with subnets
+- Container Apps Environment
 - PostgreSQL Flexible Server
 - Redis Cache
-- Key Vault with secrets
-- App Service Plan
-- Backend & Frontend App Services
-- Container Registry
-- Application Insights
-- Storage Account
+- ACR
+- Key Vault
 
-### Step 3: Build Docker Images
+### Build and Deploy Images
 
 ```bash
-# Get ACR login server from Terraform output
-ACR_SERVER=$(terraform output -raw acr_login_server)
-
 # Login to ACR
-az acr login --name ${ACR_SERVER%.azurecr.io}
+az acr login --name acraetherdev
 
-# Build backend
-cd ../../backend
-docker build -t $ACR_SERVER/aether-backend:latest .
+# Build and push backend
+cd backend
+docker build -t acraetherdev.azurecr.io/aether-backend:latest .
+docker push acraetherdev.azurecr.io/aether-backend:latest
 
-# Build frontend
+# Build and push frontend
 cd ../frontend
-docker build -t $ACR_SERVER/aether-frontend:latest .
-```
+docker build -t acraetherdev.azurecr.io/aether-frontend:latest .
+docker push acraetherdev.azurecr.io/aether-frontend:latest
 
-### Step 4: Push Images to ACR
-
-```bash
-docker push $ACR_SERVER/aether-backend:latest
-docker push $ACR_SERVER/aether-frontend:latest
-```
-
-### Step 5: Restart App Services
-
-```bash
-# Get resource group and app names
-RG=$(terraform output -raw resource_group_name)
-BACKEND=$(terraform output -raw backend_app_name)
-FRONTEND=$(terraform output -raw frontend_app_name)
-
-# Restart to pull new images
-az webapp restart --name $BACKEND --resource-group $RG
-az webapp restart --name $FRONTEND --resource-group $RG
-```
-
-### Step 6: Run Database Migrations
-
-```bash
-# SSH into backend container
-az webapp ssh --name $BACKEND --resource-group $RG
-
-# Inside the container, run:
-npx prisma migrate deploy
-npx prisma db seed  # Optional: seed initial data
-exit
-```
-
-### Step 7: Verify Deployment
-
-```bash
-# Get URLs
-terraform output frontend_url
-terraform output backend_url
-
-# Test health endpoint
-curl $(terraform output -raw backend_url)/health
+# Update Container Apps
+az containerapp update --name ca-aether-ca-dev-api --resource-group rg-aether-ca-dev --image acraetherdev.azurecr.io/aether-backend:latest
+az containerapp update --name ca-aether-ca-dev-web --resource-group rg-aether-ca-dev --image acraetherdev.azurecr.io/aether-frontend:latest
 ```
 
 ---
 
-## CI/CD Setup
+## CI/CD Deployment
 
-### GitHub Actions
+### How CI/CD Works
 
-1. **Create Azure Service Principal:**
+The GitHub Actions workflow (`.github/workflows/container-apps-deploy.yml`) automates deployment:
 
-```bash
-# Create service principal with Contributor role
-az ad sp create-for-rbac \
-  --name "aether-github-actions" \
-  --role contributor \
-  --scopes /subscriptions/YOUR_SUBSCRIPTION_ID \
-  --sdk-auth
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  Push to     │────▶│    Build     │────▶│   Push to    │────▶│   Update     │
+│  main/master │     │   Docker     │     │     ACR      │     │ Container    │
+│              │     │   Images     │     │              │     │    Apps      │
+└──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
 ```
 
-Copy the JSON output.
+**Trigger:** The workflow runs automatically when you push code to `main` or `master` branch.
 
-2. **Add GitHub Secrets:**
+**What happens:**
+1. **Build Job**: Builds Docker images for frontend and backend
+2. **Push to ACR**: Tags images with commit SHA and pushes to Azure Container Registry
+3. **Deploy Job**: Uses Azure CLI to update Container Apps with new images
 
-Go to your repository → Settings → Secrets and variables → Actions:
+### GitHub Secrets Required
 
-| Secret | Value |
-|--------|-------|
-| `AZURE_CREDENTIALS` | The JSON from step 1 |
-| `ACR_LOGIN_SERVER` | `aetherdevacr123456.azurecr.io` |
-| `ACR_USERNAME` | ACR admin username |
-| `ACR_PASSWORD` | ACR admin password |
-| `AZURE_RG` | `aether-dev-rg` |
-| `BACKEND_APP_NAME` | `aether-dev-api-123456` |
-| `FRONTEND_APP_NAME` | `aether-dev-web-123456` |
+| Secret | Description | Value |
+|--------|-------------|-------|
+| `AZURE_CREDENTIALS` | Service Principal JSON | (existing) |
+| `ACR_CA_LOGIN_SERVER` | ACR URL | `acraetherdev.azurecr.io` |
+| `ACR_CA_USERNAME` | ACR admin username | `acraetherdev` |
+| `ACR_CA_PASSWORD` | ACR admin password | (from ACR) |
 
-3. **Enable Workflow:**
+### Manual Workflow Trigger
 
-The workflow at `.github/workflows/azure-deploy.yml` will automatically deploy on push to `main` or `master`.
+You can also manually trigger the workflow from GitHub:
+1. Go to Actions tab
+2. Select "Deploy to Container Apps"
+3. Click "Run workflow"
+4. Choose which components to deploy
+
+### Workflow File Location
+
+`.github/workflows/container-apps-deploy.yml`
 
 ---
 
-## Post-Deployment Configuration
+## Manual Deployment
 
-### Custom Domain Setup
-
-1. **Add custom domain in Azure Portal:**
-   - Go to App Service → Custom domains
-   - Add custom domain
-   - Validate ownership via CNAME/TXT record
-
-2. **Add SSL certificate:**
-   - Use App Service Managed Certificate (free)
-   - Or upload your own certificate
-
-3. **Update Terraform variables:**
-   ```hcl
-   custom_domain = "app.yourcompany.com"
-   ```
-
-### Configure Application Settings
+### Update Individual Container Apps
 
 ```bash
-# Add additional settings
-az webapp config appsettings set \
-  --name $BACKEND \
-  --resource-group $RG \
-  --settings \
-    FEATURE_MFA_ENABLED=true \
-    LOG_LEVEL=info
+# Update API
+az containerapp update \
+  --name ca-aether-ca-dev-api \
+  --resource-group rg-aether-ca-dev \
+  --image acraetherdev.azurecr.io/aether-backend:latest
+
+# Update Web
+az containerapp update \
+  --name ca-aether-ca-dev-web \
+  --resource-group rg-aether-ca-dev \
+  --image acraetherdev.azurecr.io/aether-frontend:latest
 ```
 
-### Enable Auto-Scaling (Production)
+### View Container App Logs
 
 ```bash
-# Enable autoscale
-az monitor autoscale create \
-  --resource-group $RG \
-  --resource $BACKEND \
-  --resource-type Microsoft.Web/serverfarms \
-  --name autoscale-cpu \
-  --min-count 1 \
-  --max-count 5 \
-  --count 2
+# Stream API logs
+az containerapp logs show \
+  --name ca-aether-ca-dev-api \
+  --resource-group rg-aether-ca-dev \
+  --follow
 
-# Add CPU rule
-az monitor autoscale rule create \
-  --resource-group $RG \
-  --autoscale-name autoscale-cpu \
-  --condition "CpuPercentage > 70 avg 5m" \
-  --scale out 1
+# View Web logs
+az containerapp logs show \
+  --name ca-aether-ca-dev-web \
+  --resource-group rg-aether-ca-dev \
+  --tail 100
+```
+
+### Check Container App Status
+
+```bash
+az containerapp list --resource-group rg-aether-ca-dev -o table
+```
+
+### Restart Container App
+
+```bash
+# Restart by creating new revision
+az containerapp revision restart \
+  --name ca-aether-ca-dev-api \
+  --resource-group rg-aether-ca-dev \
+  --revision $(az containerapp revision list --name ca-aether-ca-dev-api --resource-group rg-aether-ca-dev --query "[0].name" -o tsv)
 ```
 
 ---
@@ -392,84 +260,96 @@ az monitor autoscale rule create \
 
 ### Common Issues
 
-#### 1. Container won't start
+#### 1. Container App won't start
 
 ```bash
-# Check logs
-az webapp log tail --name $BACKEND --resource-group $RG
+# Check revision status
+az containerapp revision list --name ca-aether-ca-dev-api --resource-group rg-aether-ca-dev -o table
 
-# Check container logs
-az webapp log download --name $BACKEND --resource-group $RG --log-file logs.zip
+# View detailed logs
+az containerapp logs show --name ca-aether-ca-dev-api --resource-group rg-aether-ca-dev --tail 200
 ```
 
 #### 2. Database connection issues
 
-- Verify the database subnet has delegation for PostgreSQL
-- Check firewall rules allow App Service subnet
-- Verify connection string in Key Vault
+The PostgreSQL server is private (VNet-integrated). Container Apps must be in the same VNet to connect.
 
 ```bash
-# Test database connectivity
-az webapp ssh --name $BACKEND --resource-group $RG
-# Then: psql "$DATABASE_URL" -c "SELECT 1"
+# Verify database is accessible from Container App
+az containerapp exec --name ca-aether-ca-dev-api --resource-group rg-aether-ca-dev --command "sh -c 'nc -zv psql-aether-ca-dev.postgres.database.azure.com 5432'"
 ```
 
-#### 3. Redis connection issues
+#### 3. 502 Bad Gateway from nginx proxy
+
+This usually means the frontend can't reach the backend. Check:
+- Backend Container App is running
+- `BACKEND_URL` environment variable is set correctly
+- nginx has DNS resolver configured (should be in nginx.conf)
 
 ```bash
-# Check Redis status
-az redis show --name <redis-name> --resource-group $RG
-
-# Test connectivity
-az redis force-reboot --name <redis-name> --resource-group $RG --reboot-type PrimaryNode
+# Check Web container nginx config
+az containerapp exec --name ca-aether-ca-dev-web --resource-group rg-aether-ca-dev --command "cat /etc/nginx/conf.d/default.conf"
 ```
 
-#### 4. Terraform state issues
+#### 4. Image pull errors
 
 ```bash
-# Refresh state
-terraform refresh
+# Verify ACR credentials
+az acr credential show --name acraetherdev
 
-# Import existing resource
-terraform import azurerm_resource_group.main /subscriptions/.../resourceGroups/aether-dev-rg
+# Check if image exists
+az acr repository show-tags --name acraetherdev --repository aether-backend
 ```
 
 ### Useful Commands
 
 ```bash
-# View all resources
-az resource list --resource-group $RG --output table
+# List all resources in resource group
+az resource list --resource-group rg-aether-ca-dev -o table
 
-# View App Service logs
-az webapp log tail --name $BACKEND --resource-group $RG
+# Get Container App URL
+az containerapp show --name ca-aether-ca-dev-api --resource-group rg-aether-ca-dev --query "properties.configuration.ingress.fqdn" -o tsv
 
-# Restart App Service
-az webapp restart --name $BACKEND --resource-group $RG
+# Scale Container App
+az containerapp update --name ca-aether-ca-dev-api --resource-group rg-aether-ca-dev --min-replicas 2 --max-replicas 5
 
-# Scale App Service Plan
-az appservice plan update --name <plan-name> --resource-group $RG --sku S1
-
-# View Terraform outputs
-terraform output
-
-# Destroy everything (careful!)
-terraform destroy -var="environment=dev"
+# Update environment variable
+az containerapp update --name ca-aether-ca-dev-api --resource-group rg-aether-ca-dev --set-env-vars "LOG_LEVEL=debug"
 ```
+
+---
+
+## Legacy: App Service Deployment
+
+> **Note:** App Service deployment is deprecated. Use Container Apps for new deployments.
+
+The App Service deployment remains available at:
+- Frontend: https://aether-dev-web-04w9l0.azurewebsites.net
+- Backend: https://aether-dev-api-04w9l0.azurewebsites.net
+
+Workflow file: `.github/workflows/azure-deploy.yml` (marked as Legacy)
+
+---
+
+## Cost Estimation
+
+### Container Apps (Current - ~$60/month)
+
+| Resource | SKU | Est. Cost |
+|----------|-----|-----------|
+| Container Apps Environment | Consumption | Pay-per-use (~$10-20) |
+| PostgreSQL Flexible Server | B_Standard_B1ms | $12/month |
+| Redis Cache | Basic C0 | $16/month |
+| Container Registry | Basic | $5/month |
+| Key Vault | Standard | ~$1/month |
+| **Total** | | **~$45-60/month** |
 
 ---
 
 ## Security Best Practices
 
-1. **Enable Managed Identity** - Already configured for Key Vault access
-2. **Use Private Endpoints** - For production, enable private endpoints for database/redis
-3. **Enable WAF** - Add Azure Front Door with WAF for production
-4. **Regular Key Rotation** - Rotate JWT secrets and database passwords periodically
-5. **Enable Diagnostic Logging** - Send logs to Log Analytics for audit
-
----
-
-## Support
-
-- **Azure Documentation**: https://docs.microsoft.com/azure
-- **Terraform Azure Provider**: https://registry.terraform.io/providers/hashicorp/azurerm
-- **Project Issues**: https://github.com/ramachanderraja/Project-Aether-Enterprise/issues
+1. **Private VNet** - All data services (PostgreSQL, Redis) are in private subnets
+2. **Key Vault** - All secrets stored in Key Vault with private access
+3. **ACR Authentication** - Using admin credentials (can be upgraded to managed identity)
+4. **TLS Everywhere** - All external endpoints use HTTPS
+5. **No Public DB Access** - PostgreSQL only accessible within VNet
