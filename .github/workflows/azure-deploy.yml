@@ -1,14 +1,14 @@
 # =============================================================================
 # Project Aether - Azure Deployment Workflow
 # =============================================================================
-# This workflow deploys the application to Azure App Service using webhooks
+# This workflow builds Docker images and pushes to ACR.
+# Azure App Service has Continuous Deployment enabled and will auto-pull
+# the latest images when they're pushed to ACR.
 #
 # Required secrets:
 #   ACR_LOGIN_SERVER    - Azure Container Registry login server
 #   ACR_USERNAME        - ACR admin username
 #   ACR_PASSWORD        - ACR admin password
-#   FRONTEND_WEBHOOK_URL - Azure App Service webhook for frontend
-#   BACKEND_WEBHOOK_URL  - Azure App Service webhook for backend
 # =============================================================================
 
 name: Deploy to Azure
@@ -86,71 +86,23 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ---------------------------------------------------------------------------
-  # Deploy via Webhooks
-  # ---------------------------------------------------------------------------
-  deploy:
-    needs: build-push
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Trigger Backend Deployment
-        if: ${{ github.event_name == 'push' || github.event.inputs.deploy_backend == 'true' }}
-        run: |
-          echo "Triggering backend deployment..."
-          curl -X POST "${{ secrets.BACKEND_WEBHOOK_URL }}" \
-            -H "Content-Type: application/json" \
-            -d '{}' \
-            --fail --silent --show-error
-          echo "Backend deployment triggered!"
-
-      - name: Trigger Frontend Deployment
-        if: ${{ github.event_name == 'push' || github.event.inputs.deploy_frontend == 'true' }}
-        run: |
-          echo "Triggering frontend deployment..."
-          curl -X POST "${{ secrets.FRONTEND_WEBHOOK_URL }}" \
-            -H "Content-Type: application/json" \
-            -d '{}' \
-            --fail --silent --show-error
-          echo "Frontend deployment triggered!"
-
-      - name: Wait for deployments
-        run: |
-          echo "Waiting 60 seconds for containers to pull and restart..."
-          sleep 60
-
-      - name: Health Check - Backend
-        run: |
-          echo "Checking backend health..."
-          for i in {1..10}; do
-            if curl -sf "https://aether-dev-api-04w9l0.azurewebsites.net/health" -o /dev/null; then
-              echo "✅ Backend is healthy!"
-              exit 0
-            fi
-            echo "Attempt $i/10 - Backend not ready, waiting 10 seconds..."
-            sleep 10
-          done
-          echo "⚠️ Backend health check timed out (may still be starting)"
-
-      - name: Health Check - Frontend
-        run: |
-          echo "Checking frontend health..."
-          for i in {1..5}; do
-            if curl -sf "https://aether-dev-web-04w9l0.azurewebsites.net" -o /dev/null; then
-              echo "✅ Frontend is healthy!"
-              exit 0
-            fi
-            echo "Attempt $i/5 - Frontend not ready, waiting 10 seconds..."
-            sleep 10
-          done
-          echo "⚠️ Frontend health check timed out (may still be starting)"
-
       - name: Deployment Summary
         run: |
           echo "=========================================="
-          echo "🚀 Deployment Complete!"
+          echo "🚀 Images pushed to ACR!"
           echo "=========================================="
-          echo "Frontend: https://aether-dev-web-04w9l0.azurewebsites.net"
-          echo "Backend:  https://aether-dev-api-04w9l0.azurewebsites.net"
-          echo "API Docs: https://aether-dev-api-04w9l0.azurewebsites.net/docs"
+          echo ""
+          echo "Backend:  ${{ env.REGISTRY }}/aether-backend:latest"
+          echo "Frontend: ${{ env.REGISTRY }}/aether-frontend:latest"
+          echo ""
+          echo "Azure App Service will auto-pull new images within 5 minutes."
+          echo ""
+          echo "If you need immediate deployment, run:"
+          echo "  az webapp restart --name aether-dev-web-04w9l0 --resource-group aether-dev-rg"
+          echo "  az webapp restart --name aether-dev-api-04w9l0 --resource-group aether-dev-rg"
+          echo ""
+          echo "URLs:"
+          echo "  Frontend: https://aether-dev-web-04w9l0.azurewebsites.net"
+          echo "  Backend:  https://aether-dev-api-04w9l0.azurewebsites.net"
+          echo "  API Docs: https://aether-dev-api-04w9l0.azurewebsites.net/docs"
           echo "=========================================="
