@@ -1,20 +1,21 @@
 # =============================================================================
-# Project Aether - Azure Container Apps Deployment Workflow
+# Project Aether - Azure App Service Deployment Workflow
 # =============================================================================
 # This workflow builds Docker images and pushes to ACR.
-# Container Apps deployment requires manual update after push.
+# App Service has Continuous Deployment enabled and will auto-pull
+# the latest images when they're pushed to ACR.
 #
 # Required secrets:
 #   ACR_LOGIN_SERVER    - Azure Container Registry login server
 #   ACR_USERNAME        - ACR admin username
 #   ACR_PASSWORD        - ACR admin password
 #
-# After push, deploy manually with:
-#   az containerapp update --name aether-api --resource-group aether-dev-rg --image aetherdevacr04w9l0.azurecr.io/aether-backend:<commit-sha>
-#   az containerapp update --name aether-web --resource-group aether-dev-rg --image aetherdevacr04w9l0.azurecr.io/aether-frontend:<commit-sha>
+# Note: Container Apps was attempted but requires VNet integration
+# to reach the private PostgreSQL database. App Service is pre-configured
+# with VNet integration.
 # =============================================================================
 
-name: Build and Push to ACR
+name: Deploy to Azure
 
 on:
   push:
@@ -29,12 +30,12 @@ on:
   workflow_dispatch:
     inputs:
       deploy_frontend:
-        description: 'Build Frontend'
+        description: 'Deploy Frontend'
         required: true
         default: true
         type: boolean
       deploy_backend:
-        description: 'Build Backend'
+        description: 'Deploy Backend'
         required: true
         default: true
         type: boolean
@@ -95,15 +96,17 @@ jobs:
           echo "🚀 Images pushed to ACR!"
           echo "=========================================="
           echo ""
-          echo "Backend:  ${{ env.REGISTRY }}/aether-backend:${{ github.sha }}"
-          echo "Frontend: ${{ env.REGISTRY }}/aether-frontend:${{ github.sha }}"
+          echo "Backend:  ${{ env.REGISTRY }}/aether-backend:latest"
+          echo "Frontend: ${{ env.REGISTRY }}/aether-frontend:latest"
           echo ""
-          echo "Deploy to Container Apps with:"
-          echo "  az containerapp update --name aether-api --resource-group aether-dev-rg --image ${{ env.REGISTRY }}/aether-backend:${{ github.sha }}"
-          echo "  az containerapp update --name aether-web --resource-group aether-dev-rg --image ${{ env.REGISTRY }}/aether-frontend:${{ github.sha }}"
+          echo "Azure App Service will auto-pull new images within 5 minutes."
           echo ""
-          echo "Container Apps URLs:"
-          echo "  Frontend: https://aether-web.orangesea-d82907cf.westus2.azurecontainerapps.io"
-          echo "  Backend:  https://aether-api.orangesea-d82907cf.westus2.azurecontainerapps.io"
-          echo "  API Docs: https://aether-api.orangesea-d82907cf.westus2.azurecontainerapps.io/docs"
+          echo "If you need immediate deployment, run:"
+          echo "  az webapp restart --name aether-dev-web-04w9l0 --resource-group aether-dev-rg"
+          echo "  az webapp restart --name aether-dev-api-04w9l0 --resource-group aether-dev-rg"
+          echo ""
+          echo "URLs:"
+          echo "  Frontend: https://aether-dev-web-04w9l0.azurewebsites.net"
+          echo "  Backend:  https://aether-dev-api-04w9l0.azurewebsites.net"
+          echo "  API Docs: https://aether-dev-api-04w9l0.azurewebsites.net/docs"
           echo "=========================================="
