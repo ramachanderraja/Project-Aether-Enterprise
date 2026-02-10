@@ -437,3 +437,34 @@ DATABASE_URL = @Microsoft.KeyVault(VaultName=...;SecretName=database-url)
 REDIS_URL = @Microsoft.KeyVault(VaultName=...;SecretName=redis-url)
 JWT_SECRET = @Microsoft.KeyVault(VaultName=...;SecretName=jwt-secret)
 ```
+
+## Team Collaboration (IMPORTANT - Read Every Session)
+
+This project uses a team workflow with 3 members. **Claude Code MUST follow these steps at the start of every session:**
+
+### Step 1: Identify the team member
+If not clear from context, ask: "Which team member am I working with? (abiy / aryamann / antony)"
+
+### Step 2: Read context files (in order)
+1. This file (`CLAUDE.md`) - already loaded
+2. `docs/teams/COMMON.md` - team workflow rules, git conventions
+3. `docs/teams/<name>/PROGRESS.md` - that person's progress log
+
+### Step 3: Log all work
+After completing any task, append an entry to `docs/teams/<name>/PROGRESS.md` with:
+- Date, task description, files changed, status, branch name, and notes
+
+### Team folders
+```
+docs/teams/
+  COMMON.md              # Shared rules (git conventions, conflict avoidance, workflow)
+  abiy/PROGRESS.md       # Abiy's progress log
+  aryamann/PROGRESS.md   # Aryamann's progress log
+  antony/PROGRESS.md     # Antony's progress log
+```
+
+### Branch convention
+Each member uses their own branches: `<name>/<type>/<description>` (e.g., `aryamann/feat/sales-filters`). Never push directly to `master`.
+
+### Conflict avoidance
+Before modifying shared files (Router.tsx, App.tsx, schema.prisma, etc.), check other members' PROGRESS.md files for overlapping work.
