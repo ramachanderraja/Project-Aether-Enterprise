@@ -20,6 +20,27 @@ import {
 } from 'recharts';
 
 // ==================== TYPE DEFINITIONS ====================
+
+// SOW Mapping - Master data for SOW IDs (Change 3)
+interface SOWMapping {
+  sowId: string;
+  vertical: string;
+  region: string;
+  feesType: 'Fees' | 'Travel';
+  revenueType: 'License' | 'Implementation';
+  segmentType: 'Enterprise' | 'SMB';
+  startDate: string;
+  endDate: string;
+}
+
+// Sub-Category Contribution Breakdown (Change 1)
+interface SubCategoryContribution {
+  sowId: string;
+  year: number;
+  productSubCategory: string;
+  contributionPct: number;        // 0.0-1.0
+}
+
 interface Customer {
   id: string;
   name: string;
@@ -30,6 +51,9 @@ interface Customer {
   vertical: string;
   segment: 'Enterprise' | 'SMB';
   platform: string;               // Quantum, SMART, Cost Drivers, Opus
+  quantumSmart?: 'Quantum' | 'SMART';  // Platform classification (Change 5/6)
+  quantumGoLiveDate?: string;          // Migration date - takes precedence (Change 5/6)
+  feesType?: 'Fees' | 'Travel';        // From SOW Mapping (Change 4)
   products: string[];
   productARR: Record<string, number>;
   productSubCategory: string;     // From Product Category Mapping
@@ -37,7 +61,7 @@ interface Customer {
   contractEndDate: string;
   renewalDate: string;
   renewalRiskLevel?: 'Low' | 'Medium' | 'High' | 'Critical';
-  movementType?: 'New' | 'Expansion' | 'Contraction' | 'Churn' | 'Flat';
+  movementType?: 'New' | 'Expansion' | 'Contraction' | 'Churn' | 'ScheduleChange' | 'Flat';  // Added ScheduleChange (Change 8)
   movementReason?: string;
 }
 
@@ -56,6 +80,7 @@ interface ARRMovementRecord {
   date: string;
   newBusiness: number;
   expansion: number;
+  scheduleChange: number;         // Added (Change 8) - pre-agreed contract schedule changes
   contraction: number;
   churn: number;
   netChange: number;
@@ -91,7 +116,10 @@ const VERTICALS = [
 ];
 const SEGMENTS = ['Enterprise', 'SMB'];
 const PLATFORMS = ['Quantum', 'SMART', 'Cost Drivers', 'Opus'];
+const PLATFORM_FILTER_OPTIONS = ['All', 'Quantum', 'SMART'];  // For Quantum/SMART filter (Change 5)
 const DEFAULT_PLATFORMS = ['Quantum', 'SMART', 'Cost Drivers']; // Default selected platforms
+const REVENUE_TYPES = ['All', 'Fees', 'Travel'];  // Revenue Type filter options (Change 4)
+const FEES_TYPES: ('Fees' | 'Travel')[] = ['Fees', 'Travel'];  // For mock data generation
 
 const PRODUCT_CATEGORIES = ['Platform', 'Analytics', 'Integration', 'Services', 'Add-ons'];
 const PRODUCT_SUB_CATEGORIES: Record<string, string[]> = {
@@ -104,6 +132,7 @@ const PRODUCT_SUB_CATEGORIES: Record<string, string[]> = {
 const MOVEMENT_REASONS = {
   New: ['New Logo', 'Referral', 'Marketing Campaign', 'Partner Deal'],
   Expansion: ['Upsell', 'Cross-sell', 'Additional Users', 'New Module'],
+  ScheduleChange: ['Contract Schedule', 'Post Go-Live Rate', 'Milestone Rate Change', 'Volume Tier Change'],  // Added (Change 8)
   Contraction: ['Reduced Users', 'Downgrade', 'Partial Churn', 'Budget Cut'],
   Churn: ['Competitor', 'Budget Constraints', 'Poor Fit', 'Acquisition', 'Bankruptcy'],
 };
@@ -184,12 +213,16 @@ const generateCustomers = (): Customer[] => {
     // Product sub-category
     const productSubCategory = customerProducts[0] || 'Core Platform';
 
-    // Determine movement type
+    // Determine movement type (added ScheduleChange - Change 8)
     let movementType: Customer['movementType'] = 'Flat';
     if (idx < 15) movementType = 'New';
-    else if (currentARR > previousARR * 1.1) movementType = 'Expansion';
+    else if (currentARR > previousARR * 1.1) {
+      // 20% of expansions are actually schedule changes
+      movementType = Math.random() < 0.2 ? 'ScheduleChange' : 'Expansion';
+    }
     else if (currentARR < previousARR * 0.9) movementType = 'Contraction';
     else if (currentARR === 0 || Math.random() < 0.05) movementType = 'Churn';
+    else if (Math.random() < 0.1) movementType = 'ScheduleChange';  // Some flat changes are schedule-related
 
     const movementReason = movementType !== 'Flat'
       ? MOVEMENT_REASONS[movementType][Math.floor(Math.random() * MOVEMENT_REASONS[movementType].length)]
@@ -205,6 +238,18 @@ const generateCustomers = (): Customer[] => {
       else renewalRiskLevel = 'Critical';
     }
 
+    // Quantum/SMART classification (Change 5/6)
+    // ~60% on Quantum, ~40% on SMART, with ~20% having a Go-Live date
+    const quantumSmart: 'Quantum' | 'SMART' = Math.random() > 0.4 ? 'Quantum' : 'SMART';
+    // Some customers have a Go-Live date indicating migration
+    const hasGoLiveDate = Math.random() < 0.2;
+    const quantumGoLiveDate = hasGoLiveDate
+      ? `${2024 + Math.floor(Math.random() * 2)}-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-01`
+      : undefined;
+
+    // Fees Type from SOW Mapping (Change 4) - ~85% Fees, ~15% Travel
+    const feesType: 'Fees' | 'Travel' = Math.random() > 0.15 ? 'Fees' : 'Travel';
+
     customers.push({
       id: `CUST-${String(idx + 1).padStart(4, '0')}`,
       sowId: `SOW-${String(idx + 1).padStart(5, '0')}`,
@@ -215,6 +260,9 @@ const generateCustomers = (): Customer[] => {
       vertical,
       segment,
       platform,
+      quantumSmart,
+      quantumGoLiveDate,
+      feesType,
       products: customerProducts,
       productARR,
       productSubCategory,
@@ -300,6 +348,7 @@ const generateARRMovementHistory = (): ARRMovementRecord[] => {
     const date = new Date(currentYear - 2, i, 1);
     const newBusiness = Math.floor(Math.random() * 3000000) + 500000;
     const expansion = Math.floor(Math.random() * 2000000) + 300000;
+    const scheduleChange = Math.floor(Math.random() * 400000) + 50000;  // Added (Change 8)
     const contraction = -(Math.floor(Math.random() * 500000) + 100000);
     const churn = -(Math.floor(Math.random() * 800000) + 200000);
 
@@ -307,16 +356,114 @@ const generateARRMovementHistory = (): ARRMovementRecord[] => {
       date: date.toISOString().split('T')[0],
       newBusiness,
       expansion,
+      scheduleChange,
       contraction,
       churn,
-      netChange: newBusiness + expansion + contraction + churn,
+      netChange: newBusiness + expansion + scheduleChange + contraction + churn,
     });
   }
 
   return data;
 };
 
+// Generate SOW Mapping data (Change 3)
+const generateSOWMappings = (): SOWMapping[] => {
+  const mappings: SOWMapping[] = [];
+
+  for (let i = 1; i <= 120; i++) {
+    const sowId = `SOW-${String(i).padStart(5, '0')}`;
+    const vertical = VERTICALS[Math.floor(Math.random() * VERTICALS.length)];
+    const region = REGIONS[Math.floor(Math.random() * REGIONS.length)];
+    const feesType: 'Fees' | 'Travel' = Math.random() > 0.15 ? 'Fees' : 'Travel';  // 85% Fees, 15% Travel
+    const revenueType: 'License' | 'Implementation' = Math.random() > 0.3 ? 'License' : 'Implementation';
+    const segmentType: 'Enterprise' | 'SMB' = Math.random() > 0.4 ? 'Enterprise' : 'SMB';
+
+    const startYear = 2022 + Math.floor(Math.random() * 3);
+    const startMonth = Math.floor(Math.random() * 12) + 1;
+    const startDate = `${startYear}-${String(startMonth).padStart(2, '0')}-01`;
+
+    const contractLengthYears = Math.floor(Math.random() * 3) + 1;  // 1-3 years
+    const endYear = startYear + contractLengthYears;
+    const endDate = `${endYear}-${String(startMonth).padStart(2, '0')}-01`;
+
+    mappings.push({
+      sowId,
+      vertical,
+      region,
+      feesType,
+      revenueType,
+      segmentType,
+      startDate,
+      endDate,
+    });
+  }
+
+  return mappings;
+};
+
+// Generate Sub-Category Contribution Breakdown (Change 1)
+const generateSubCategoryContributions = (): SubCategoryContribution[] => {
+  const contributions: SubCategoryContribution[] = [];
+  const allSubCategories = Object.values(PRODUCT_SUB_CATEGORIES).flat();
+
+  // Generate contributions for each SOW for years 2024, 2025, 2026
+  for (let i = 1; i <= 120; i++) {
+    const sowId = `SOW-${String(i).padStart(5, '0')}`;
+
+    [2024, 2025, 2026].forEach(year => {
+      // Each SOW has 2-4 sub-categories
+      const numSubCategories = Math.floor(Math.random() * 3) + 2;
+      const selectedSubCategories = [...allSubCategories]
+        .sort(() => Math.random() - 0.5)
+        .slice(0, numSubCategories);
+
+      // Generate percentages that sum to 1.0
+      let remaining = 1.0;
+      selectedSubCategories.forEach((subCategory, idx) => {
+        let pct: number;
+        if (idx === selectedSubCategories.length - 1) {
+          pct = remaining;
+        } else {
+          pct = Math.round((0.1 + Math.random() * (remaining - 0.1 * (selectedSubCategories.length - idx - 1))) * 100) / 100;
+          remaining -= pct;
+        }
+
+        contributions.push({
+          sowId,
+          year,
+          productSubCategory: subCategory,
+          contributionPct: pct,
+        });
+      });
+    });
+  }
+
+  return contributions;
+};
+
+// Utility function to get Product Category from Sub-Category
+const getProductCategory = (subCategory: string): string => {
+  for (const [category, subCategories] of Object.entries(PRODUCT_SUB_CATEGORIES)) {
+    if (subCategories.includes(subCategory)) {
+      return category;
+    }
+  }
+  return 'Other';
+};
+
+// Utility function to classify platform based on Quantum/SMART rules (Change 5/6)
+const classifyPlatform = (quantumSmart: string | undefined, quantumGoLiveDate: string | undefined, snapshotMonth: string): 'Quantum' | 'SMART' => {
+  if (quantumGoLiveDate) {
+    // Go-Live date takes precedence
+    return snapshotMonth >= quantumGoLiveDate ? 'Quantum' : 'SMART';
+  }
+  // Fall back to column value, default to SMART if undefined
+  return (quantumSmart as 'Quantum' | 'SMART') || 'SMART';
+};
+
 // Initialize data
+const sowMappings = generateSOWMappings();
+const subCategoryContributions = generateSubCategoryContributions();
 const customers = generateCustomers();
 const products = generateProducts();
 const monthlyARRData = generateMonthlyARRData();
@@ -628,6 +775,10 @@ export default function RevenuePage() {
   const [segmentFilter, setSegmentFilter] = useState<string[]>([]);
   const [platformFilter, setPlatformFilter] = useState<string[]>(DEFAULT_PLATFORMS); // Default selected
 
+  // New Filters (Changes 4, 5)
+  const [quantumSmartFilter, setQuantumSmartFilter] = useState<string>('All');  // Platform filter for Quantum/SMART (Change 5)
+  const [revenueTypeFilter, setRevenueTypeFilter] = useState<string>('Fees');   // Revenue Type filter - default Fees (Change 4)
+
   // Tabs
   const [activeTab, setActiveTab] = useState<'overview' | 'movement' | 'customers' | 'products'>('overview');
 
@@ -652,6 +803,8 @@ export default function RevenuePage() {
 
   // Filter customers (multi-select support with standard filters)
   const filteredCustomers = useMemo(() => {
+    const currentMonth = new Date().toISOString().slice(0, 7);  // YYYY-MM format
+
     return customers.filter(c => {
       // Region filter (multi-select)
       if (regionFilter.length > 0 && !regionFilter.includes(c.region)) return false;
@@ -664,6 +817,16 @@ export default function RevenuePage() {
 
       // Platform filter (multi-select) - for ARR Analytics only
       if (platformFilter.length > 0 && !platformFilter.includes(c.platform)) return false;
+
+      // Quantum/SMART Platform filter (Change 5/6)
+      if (quantumSmartFilter !== 'All') {
+        const effectivePlatform = classifyPlatform(c.quantumSmart, c.quantumGoLiveDate, currentMonth);
+        if (effectivePlatform !== quantumSmartFilter) return false;
+      }
+
+      // Revenue Type filter (Change 4) - Applied only in Products tab but filter logic here
+      // Note: The actual filtering for Products tab is done separately below
+      // This filter affects the overall customer set for calculations
 
       // Year filter on renewal date (multi-select)
       if (yearFilterMulti.length > 0) {
@@ -680,7 +843,18 @@ export default function RevenuePage() {
 
       return true;
     });
-  }, [regionFilter, verticalFilter, segmentFilter, platformFilter, yearFilterMulti, monthFilterMulti]);
+  }, [regionFilter, verticalFilter, segmentFilter, platformFilter, quantumSmartFilter, yearFilterMulti, monthFilterMulti]);
+
+  // Filtered customers for Products tab with Revenue Type filter (Change 4)
+  const filteredCustomersForProducts = useMemo(() => {
+    if (revenueTypeFilter === 'All') return filteredCustomers;
+
+    return filteredCustomers.filter(c => {
+      // Use feesType from customer or look up from SOW Mapping
+      const feesType = c.feesType || 'Fees';
+      return feesType === revenueTypeFilter;
+    });
+  }, [filteredCustomers, revenueTypeFilter]);
 
   // Calculate metrics
   const metrics = useMemo(() => {
@@ -762,11 +936,12 @@ export default function RevenuePage() {
       (acc, record) => ({
         newBusiness: acc.newBusiness + record.newBusiness,
         expansion: acc.expansion + record.expansion,
+        scheduleChange: acc.scheduleChange + record.scheduleChange,  // Added (Change 8)
         contraction: acc.contraction + record.contraction,
         churn: acc.churn + record.churn,
         netChange: acc.netChange + record.netChange,
       }),
-      { newBusiness: 0, expansion: 0, contraction: 0, churn: 0, netChange: 0 }
+      { newBusiness: 0, expansion: 0, scheduleChange: 0, contraction: 0, churn: 0, netChange: 0 }
     );
 
     // Starting ARR (go back X months)
@@ -821,6 +996,34 @@ export default function RevenuePage() {
       connectTo: runningTotal + totals.expansion
     });
     runningTotal += totals.expansion;
+
+    // Schedule Change - can be positive or negative (Change 8)
+    if (totals.scheduleChange >= 0) {
+      // Positive schedule change - floats from running total
+      waterfallData.push({
+        name: 'Schedule\nChange',
+        bottom: runningTotal,
+        value: totals.scheduleChange,
+        displayValue: totals.scheduleChange,
+        fill: COLORS.purple,
+        type: 'increase',
+        connectTo: runningTotal + totals.scheduleChange
+      });
+      runningTotal += totals.scheduleChange;
+    } else {
+      // Negative schedule change - bar hangs down
+      const scheduleChangeAbs = Math.abs(totals.scheduleChange);
+      waterfallData.push({
+        name: 'Schedule\nChange',
+        bottom: runningTotal - scheduleChangeAbs,
+        value: scheduleChangeAbs,
+        displayValue: totals.scheduleChange,
+        fill: COLORS.purple,
+        type: 'decrease',
+        connectTo: runningTotal - scheduleChangeAbs
+      });
+      runningTotal -= scheduleChangeAbs;
+    }
 
     // Contraction - negative, bar hangs down from running total
     const contractionAbs = Math.abs(totals.contraction);
@@ -1101,7 +1304,7 @@ export default function RevenuePage() {
       </div>
 
       {/* Movement Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
         <div className="card p-5">
           <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Net ARR Change</p>
           <p className={`text-2xl font-bold ${arrMovementData.netChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -1115,6 +1318,12 @@ export default function RevenuePage() {
         <div className="card p-5 border-l-4 border-blue-500">
           <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Expansion</p>
           <p className="text-2xl font-bold text-blue-600">+{formatCurrency(arrMovementData.expansion)}</p>
+        </div>
+        <div className="card p-5 border-l-4 border-purple-500">
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Schedule Change</p>
+          <p className={`text-2xl font-bold ${arrMovementData.scheduleChange >= 0 ? 'text-purple-600' : 'text-purple-600'}`}>
+            {arrMovementData.scheduleChange >= 0 ? '+' : ''}{formatCurrency(arrMovementData.scheduleChange)}
+          </p>
         </div>
         <div className="card p-5 border-l-4 border-yellow-500">
           <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Contraction</p>
@@ -1231,6 +1440,10 @@ export default function RevenuePage() {
             <span className="text-xs text-secondary-600">Expansion (+)</span>
           </div>
           <div className="flex items-center gap-2">
+            <span className="w-4 h-4 rounded" style={{ backgroundColor: COLORS.purple }}></span>
+            <span className="text-xs text-secondary-600">Schedule Change (+/-)</span>
+          </div>
+          <div className="flex items-center gap-2">
             <span className="w-4 h-4 rounded" style={{ backgroundColor: COLORS.warning }}></span>
             <span className="text-xs text-secondary-600">Contraction (-)</span>
           </div>
@@ -1243,7 +1456,7 @@ export default function RevenuePage() {
         {/* Waterfall explanation */}
         <div className="mt-4 p-3 bg-secondary-50 rounded-lg">
           <p className="text-xs text-secondary-500 text-center">
-            <strong>How to read:</strong> Starting ARR + New Business + Expansion - Contraction - Churn = Ending ARR
+            <strong>How to read:</strong> Starting ARR + New Business + Expansion + Schedule Change - Contraction - Churn = Ending ARR
           </p>
         </div>
       </ChartWrapper>
@@ -1268,7 +1481,7 @@ export default function RevenuePage() {
                 <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Current ARR</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Change ($)</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Change (%)</th>
-                <SortableHeader label="Type" sortKey="movementType" currentSort={sortConfig} onSort={handleSort} filterOptions={['New', 'Expansion', 'Contraction', 'Churn']} />
+                <SortableHeader label="Type" sortKey="movementType" currentSort={sortConfig} onSort={handleSort} filterOptions={['New', 'Expansion', 'ScheduleChange', 'Contraction', 'Churn']} />
                 <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Reason</th>
               </tr>
             </thead>
@@ -2053,8 +2266,38 @@ export default function RevenuePage() {
             placeholder="All Platforms"
           />
 
+          {/* Quantum/SMART Platform Filter (Change 5) - All ARR Analytics tabs */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-secondary-600">Quantum/SMART:</label>
+            <select
+              value={quantumSmartFilter}
+              onChange={(e) => setQuantumSmartFilter(e.target.value)}
+              className="px-3 py-2 text-sm border border-secondary-200 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              {PLATFORM_FILTER_OPTIONS.map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Revenue Type Filter (Change 4) - Only for ARR by Products tab */}
+          {activeTab === 'products' && (
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-secondary-600">Revenue Type:</label>
+              <select
+                value={revenueTypeFilter}
+                onChange={(e) => setRevenueTypeFilter(e.target.value)}
+                className="px-3 py-2 text-sm border border-secondary-200 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              >
+                {REVENUE_TYPES.map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Clear All Filters Button */}
-          {(yearFilterMulti.length > 0 || monthFilterMulti.length > 0 || regionFilter.length > 0 || verticalFilter.length > 0 || segmentFilter.length > 0 || platformFilter.length !== DEFAULT_PLATFORMS.length) && (
+          {(yearFilterMulti.length > 0 || monthFilterMulti.length > 0 || regionFilter.length > 0 || verticalFilter.length > 0 || segmentFilter.length > 0 || platformFilter.length !== DEFAULT_PLATFORMS.length || quantumSmartFilter !== 'All' || revenueTypeFilter !== 'Fees') && (
             <button
               onClick={() => {
                 setYearFilterMulti([]);
@@ -2063,6 +2306,8 @@ export default function RevenuePage() {
                 setVerticalFilter([]);
                 setSegmentFilter([]);
                 setPlatformFilter([...DEFAULT_PLATFORMS]);
+                setQuantumSmartFilter('All');
+                setRevenueTypeFilter('Fees');
               }}
               className="px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg"
             >

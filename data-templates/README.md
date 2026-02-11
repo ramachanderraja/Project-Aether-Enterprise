@@ -14,6 +14,9 @@ This directory contains CSV templates for importing historical data into Project
 6. `06_deal_stage_history.csv` - Deal stage progression
 7. `07_scenarios.csv` - Budget and forecast scenarios
 8. `08_anomalies.csv` - Historical anomalies (optional)
+9. `09_sow_mapping.csv` - SOW master data (NEW)
+10. `10_subcategory_contributions.csv` - Sub-category contribution breakdown (NEW)
+11. `11_pipeline_subcategory_breakdown.csv` - Pipeline sub-category breakdown (NEW)
 
 ## File Specifications
 
@@ -196,6 +199,94 @@ head -5 data-templates/03_financial_metrics.csv
    - Use period (.) as decimal separator
    - Remove currency symbols from amounts
    - Remove thousand separators
+
+### 09_sow_mapping.csv (NEW)
+
+SOW master data for ARR Analytics and Sales Performance.
+
+| Column | Type | Required | Description |
+|--------|------|----------|-------------|
+| SOW_ID | string | * | Unique SOW identifier |
+| Vertical | string | * | Industry vertical |
+| Region | string | * | Geographic region |
+| Fees_Type | string | * | Fee classification: Fees or Travel |
+| Revenue_Type | string | * | Revenue type: License or Implementation |
+| Segment_Type | string | * | Customer segment: Enterprise or SMB |
+| Start_Date | date | * | SOW start date |
+| End_Date | date | * | SOW end date |
+
+### 10_subcategory_contributions.csv (NEW)
+
+Sub-category contribution breakdown for Closed ACV by SOW.
+
+| Column | Type | Required | Description |
+|--------|------|----------|-------------|
+| SOW_ID | string | * | SOW identifier (must exist in 09_sow_mapping) |
+| Year | integer | * | Year for the contribution split |
+| Product_Sub_Category | string | * | Product sub-category name |
+| Contribution_Pct | decimal | * | Contribution percentage (0.0-1.0) |
+
+**Note**: Contributions for each SOW_ID + Year must sum to 1.0 (100%).
+
+### 11_pipeline_subcategory_breakdown.csv (NEW)
+
+Pipeline sub-category breakdown for weighted pipeline calculations.
+
+| Column | Type | Required | Description |
+|--------|------|----------|-------------|
+| Snapshot_Month | string | * | Snapshot month (YYYY-MM) |
+| Pipeline_Deal_ID | string | * | Pipeline deal identifier |
+| Product_Sub_Category | string | * | Product sub-category name |
+| Contribution_Pct | decimal | * | Contribution percentage (0.0-1.0) |
+
+**Note**: Contributions for each Snapshot_Month + Pipeline_Deal_ID must sum to 1.0 (100%).
+
+---
+
+## Recent Updates (v2.0)
+
+### New Features Added
+
+1. **SOW Mapping** - Master data for SOW IDs with metadata (Vertical, Region, Fees_Type, Revenue_Type, Segment_Type)
+
+2. **Sub-Category Breakdown** - Product sub-category contribution percentages for:
+   - Closed ACV (by SOW_ID and Year)
+   - Pipeline (by Snapshot Month and Deal ID)
+
+3. **Quantum/SMART Platform Classification** - Platform filter in ARR Analytics with:
+   - Quantum_SMART column value
+   - Quantum_GoLive_Date (takes precedence for classification)
+
+4. **Revenue Type Filter** - Fees vs Travel filter for ARR by Products tab
+
+5. **Schedule Change** - New ARR Movement category for schedule-based ARR changes
+
+6. **Sold By Filter** - Sales, GD, TSO classification for Sales Performance
+
+7. **Manager Quota Logic** - Manager attainment calculated against their OWN quota, not team aggregate
+
+### Product Sub-Categories
+
+Valid product sub-categories for templates 10 and 11:
+- Core Platform
+- Business Intelligence
+- Advanced Analytics
+- Supplier Management
+- Contract Management
+- Spend Analytics
+- Savings Tracking
+- Risk Management
+
+### Product Category Mapping
+
+Sub-categories roll up to Product Categories as follows:
+- **Platform**: Core Platform, Business Intelligence
+- **Analytics**: Advanced Analytics, Spend Analytics, Savings Tracking
+- **Supplier Solutions**: Supplier Management
+- **Contract Solutions**: Contract Management
+- **Risk & Compliance**: Risk Management
+
+---
 
 ## Need Help?
 

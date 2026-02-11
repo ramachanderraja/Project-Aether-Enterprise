@@ -1,0 +1,11 @@
+SOW_ID,Vertical,Region,Fees_Type,Revenue_Type,Segment_Type,Start_Date,End_Date
+SOW-00001,Life Sciences,North America,Fees,License,Enterprise,2024-01-01,2026-12-31
+SOW-00002,BFSI,Europe,Travel,Implementation,SMB,2024-06-01,2025-05-31
+SOW-00003,CPG & Retail,North America,Fees,License,Enterprise,2024-03-15,2027-03-14
+SOW-00004,Chemicals/Oil/Gas/Resources,Middle East,Fees,License,Enterprise,2024-07-01,2026-06-30
+SOW-00005,Automotive and Industrial,APAC,Fees,Implementation,SMB,2024-09-01,2025-08-31
+SOW-00006,Telecom/Media/Tech,Europe,Travel,License,Enterprise,2024-02-01,2026-01-31
+SOW-00007,Public Sector,North America,Fees,License,Enterprise,2024-04-01,2027-03-31
+SOW-00008,Energy & Utilities,LATAM,Fees,Implementation,SMB,2024-08-15,2025-08-14
+SOW-00009,Life Sciences,Europe,Travel,License,Enterprise,2024-05-01,2026-04-30
+SOW-00010,Other Services,APAC,Fees,License,SMB,2024-10-01,2025-09-30

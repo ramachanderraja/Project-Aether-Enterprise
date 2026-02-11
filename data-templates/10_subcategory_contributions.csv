@@ -1,0 +1,24 @@
+SOW_ID,Year,Product_Sub_Category,Contribution_Pct
+SOW-00001,2024,Core Platform,0.45
+SOW-00001,2024,Business Intelligence,0.30
+SOW-00001,2024,Advanced Analytics,0.25
+SOW-00002,2024,Supplier Management,0.50
+SOW-00002,2024,Contract Management,0.50
+SOW-00003,2024,Core Platform,0.60
+SOW-00003,2024,Spend Analytics,0.40
+SOW-00004,2024,Risk Management,0.35
+SOW-00004,2024,Supplier Management,0.35
+SOW-00004,2024,Contract Management,0.30
+SOW-00005,2024,Core Platform,0.70
+SOW-00005,2024,Savings Tracking,0.30
+SOW-00006,2024,Business Intelligence,0.55
+SOW-00006,2024,Advanced Analytics,0.45
+SOW-00007,2024,Core Platform,0.40
+SOW-00007,2024,Risk Management,0.30
+SOW-00007,2024,Spend Analytics,0.30
+SOW-00008,2024,Supplier Management,0.60
+SOW-00008,2024,Savings Tracking,0.40
+SOW-00009,2024,Advanced Analytics,0.50
+SOW-00009,2024,Business Intelligence,0.50
+SOW-00010,2024,Core Platform,0.80
+SOW-00010,2024,Contract Management,0.20

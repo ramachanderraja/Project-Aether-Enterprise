@@ -1,0 +1,13 @@
+Snapshot_Month,Pipeline_Deal_ID,Product_Sub_Category,Contribution_Pct
+2026-01,DEAL-001,Core Platform,0.60
+2026-01,DEAL-001,Business Intelligence,0.40
+2026-01,DEAL-002,Supplier Management,0.50
+2026-01,DEAL-002,Contract Management,0.30
+2026-01,DEAL-002,Risk Management,0.20
+2026-01,DEAL-003,Advanced Analytics,0.70
+2026-01,DEAL-003,Spend Analytics,0.30
+2026-02,DEAL-001,Core Platform,0.55
+2026-02,DEAL-001,Business Intelligence,0.45
+2026-02,DEAL-004,Core Platform,0.40
+2026-02,DEAL-004,Savings Tracking,0.35
+2026-02,DEAL-004,Risk Management,0.25

@@ -44,6 +44,10 @@ interface Opportunity {
   movementReason?: string;
   // Calculated Closed ACV (License only for New Logo/Upsell/Cross-Sell + Implementation always)
   closedACV?: number;
+  // Sold By classification (Change 9)
+  soldBy: 'Sales' | 'GD' | 'TSO';
+  // SOW ID for sub-category breakdown (Change 1)
+  sowId?: string;
 }
 
 interface Salesperson {
@@ -81,6 +85,22 @@ interface SortConfig {
   direction: SortDirection;
 }
 
+// Sub-Category Contribution Breakdown (Change 1)
+interface SubCategoryContribution {
+  sowId: string;
+  year: number;
+  productSubCategory: string;
+  contributionPct: number;  // 0.0-1.0
+}
+
+// Pipeline Sub-Category Breakdown (Change 2)
+interface PipelineSubCategoryBreakdown {
+  snapshotMonth: string;      // YYYY-MM
+  pipelineDealId: string;
+  productSubCategory: string;
+  contributionPct: number;    // 0.0-1.0
+}
+
 // ==================== SAMPLE DATA GENERATION ====================
 // Standard filter options as per requirements document
 const REGIONS = ['North America', 'Europe', 'LATAM', 'Middle East', 'APAC'];
@@ -107,6 +127,27 @@ const LICENSE_ACV_LOGO_TYPES = ['New Logo', 'Upsell', 'Cross-Sell'];
 const STAGES = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
 const LOSS_REASONS = ['Budget Constraints', 'Competitor Selected', 'Project Cancelled', 'Timeline Delayed', 'Price Sensitivity', 'No Decision'];
 const MOVEMENT_REASONS = ['Expanded Scope', 'Reduced Scope', 'Lost to Competitor', 'Budget Cuts', 'Timeline Change', 'New Opportunity'];
+
+// Sold By classification (Change 9)
+const SOLD_BY_OPTIONS = ['Sales', 'GD', 'TSO'] as const;
+
+// Product Sub-Categories for breakdown (Change 1, 2)
+const PRODUCT_SUB_CATEGORIES = [
+  'Core Platform', 'Business Intelligence', 'Advanced Analytics', 'Supplier Management',
+  'Contract Management', 'Spend Analytics', 'Savings Tracking', 'Risk Management'
+];
+
+// Product Category Mapping (sub-category -> category)
+const PRODUCT_CATEGORY_MAPPING: Record<string, string> = {
+  'Core Platform': 'Platform',
+  'Business Intelligence': 'Platform',
+  'Advanced Analytics': 'Analytics',
+  'Supplier Management': 'Supplier Solutions',
+  'Contract Management': 'Contract Solutions',
+  'Spend Analytics': 'Analytics',
+  'Savings Tracking': 'Analytics',
+  'Risk Management': 'Risk & Compliance',
+};
 
 const SALESPERSON_NAMES = [
   'Sarah Johnson', 'Mike Wilson', 'Emily Davis', 'John Smith', 'Lisa Chen',
@@ -166,6 +207,10 @@ const generateOpportunities = (): Opportunity[] => {
     const licenseCountsTowardACV = LICENSE_ACV_LOGO_TYPES.includes(logoType);
     const closedACV = (licenseCountsTowardACV ? licenseValue : 0) + implementationValue;
 
+    // Sold By distribution - Sales 60%, GD 25%, TSO 15%
+    const soldByRand = Math.random();
+    const soldBy: 'Sales' | 'GD' | 'TSO' = soldByRand < 0.6 ? 'Sales' : soldByRand < 0.85 ? 'GD' : 'TSO';
+
     opportunities.push({
       id: `OPP-${String(i).padStart(4, '0')}`,
       name: `${['Enterprise', 'Platform', 'Cloud', 'Analytics', 'Integration'][Math.floor(Math.random() * 5)]} Deal ${i}`,
@@ -191,6 +236,9 @@ const generateOpportunities = (): Opportunity[] => {
       previousValue: previousValue ? Math.round(previousValue) : undefined,
       movementReason: previousValue ? MOVEMENT_REASONS[Math.floor(Math.random() * MOVEMENT_REASONS.length)] : undefined,
       closedACV: isWon ? closedACV : undefined,
+      soldBy,
+      // SOW ID (Change 1) - only for won deals
+      sowId: isWon ? `SOW-${String(Math.floor(Math.random() * 100) + 1).padStart(5, '0')}` : undefined,
     });
   }
   return opportunities;
@@ -246,6 +294,72 @@ const generateSalespeople = (): Salesperson[] => {
 const opportunities = generateOpportunities();
 const salespeople = generateSalespeople();
 
+// Generate Sub-Category Contributions for deals with SOW IDs (Change 1)
+const generateSubCategoryContributions = (opps: Opportunity[]): SubCategoryContribution[] => {
+  const contributions: SubCategoryContribution[] = [];
+  const sowIds = [...new Set(opps.filter(o => o.sowId).map(o => o.sowId!))];
+
+  sowIds.forEach(sowId => {
+    // For each SOW, generate 2-4 sub-category contributions that sum to 1.0
+    const numSubCategories = Math.floor(Math.random() * 3) + 2;
+    const selectedSubCategories = [...PRODUCT_SUB_CATEGORIES]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, numSubCategories);
+
+    // Generate random percentages that sum to 1.0
+    let remaining = 1.0;
+    selectedSubCategories.forEach((subCategory, index) => {
+      const pct = index === selectedSubCategories.length - 1
+        ? remaining
+        : Math.round((Math.random() * remaining * 0.7 + 0.1) * 100) / 100;
+      remaining -= pct;
+
+      contributions.push({
+        sowId,
+        year: currentYear,
+        productSubCategory: subCategory,
+        contributionPct: pct,
+      });
+    });
+  });
+
+  return contributions;
+};
+
+// Generate Pipeline Sub-Category Breakdown (Change 2)
+const generatePipelineSubCategoryBreakdown = (opps: Opportunity[]): PipelineSubCategoryBreakdown[] => {
+  const breakdowns: PipelineSubCategoryBreakdown[] = [];
+  const activeDeals = opps.filter(o => o.status === 'Active' || o.status === 'Stalled');
+
+  activeDeals.forEach(deal => {
+    const snapshotMonth = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+    const numSubCategories = Math.floor(Math.random() * 3) + 1;
+    const selectedSubCategories = [...PRODUCT_SUB_CATEGORIES]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, numSubCategories);
+
+    let remaining = 1.0;
+    selectedSubCategories.forEach((subCategory, index) => {
+      const pct = index === selectedSubCategories.length - 1
+        ? remaining
+        : Math.round((Math.random() * remaining * 0.7 + 0.1) * 100) / 100;
+      remaining -= pct;
+
+      breakdowns.push({
+        snapshotMonth,
+        pipelineDealId: deal.id,
+        productSubCategory: subCategory,
+        contributionPct: pct,
+      });
+    });
+  });
+
+  return breakdowns;
+};
+
+const subCategoryContributions = generateSubCategoryContributions(opportunities);
+const pipelineSubCategoryBreakdowns = generatePipelineSubCategoryBreakdown(opportunities);
+
 // Quarterly forecast data - with actuals for past quarters only
 const getQuarterlyForecastData = (): QuarterlyForecast[] => {
   const currentQuarter = Math.floor(currentMonth / 3) + 1;
@@ -299,6 +413,37 @@ const COLORS = {
 };
 
 const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+
+// Calculate Sub-Category Breakdown for a deal (Change 1)
+const calculateDealSubCategoryBreakdown = (deal: Opportunity, contributions: SubCategoryContribution[]) => {
+  if (!deal.sowId || !deal.closedACV) return [];
+
+  const closeYear = new Date(deal.expectedCloseDate).getFullYear();
+  const dealContributions = contributions.filter(
+    c => c.sowId === deal.sowId && c.year === closeYear
+  );
+
+  return dealContributions.map(c => ({
+    subCategory: c.productSubCategory,
+    acv: deal.closedACV! * c.contributionPct,
+    contributionPct: c.contributionPct,
+    category: PRODUCT_CATEGORY_MAPPING[c.productSubCategory] || 'Other',
+  }));
+};
+
+// Calculate Pipeline Sub-Category values (Change 2)
+const calculatePipelineSubCategories = (deal: Opportunity, breakdowns: PipelineSubCategoryBreakdown[], snapshotMonth: string) => {
+  const dealBreakdowns = breakdowns.filter(
+    b => b.snapshotMonth === snapshotMonth && b.pipelineDealId === deal.id
+  );
+
+  return dealBreakdowns.map(b => ({
+    subCategory: b.productSubCategory,
+    weightedLicense: deal.weightedValue * b.contributionPct,
+    contributionPct: b.contributionPct,
+    category: PRODUCT_CATEGORY_MAPPING[b.productSubCategory] || 'Other',
+  }));
+};
 
 // Export to CSV function
 const exportToCSV = (data: any[], filename: string) => {
@@ -594,6 +739,7 @@ export default function SalesPage() {
   const [segmentFilter, setSegmentFilter] = useState<string[]>([]);
   const [channelFilter, setChannelFilter] = useState<string[]>([]);
   const [logoTypeFilter, setLogoTypeFilter] = useState<string[]>([]);
+  const [soldByFilter, setSoldByFilter] = useState<string>('All');  // Sold By filter (Change 9)
 
   // Tabs
   const [activeTab, setActiveTab] = useState<'overview' | 'forecast' | 'pipeline' | 'quota'>('overview');
@@ -667,9 +813,12 @@ export default function SalesPage() {
         if (!monthFilter.includes(monthNames[oppMonth])) return false;
       }
 
+      // Sold By filter (Change 9)
+      if (soldByFilter !== 'All' && opp.soldBy !== soldByFilter) return false;
+
       return true;
     });
-  }, [yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter, segmentFilter, channelFilter, logoTypeFilter]);
+  }, [yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter, segmentFilter, channelFilter, logoTypeFilter, soldByFilter]);
 
   // Calculate metrics with proper Closed ACV rules
   const metrics = useMemo(() => {
@@ -1585,8 +1734,15 @@ export default function SalesPage() {
         const teamClosed = teamMembers.reduce((sum, s) => sum + s.closedYTD, 0) + sp.closedYTD;
         const teamForecast = teamMembers.reduce((sum, s) => sum + s.forecast, 0) + sp.forecast;
         const teamPipeline = teamMembers.reduce((sum, s) => sum + s.pipelineValue, 0) + sp.pipelineValue;
+        // Change 10: Manager's quota is their OWN assigned quota, NOT aggregated from team
+        // The teamTarget is the aggregated amount (for display/reference only)
+        // But attainment calculations use the manager's individual quota (sp.annualTarget)
         const teamTarget = teamMembers.reduce((sum, s) => sum + s.annualTarget, 0) + sp.annualTarget;
-        return { ...sp, teamClosed, teamForecast, teamPipeline, teamTarget, pipelineCoverage, forecastAttainment, ytdAttainment };
+        // Manager's attainment is based on their OWN quota, not team aggregate
+        const managerYtdAttainment = (teamClosed / sp.annualTarget) * 100;
+        const managerForecastAttainment = ((teamClosed + teamForecast) / sp.annualTarget) * 100;
+        return { ...sp, teamClosed, teamForecast, teamPipeline, teamTarget, pipelineCoverage,
+          forecastAttainment: managerForecastAttainment, ytdAttainment: managerYtdAttainment };
       }
       return { ...sp, pipelineCoverage, forecastAttainment, ytdAttainment };
     });
@@ -2014,8 +2170,23 @@ export default function SalesPage() {
             placeholder="All Channels"
           />
 
+          {/* Sold By Filter (Change 9) */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-secondary-600">Sold By:</label>
+            <select
+              value={soldByFilter}
+              onChange={(e) => setSoldByFilter(e.target.value)}
+              className="px-3 py-2 text-sm border border-secondary-200 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="All">All</option>
+              {SOLD_BY_OPTIONS.map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Clear All Filters Button */}
-          {(yearFilter.length > 0 || quarterFilter.length > 0 || monthFilter.length > 0 || regionFilter.length > 0 || verticalFilter.length > 0 || segmentFilter.length > 0 || logoTypeFilter.length > 0 || channelFilter.length > 0) && (
+          {(yearFilter.length > 0 || quarterFilter.length > 0 || monthFilter.length > 0 || regionFilter.length > 0 || verticalFilter.length > 0 || segmentFilter.length > 0 || logoTypeFilter.length > 0 || channelFilter.length > 0 || soldByFilter !== 'All') && (
             <button
               onClick={() => {
                 setYearFilter([]);
@@ -2026,6 +2197,7 @@ export default function SalesPage() {
                 setSegmentFilter([]);
                 setLogoTypeFilter([]);
                 setChannelFilter([]);
+                setSoldByFilter('All');
               }}
               className="px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg"
             >
