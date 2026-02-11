@@ -85,22 +85,6 @@ interface SortConfig {
   direction: SortDirection;
 }
 
-// Sub-Category Contribution Breakdown (Change 1)
-interface SubCategoryContribution {
-  sowId: string;
-  year: number;
-  productSubCategory: string;
-  contributionPct: number;  // 0.0-1.0
-}
-
-// Pipeline Sub-Category Breakdown (Change 2)
-interface PipelineSubCategoryBreakdown {
-  snapshotMonth: string;      // YYYY-MM
-  pipelineDealId: string;
-  productSubCategory: string;
-  contributionPct: number;    // 0.0-1.0
-}
-
 // ==================== SAMPLE DATA GENERATION ====================
 // Standard filter options as per requirements document
 const REGIONS = ['North America', 'Europe', 'LATAM', 'Middle East', 'APAC'];

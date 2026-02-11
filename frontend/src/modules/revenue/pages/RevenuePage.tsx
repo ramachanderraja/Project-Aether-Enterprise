@@ -21,26 +21,6 @@ import {
 
 // ==================== TYPE DEFINITIONS ====================
 
-// SOW Mapping - Master data for SOW IDs (Change 3)
-interface SOWMapping {
-  sowId: string;
-  vertical: string;
-  region: string;
-  feesType: 'Fees' | 'Travel';
-  revenueType: 'License' | 'Implementation';
-  segmentType: 'Enterprise' | 'SMB';
-  startDate: string;
-  endDate: string;
-}
-
-// Sub-Category Contribution Breakdown (Change 1)
-interface SubCategoryContribution {
-  sowId: string;
-  year: number;
-  productSubCategory: string;
-  contributionPct: number;        // 0.0-1.0
-}
-
 interface Customer {
   id: string;
   name: string;
