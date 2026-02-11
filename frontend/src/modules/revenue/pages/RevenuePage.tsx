@@ -41,6 +41,7 @@ interface Customer {
   contractEndDate: string;
   renewalDate: string;
   renewalRiskLevel?: 'Low' | 'Medium' | 'High' | 'Critical';
+  feesType?: 'Fees' | 'Travel';        // From SOW Mapping (Fees_Type field)
   movementType?: 'New' | 'Expansion' | 'Contraction' | 'Churn' | 'ScheduleChange' | 'Flat';  // Added ScheduleChange (Change 8)
   movementReason?: string;
 }
@@ -98,7 +99,7 @@ const SEGMENTS = ['Enterprise', 'SMB'];
 const PLATFORMS = ['Quantum', 'SMART', 'Cost Drivers', 'Opus'];
 const PLATFORM_FILTER_OPTIONS = ['All', 'Quantum', 'SMART'];  // For Quantum/SMART filter (Change 5)
 const DEFAULT_PLATFORMS = ['Quantum', 'SMART', 'Cost Drivers']; // Default selected platforms
-const REVENUE_TYPES = ['All', 'Fees', 'Travel'];  // Revenue Type filter options (Change 4)
+const REVENUE_TYPES = ['All', 'Fees', 'Travel'];  // Revenue Type filter options (Fees_Type from SOW Mapping)
 
 const PRODUCT_CATEGORIES = ['Platform', 'Analytics', 'Integration', 'Services', 'Add-ons'];
 const PRODUCT_SUB_CATEGORIES: Record<string, string[]> = {
@@ -207,6 +208,9 @@ const generateCustomers = (): Customer[] => {
       ? MOVEMENT_REASONS[movementType][Math.floor(Math.random() * MOVEMENT_REASONS[movementType].length)]
       : undefined;
 
+    // Fees Type from SOW Mapping - ~85% Fees, ~15% Travel
+    const feesType: 'Fees' | 'Travel' = Math.random() > 0.15 ? 'Fees' : 'Travel';
+
     // Renewal risk for 2026 renewals
     let renewalRiskLevel: Customer['renewalRiskLevel'];
     if (renewalYear === 2026) {
@@ -245,6 +249,7 @@ const generateCustomers = (): Customer[] => {
       products: customerProducts,
       productARR,
       productSubCategory,
+      feesType,
       contractStartDate,
       contractEndDate,
       renewalDate,
@@ -667,6 +672,7 @@ export default function RevenuePage() {
   const [verticalFilter, setVerticalFilter] = useState<string[]>([]);
   const [segmentFilter, setSegmentFilter] = useState<string[]>([]);
   const [platformFilter, setPlatformFilter] = useState<string[]>(DEFAULT_PLATFORMS); // Default selected
+  const [revenueTypeFilter, setRevenueTypeFilter] = useState<string>('Fees');   // Revenue Type filter - default Fees
 
   // New Filters (Changes 4, 5)
   const [quantumSmartFilter, setQuantumSmartFilter] = useState<string>('All');  // Platform filter for Quantum/SMART (Change 5)
@@ -744,6 +750,16 @@ export default function RevenuePage() {
 
     return filteredCustomers.filter(c => {
       // Use feesType from customer or look up from SOW Mapping
+      const feesType = c.feesType || 'Fees';
+      return feesType === revenueTypeFilter;
+    });
+  }, [filteredCustomers, revenueTypeFilter]);
+
+  // Filtered customers for Products tab with Revenue Type filter (Fees_Type from SOW Mapping)
+  const filteredCustomersForProducts = useMemo(() => {
+    if (revenueTypeFilter === 'All') return filteredCustomers;
+
+    return filteredCustomers.filter(c => {
       const feesType = c.feesType || 'Fees';
       return feesType === revenueTypeFilter;
     });
@@ -1785,7 +1801,7 @@ export default function RevenuePage() {
   // Render Products Tab
   const renderProductsTab = () => {
 
-    // Customer product matrix - uses filteredCustomersForProducts for Revenue Type filter (Change 4)
+    // Customer product matrix - uses filteredCustomersForProducts for Revenue Type filter
     const customerProductMatrix: Array<{
       name: string;
       region: string;
@@ -1806,7 +1822,7 @@ export default function RevenuePage() {
       .sort((a, b) => b.totalARR - a.totalARR)
       .slice(0, 30);
 
-    // Cross-sell analysis - uses filteredCustomersForProducts for Revenue Type filter (Change 4)
+    // Cross-sell analysis - uses filteredCustomersForProducts for Revenue Type filter
     const crossSellData = [
       { name: '1 Product', count: filteredCustomersForProducts.filter(c => c.products.length === 1 && c.currentARR > 0).length },
       { name: '2 Products', count: filteredCustomersForProducts.filter(c => c.products.length === 2 && c.currentARR > 0).length },
@@ -2173,7 +2189,7 @@ export default function RevenuePage() {
             </select>
           </div>
 
-          {/* Revenue Type Filter (Change 4) - Only for ARR by Products tab */}
+          {/* Revenue Type Filter - Only for ARR by Products tab */}
           {activeTab === 'products' && (
             <div className="flex items-center gap-2">
               <label className="text-sm text-secondary-600">Revenue Type:</label>
