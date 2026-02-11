@@ -162,33 +162,43 @@ az containerapp update --name ca-aether-ca-dev-web --resource-group rg-aether-ca
 
 ## CI/CD Deployment
 
+### GEP Azure Subscription Constraints
+
+> **IMPORTANT:** GEP's Azure subscription grants **Contributor** access only (not Owner). This means:
+> - Cannot create RBAC role assignments for service principals
+> - Service principals cannot use `az login` (fails with "No subscriptions found")
+> - Must use ACR admin credentials for authentication
+
 ### How CI/CD Works
 
 The GitHub Actions workflow (`.github/workflows/container-apps-deploy.yml`) automates deployment:
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│  Push to     │────▶│    Build     │────▶│   Push to    │────▶│   Update     │
-│  main/master │     │   Docker     │     │     ACR      │     │ Container    │
-│              │     │   Images     │     │              │     │    Apps      │
+│  Push to     │────▶│    Build     │────▶│   Push to    │────▶│   Smoke      │
+│  main/master │     │   Docker     │     │     ACR      │     │   Tests      │
+│              │     │   Images     │     │              │     │   (HTTP)     │
 └──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
 ```
 
 **Trigger:** The workflow runs automatically when you push code to `main` or `master` branch.
 
 **What happens:**
-1. **Build Job**: Builds Docker images for frontend and backend
-2. **Push to ACR**: Tags images with commit SHA and pushes to Azure Container Registry
-3. **Deploy Job**: Uses Azure CLI to update Container Apps with new images
+1. **Build Job**: Builds Docker images for frontend and backend using ACR admin credentials
+2. **Push to ACR**: Tags images with commit SHA + `latest` and pushes to Azure Container Registry
+3. **Smoke Tests**: Verifies deployment via HTTP health checks to Container Apps FQDNs
+
+**Note:** The workflow does NOT use Azure CLI login. Container Apps pull new images automatically when `:latest` is updated. If auto-pull doesn't work, manual update commands are provided in the workflow output.
 
 ### GitHub Secrets Required
 
 | Secret | Description | Value |
 |--------|-------------|-------|
-| `AZURE_CREDENTIALS` | Service Principal JSON | (existing) |
 | `ACR_CA_LOGIN_SERVER` | ACR URL | `acraetherdev.azurecr.io` |
 | `ACR_CA_USERNAME` | ACR admin username | `acraetherdev` |
 | `ACR_CA_PASSWORD` | ACR admin password | (from ACR) |
+
+> **Note:** `AZURE_CREDENTIALS` (service principal) is NOT used due to GEP subscription limitations.
 
 ### Manual Workflow Trigger
 
@@ -259,6 +269,27 @@ az containerapp revision restart \
 ## Troubleshooting
 
 ### Common Issues
+
+#### 0. CI/CD "No subscriptions found" Error
+
+**Symptom:** GitHub Actions workflow fails at Azure Login step with:
+```
+Error: No subscriptions found for ***.
+Login failed with Error: The process '/usr/bin/az' failed with exit code 1.
+```
+
+**Root Cause:** GEP's Azure subscription only grants Contributor access. Service principals cannot have role assignments created, so `az login` fails.
+
+**Solution:** The workflow has been updated to use ACR admin credentials only, without Azure login. If you see this error:
+1. Make sure you're using the updated workflow from `container-apps-deploy.yml`
+2. Ensure `ACR_CA_LOGIN_SERVER`, `ACR_CA_USERNAME`, and `ACR_CA_PASSWORD` secrets are set
+3. The workflow pushes images to ACR and relies on Container Apps auto-pulling `:latest`
+
+**Manual Fallback:** If Container Apps don't auto-pull, run manually:
+```bash
+az containerapp update --name ca-aether-ca-dev-api --resource-group rg-aether-ca-dev --image acraetherdev.azurecr.io/aether-backend:latest
+az containerapp update --name ca-aether-ca-dev-web --resource-group rg-aether-ca-dev --image acraetherdev.azurecr.io/aether-frontend:latest
+```
 
 #### 1. Container App won't start
 
