@@ -119,8 +119,6 @@ const PLATFORMS = ['Quantum', 'SMART', 'Cost Drivers', 'Opus'];
 const PLATFORM_FILTER_OPTIONS = ['All', 'Quantum', 'SMART'];  // For Quantum/SMART filter (Change 5)
 const DEFAULT_PLATFORMS = ['Quantum', 'SMART', 'Cost Drivers']; // Default selected platforms
 const REVENUE_TYPES = ['All', 'Fees', 'Travel'];  // Revenue Type filter options (Change 4)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _FEES_TYPES: ('Fees' | 'Travel')[] = ['Fees', 'Travel'];  // For future mock data generation
 
 const PRODUCT_CATEGORIES = ['Platform', 'Analytics', 'Integration', 'Services', 'Add-ons'];
 const PRODUCT_SUB_CATEGORIES: Record<string, string[]> = {
@@ -442,17 +440,6 @@ const generateSubCategoryContributions = (): SubCategoryContribution[] => {
   return contributions;
 };
 
-// Utility function to get Product Category from Sub-Category (for future SOW Mapping tab)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _getProductCategory = (subCategory: string): string => {
-  for (const [category, subCategories] of Object.entries(PRODUCT_SUB_CATEGORIES)) {
-    if (subCategories.includes(subCategory)) {
-      return category;
-    }
-  }
-  return 'Other';
-};
-
 // Utility function to classify platform based on Quantum/SMART rules (Change 5/6)
 const classifyPlatform = (quantumSmart: string | undefined, quantumGoLiveDate: string | undefined, snapshotMonth: string): 'Quantum' | 'SMART' => {
   if (quantumGoLiveDate) {
@@ -463,11 +450,8 @@ const classifyPlatform = (quantumSmart: string | undefined, quantumGoLiveDate: s
   return (quantumSmart as 'Quantum' | 'SMART') || 'SMART';
 };
 
-// Initialize data (for future SOW Mapping tab - data structures ready)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _sowMappings = generateSOWMappings();
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _subCategoryContributions = generateSubCategoryContributions();
+// Initialize data
+// Note: SOW Mapping and SubCategoryContributions generators are available for future SOW Mapping tab
 const customers = generateCustomers();
 const products = generateProducts();
 const monthlyARRData = generateMonthlyARRData();

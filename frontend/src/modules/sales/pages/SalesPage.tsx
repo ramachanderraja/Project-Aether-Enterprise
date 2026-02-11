@@ -357,11 +357,8 @@ const generatePipelineSubCategoryBreakdown = (opps: Opportunity[]): PipelineSubC
   return breakdowns;
 };
 
-// Data structures for future Sub-Category breakdown features (Change 1, 2)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _subCategoryContributions = generateSubCategoryContributions(opportunities);
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _pipelineSubCategoryBreakdowns = generatePipelineSubCategoryBreakdown(opportunities);
+// Note: Sub-Category breakdown generators are available for future Closed ACV breakdown display
+// generateSubCategoryContributions(opportunities) and generatePipelineSubCategoryBreakdown(opportunities)
 
 // Quarterly forecast data - with actuals for past quarters only
 const getQuarterlyForecastData = (): QuarterlyForecast[] => {
@@ -417,38 +414,9 @@ const COLORS = {
 
 const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
-// Calculate Sub-Category Breakdown for a deal (Change 1) - for future Closed ACV breakdown display
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _calculateDealSubCategoryBreakdown = (deal: Opportunity, contributions: SubCategoryContribution[]) => {
-  if (!deal.sowId || !deal.closedACV) return [];
-
-  const closeYear = new Date(deal.expectedCloseDate).getFullYear();
-  const dealContributions = contributions.filter(
-    c => c.sowId === deal.sowId && c.year === closeYear
-  );
-
-  return dealContributions.map(c => ({
-    subCategory: c.productSubCategory,
-    acv: deal.closedACV! * c.contributionPct,
-    contributionPct: c.contributionPct,
-    category: PRODUCT_CATEGORY_MAPPING[c.productSubCategory] || 'Other',
-  }));
-};
-
-// Calculate Pipeline Sub-Category values (Change 2) - for future pipeline sub-category display
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _calculatePipelineSubCategories = (deal: Opportunity, breakdowns: PipelineSubCategoryBreakdown[], snapshotMonth: string) => {
-  const dealBreakdowns = breakdowns.filter(
-    b => b.snapshotMonth === snapshotMonth && b.pipelineDealId === deal.id
-  );
-
-  return dealBreakdowns.map(b => ({
-    subCategory: b.productSubCategory,
-    weightedLicense: deal.weightedValue * b.contributionPct,
-    contributionPct: b.contributionPct,
-    category: PRODUCT_CATEGORY_MAPPING[b.productSubCategory] || 'Other',
-  }));
-};
+// Note: Sub-category breakdown utility functions available for future implementation:
+// - calculateDealSubCategoryBreakdown(deal, contributions) - for Closed ACV breakdown
+// - calculatePipelineSubCategories(deal, breakdowns, snapshotMonth) - for Pipeline breakdown
 
 // Export to CSV function
 const exportToCSV = (data: any[], filename: string) => {
