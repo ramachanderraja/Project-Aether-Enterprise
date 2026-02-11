@@ -242,9 +242,6 @@ const generateCustomers = (): Customer[] => {
       ? MOVEMENT_REASONS[movementType][Math.floor(Math.random() * MOVEMENT_REASONS[movementType].length)]
       : undefined;
 
-    // Fees Type from SOW Mapping - ~85% Fees, ~15% Travel
-    const feesType: 'Fees' | 'Travel' = Math.random() > 0.15 ? 'Fees' : 'Travel';
-
     // Renewal risk for 2026 renewals
     let renewalRiskLevel: Customer['renewalRiskLevel'];
     if (renewalYear === 2026) {
@@ -283,7 +280,6 @@ const generateCustomers = (): Customer[] => {
       products: customerProducts,
       productARR,
       productSubCategory,
-      feesType,
       contractStartDate,
       contractEndDate,
       renewalDate,
@@ -472,7 +468,6 @@ const products = generateProducts();
 const monthlyARRData = generateMonthlyARRData();
 const arrMovementHistory = generateARRMovementHistory();
 const sowMappings = generateSOWMappings(customers);
-const subCategoryContributions = generateSubCategoryContributions(customers);
 const pipelineSubCategoryBreakdown = generatePipelineSubCategoryBreakdown(customers);
 
 // ==================== UTILITY FUNCTIONS ====================
