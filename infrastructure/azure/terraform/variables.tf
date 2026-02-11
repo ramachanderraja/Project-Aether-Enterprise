@@ -26,7 +26,7 @@ variable "environment" {
 variable "location" {
   description = "Azure region for resources"
   type        = string
-  default     = "East US"
+  default     = "West US 2"
 }
 
 # -----------------------------------------------------------------------------
@@ -187,9 +187,11 @@ variable "additional_tags" {
 
 locals {
   common_tags = merge({
-    Project     = var.project_name
-    Environment = var.environment
-    ManagedBy   = "Terraform"
-    Application = "Project Aether FP&A"
+    Project      = var.project_name
+    Environment  = var.environment
+    ManagedBy    = "Terraform"
+    Application  = "Project Aether FP&A"
+    documentTeam = "Architecture"
+    projectName  = "IT"
   }, var.additional_tags)
 }
