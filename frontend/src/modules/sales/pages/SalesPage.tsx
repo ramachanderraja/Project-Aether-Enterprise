@@ -132,23 +132,6 @@ const MOVEMENT_REASONS = ['Expanded Scope', 'Reduced Scope', 'Lost to Competitor
 const SOLD_BY_OPTIONS = ['Sales', 'GD', 'TSO'] as const;
 
 // Product Sub-Categories for breakdown (Change 1, 2)
-const PRODUCT_SUB_CATEGORIES = [
-  'Core Platform', 'Business Intelligence', 'Advanced Analytics', 'Supplier Management',
-  'Contract Management', 'Spend Analytics', 'Savings Tracking', 'Risk Management'
-];
-
-// Product Category Mapping (sub-category -> category)
-const PRODUCT_CATEGORY_MAPPING: Record<string, string> = {
-  'Core Platform': 'Platform',
-  'Business Intelligence': 'Platform',
-  'Advanced Analytics': 'Analytics',
-  'Supplier Management': 'Supplier Solutions',
-  'Contract Management': 'Contract Solutions',
-  'Spend Analytics': 'Analytics',
-  'Savings Tracking': 'Analytics',
-  'Risk Management': 'Risk & Compliance',
-};
-
 const SALESPERSON_NAMES = [
   'Sarah Johnson', 'Mike Wilson', 'Emily Davis', 'John Smith', 'Lisa Chen',
   'David Brown', 'Jennifer Lee', 'Robert Taylor', 'Amanda White', 'Chris Martin',
@@ -293,72 +276,6 @@ const generateSalespeople = (): Salesperson[] => {
 
 const opportunities = generateOpportunities();
 const salespeople = generateSalespeople();
-
-// Generate Sub-Category Contributions for deals with SOW IDs (Change 1)
-const generateSubCategoryContributions = (opps: Opportunity[]): SubCategoryContribution[] => {
-  const contributions: SubCategoryContribution[] = [];
-  const sowIds = [...new Set(opps.filter(o => o.sowId).map(o => o.sowId!))];
-
-  sowIds.forEach(sowId => {
-    // For each SOW, generate 2-4 sub-category contributions that sum to 1.0
-    const numSubCategories = Math.floor(Math.random() * 3) + 2;
-    const selectedSubCategories = [...PRODUCT_SUB_CATEGORIES]
-      .sort(() => Math.random() - 0.5)
-      .slice(0, numSubCategories);
-
-    // Generate random percentages that sum to 1.0
-    let remaining = 1.0;
-    selectedSubCategories.forEach((subCategory, index) => {
-      const pct = index === selectedSubCategories.length - 1
-        ? remaining
-        : Math.round((Math.random() * remaining * 0.7 + 0.1) * 100) / 100;
-      remaining -= pct;
-
-      contributions.push({
-        sowId,
-        year: currentYear,
-        productSubCategory: subCategory,
-        contributionPct: pct,
-      });
-    });
-  });
-
-  return contributions;
-};
-
-// Generate Pipeline Sub-Category Breakdown (Change 2)
-const generatePipelineSubCategoryBreakdown = (opps: Opportunity[]): PipelineSubCategoryBreakdown[] => {
-  const breakdowns: PipelineSubCategoryBreakdown[] = [];
-  const activeDeals = opps.filter(o => o.status === 'Active' || o.status === 'Stalled');
-
-  activeDeals.forEach(deal => {
-    const snapshotMonth = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
-    const numSubCategories = Math.floor(Math.random() * 3) + 1;
-    const selectedSubCategories = [...PRODUCT_SUB_CATEGORIES]
-      .sort(() => Math.random() - 0.5)
-      .slice(0, numSubCategories);
-
-    let remaining = 1.0;
-    selectedSubCategories.forEach((subCategory, index) => {
-      const pct = index === selectedSubCategories.length - 1
-        ? remaining
-        : Math.round((Math.random() * remaining * 0.7 + 0.1) * 100) / 100;
-      remaining -= pct;
-
-      breakdowns.push({
-        snapshotMonth,
-        pipelineDealId: deal.id,
-        productSubCategory: subCategory,
-        contributionPct: pct,
-      });
-    });
-  });
-
-  return breakdowns;
-};
-
-// Note: Sub-Category breakdown generators are available for future Closed ACV breakdown display
-// generateSubCategoryContributions(opportunities) and generatePipelineSubCategoryBreakdown(opportunities)
 
 // Quarterly forecast data - with actuals for past quarters only
 const getQuarterlyForecastData = (): QuarterlyForecast[] => {
