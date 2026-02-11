@@ -357,8 +357,11 @@ const generatePipelineSubCategoryBreakdown = (opps: Opportunity[]): PipelineSubC
   return breakdowns;
 };
 
-const subCategoryContributions = generateSubCategoryContributions(opportunities);
-const pipelineSubCategoryBreakdowns = generatePipelineSubCategoryBreakdown(opportunities);
+// Data structures for future Sub-Category breakdown features (Change 1, 2)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _subCategoryContributions = generateSubCategoryContributions(opportunities);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _pipelineSubCategoryBreakdowns = generatePipelineSubCategoryBreakdown(opportunities);
 
 // Quarterly forecast data - with actuals for past quarters only
 const getQuarterlyForecastData = (): QuarterlyForecast[] => {
@@ -414,8 +417,9 @@ const COLORS = {
 
 const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
-// Calculate Sub-Category Breakdown for a deal (Change 1)
-const calculateDealSubCategoryBreakdown = (deal: Opportunity, contributions: SubCategoryContribution[]) => {
+// Calculate Sub-Category Breakdown for a deal (Change 1) - for future Closed ACV breakdown display
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _calculateDealSubCategoryBreakdown = (deal: Opportunity, contributions: SubCategoryContribution[]) => {
   if (!deal.sowId || !deal.closedACV) return [];
 
   const closeYear = new Date(deal.expectedCloseDate).getFullYear();
@@ -431,8 +435,9 @@ const calculateDealSubCategoryBreakdown = (deal: Opportunity, contributions: Sub
   }));
 };
 
-// Calculate Pipeline Sub-Category values (Change 2)
-const calculatePipelineSubCategories = (deal: Opportunity, breakdowns: PipelineSubCategoryBreakdown[], snapshotMonth: string) => {
+// Calculate Pipeline Sub-Category values (Change 2) - for future pipeline sub-category display
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _calculatePipelineSubCategories = (deal: Opportunity, breakdowns: PipelineSubCategoryBreakdown[], snapshotMonth: string) => {
   const dealBreakdowns = breakdowns.filter(
     b => b.snapshotMonth === snapshotMonth && b.pipelineDealId === deal.id
   );

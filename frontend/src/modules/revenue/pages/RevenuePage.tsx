@@ -119,7 +119,8 @@ const PLATFORMS = ['Quantum', 'SMART', 'Cost Drivers', 'Opus'];
 const PLATFORM_FILTER_OPTIONS = ['All', 'Quantum', 'SMART'];  // For Quantum/SMART filter (Change 5)
 const DEFAULT_PLATFORMS = ['Quantum', 'SMART', 'Cost Drivers']; // Default selected platforms
 const REVENUE_TYPES = ['All', 'Fees', 'Travel'];  // Revenue Type filter options (Change 4)
-const FEES_TYPES: ('Fees' | 'Travel')[] = ['Fees', 'Travel'];  // For mock data generation
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _FEES_TYPES: ('Fees' | 'Travel')[] = ['Fees', 'Travel'];  // For future mock data generation
 
 const PRODUCT_CATEGORIES = ['Platform', 'Analytics', 'Integration', 'Services', 'Add-ons'];
 const PRODUCT_SUB_CATEGORIES: Record<string, string[]> = {
@@ -441,8 +442,9 @@ const generateSubCategoryContributions = (): SubCategoryContribution[] => {
   return contributions;
 };
 
-// Utility function to get Product Category from Sub-Category
-const getProductCategory = (subCategory: string): string => {
+// Utility function to get Product Category from Sub-Category (for future SOW Mapping tab)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _getProductCategory = (subCategory: string): string => {
   for (const [category, subCategories] of Object.entries(PRODUCT_SUB_CATEGORIES)) {
     if (subCategories.includes(subCategory)) {
       return category;
@@ -461,9 +463,11 @@ const classifyPlatform = (quantumSmart: string | undefined, quantumGoLiveDate: s
   return (quantumSmart as 'Quantum' | 'SMART') || 'SMART';
 };
 
-// Initialize data
-const sowMappings = generateSOWMappings();
-const subCategoryContributions = generateSubCategoryContributions();
+// Initialize data (for future SOW Mapping tab - data structures ready)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _sowMappings = generateSOWMappings();
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _subCategoryContributions = generateSubCategoryContributions();
 const customers = generateCustomers();
 const products = generateProducts();
 const monthlyARRData = generateMonthlyARRData();
@@ -1892,7 +1896,7 @@ export default function RevenuePage() {
   // Render Products Tab
   const renderProductsTab = () => {
 
-    // Customer product matrix
+    // Customer product matrix - uses filteredCustomersForProducts for Revenue Type filter (Change 4)
     const customerProductMatrix: Array<{
       name: string;
       region: string;
@@ -1900,7 +1904,7 @@ export default function RevenuePage() {
       totalARR: number;
       productCount: number;
       [key: string]: string | number;
-    }> = filteredCustomers
+    }> = filteredCustomersForProducts
       .filter(c => c.currentARR > 0)
       .map(c => ({
         name: c.name,
@@ -1913,11 +1917,11 @@ export default function RevenuePage() {
       .sort((a, b) => b.totalARR - a.totalARR)
       .slice(0, 30);
 
-    // Cross-sell analysis
+    // Cross-sell analysis - uses filteredCustomersForProducts for Revenue Type filter (Change 4)
     const crossSellData = [
-      { name: '1 Product', count: filteredCustomers.filter(c => c.products.length === 1 && c.currentARR > 0).length },
-      { name: '2 Products', count: filteredCustomers.filter(c => c.products.length === 2 && c.currentARR > 0).length },
-      { name: '3+ Products', count: filteredCustomers.filter(c => c.products.length >= 3 && c.currentARR > 0).length },
+      { name: '1 Product', count: filteredCustomersForProducts.filter(c => c.products.length === 1 && c.currentARR > 0).length },
+      { name: '2 Products', count: filteredCustomersForProducts.filter(c => c.products.length === 2 && c.currentARR > 0).length },
+      { name: '3+ Products', count: filteredCustomersForProducts.filter(c => c.products.length >= 3 && c.currentARR > 0).length },
     ];
 
     const allProductNames = [...new Set(products.map(p => p.name))];
