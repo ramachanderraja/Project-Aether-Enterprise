@@ -20,6 +20,7 @@ import { useSOWMappingStore } from '@shared/store/sowMappingStore';
 import { usePipelineSubCategoryStore } from '@shared/store/pipelineSubCategoryStore';
 import { useARRSubCategoryStore } from '@shared/store/arrSubCategoryStore';
 import { useProductCategoryMappingStore } from '@shared/store/productCategoryMappingStore';
+import { useRealDataStore, normalizeRegion, type RealDataState } from '@shared/store/realDataStore';
 
 // ==================== TYPE DEFINITIONS ====================
 interface Opportunity {
@@ -267,8 +268,8 @@ const generateSalespeople = (): Salesperson[] => {
   return salespeople;
 };
 
-const opportunities = generateOpportunities();
-const salespeople = generateSalespeople();
+const MOCK_OPPORTUNITIES = generateOpportunities();
+const MOCK_SALESPEOPLE = generateSalespeople();
 
 // Quarterly forecast data - with actuals for past quarters only
 const getQuarterlyForecastData = (): QuarterlyForecast[] => {
@@ -282,10 +283,10 @@ const getQuarterlyForecastData = (): QuarterlyForecast[] => {
   ];
 };
 
-const quarterlyForecastData = getQuarterlyForecastData();
+const MOCK_QUARTERLY_FORECAST = getQuarterlyForecastData();
 
 // Regional forecast data - using closedACV instead of actual
-const regionalForecastData: RegionalForecast[] = REGIONS.map(region => {
+const MOCK_REGIONAL_FORECAST: RegionalForecast[] = REGIONS.map(region => {
   const target = Math.floor(Math.random() * 3000000) + 2000000;
   const closedACV = Math.floor(Math.random() * target * 0.8);
   const forecast = closedACV + Math.floor(Math.random() * 1000000);
@@ -298,6 +299,226 @@ const regionalForecastData: RegionalForecast[] = REGIONS.map(region => {
     percentToTarget: Math.round((forecast / target) * 100),
   };
 });
+
+// ==================== REAL DATA BUILDERS ====================
+
+function buildRealOpportunities(store: RealDataState): Opportunity[] {
+  const opps: Opportunity[] = [];
+  const ACV_LOGO_TYPES = ['New Logo', 'Upsell', 'Cross-Sell'];
+
+  // 1. Closed ACV records → Won opportunities
+  store.closedAcv.forEach(row => {
+    const sowMapping = store.sowMappingIndex[row.SOW_ID];
+    const region = row.Region || (sowMapping ? normalizeRegion(sowMapping.Region) : '');
+    const vertical = row.Vertical || (sowMapping ? sowMapping.Vertical : '');
+    const segment = row.Segment || (sowMapping ? sowMapping.Segment_Type : 'Enterprise');
+
+    const isLicense = row.Value_Type === 'License';
+    const licenseValue = isLicense ? row.Amount : 0;
+    const implementationValue = !isLicense ? row.Amount : 0;
+
+    const licenseCountsTowardACV = ACV_LOGO_TYPES.includes(row.Logo_Type);
+    const closedACV = (licenseCountsTowardACV ? licenseValue : 0) + implementationValue;
+
+    const soldBy = (['Sales', 'GD', 'TSO'].includes(row.Sold_By) ? row.Sold_By : 'Sales') as 'Sales' | 'GD' | 'TSO';
+
+    opps.push({
+      id: row.Closed_ACV_ID,
+      name: row.Deal_Name,
+      accountName: row.Customer_Name,
+      region,
+      vertical,
+      segment: (segment === 'SMB' ? 'SMB' : 'Enterprise') as 'Enterprise' | 'SMB',
+      channel: 'Direct',
+      stage: 'Closed Won',
+      probability: 100,
+      dealValue: row.Amount,
+      licenseValue,
+      implementationValue,
+      weightedValue: row.Amount,
+      expectedCloseDate: row.Close_Date,
+      daysInStage: 0,
+      owner: row.Sales_Rep,
+      status: 'Won',
+      logoType: (row.Logo_Type || 'Upsell') as Opportunity['logoType'],
+      salesCycleDays: 90,
+      createdDate: row.Close_Date,
+      closedACV,
+      soldBy,
+      sowId: row.SOW_ID,
+    });
+  });
+
+  // 2. Pipeline snapshots → Active/Lost/Stalled (latest snapshot per deal)
+  const dealMap = new Map<string, (typeof store.pipelineSnapshots)[0]>();
+  store.pipelineSnapshots.forEach(row => {
+    const key = `${row.Deal_Name}|${row.Customer_Name}`;
+    const existing = dealMap.get(key);
+    if (!existing || row.Snapshot_Month > existing.Snapshot_Month) {
+      dealMap.set(key, row);
+    }
+  });
+
+  let pipIdx = 0;
+  dealMap.forEach((row) => {
+    if (row.Current_Stage.includes('Closed Won')) return; // Covered by closed ACV
+
+    let status: 'Active' | 'Lost' | 'Stalled' = 'Active';
+    if (row.Current_Stage.includes('Closed Lost') ||
+        row.Current_Stage.includes('Closed Dead') ||
+        row.Current_Stage.includes('Closed Declined')) {
+      status = 'Lost';
+    } else if (row.Current_Stage.includes('Stalled')) {
+      status = 'Stalled';
+    }
+
+    let simpleStage = 'Prospecting';
+    if (row.Deal_Stage.includes('RFI') || row.Deal_Stage.includes('Deep-Dive')) simpleStage = 'Qualification';
+    else if (row.Deal_Stage.includes('RFP') || row.Deal_Stage.includes('Proposal')) simpleStage = 'Proposal';
+    else if (row.Deal_Stage.includes('Short-List') || row.Deal_Stage.includes('Finalizing')) simpleStage = 'Negotiation';
+    else if (row.Deal_Stage.includes('Closed Won')) simpleStage = 'Closed Won';
+    else if (row.Deal_Stage.includes('Closed')) simpleStage = 'Closed Lost';
+
+    const prob = status === 'Lost' ? 0 : row.Probability;
+
+    opps.push({
+      id: `PIP-${String(++pipIdx).padStart(4, '0')}`,
+      name: row.Deal_Name,
+      accountName: row.Customer_Name,
+      region: row.Region || 'North America',
+      vertical: row.Vertical || 'Other Services',
+      segment: (row.Segment || 'Enterprise') as 'Enterprise' | 'SMB',
+      channel: 'Direct',
+      stage: status === 'Lost' ? 'Closed Lost' : simpleStage,
+      probability: prob,
+      dealValue: row.Deal_Value,
+      licenseValue: row.License_ACV,
+      implementationValue: row.Implementation_Value,
+      weightedValue: Math.round(row.Deal_Value * (prob / 100)),
+      expectedCloseDate: row.Expected_Close_Date,
+      daysInStage: 30,
+      owner: row.Sales_Rep,
+      status,
+      logoType: (row.Logo_Type || 'New Logo') as Opportunity['logoType'],
+      salesCycleDays: 90,
+      createdDate: row.Snapshot_Month,
+      soldBy: 'Sales',
+      productSubCategory: row.Product_Sub_Category || undefined,
+    });
+  });
+
+  return opps;
+}
+
+function buildRealSalespeople(store: RealDataState, opps: Opportunity[]): Salesperson[] {
+  const yr = new Date().getFullYear();
+
+  return store.salesTeam
+    .filter(m => m.Name && m.Status === 'Active')
+    .map(member => {
+      const isManager = member.Sales_Rep_ID === member.Manager_ID;
+      const nameLower = member.Name.trim().toLowerCase();
+
+      const wonDeals = opps.filter(o =>
+        o.status === 'Won' &&
+        o.owner.trim().toLowerCase() === nameLower &&
+        o.expectedCloseDate.startsWith(String(yr))
+      );
+      const closedYTD = wonDeals.reduce((sum, o) => sum + (o.closedACV || 0), 0);
+
+      const activeDeals = opps.filter(o =>
+        (o.status === 'Active' || o.status === 'Stalled') &&
+        o.owner.trim().toLowerCase() === nameLower
+      );
+      const pipelineValue = activeDeals.reduce((sum, o) => sum + o.dealValue, 0);
+      const forecast = activeDeals.reduce((sum, o) => sum + o.weightedValue, 0);
+
+      const monthlyAttainment = Array.from({ length: 12 }, (_, month) => {
+        const monthDeals = wonDeals.filter(o => new Date(o.expectedCloseDate).getMonth() === month);
+        const monthClosed = monthDeals.reduce((sum, o) => sum + (o.closedACV || 0), 0);
+        const monthTarget = member.Annual_Quota / 12;
+        return monthTarget > 0 ? Math.round((monthClosed / monthTarget) * 100) : 0;
+      });
+
+      return {
+        id: member.Sales_Rep_ID,
+        name: member.Name,
+        region: member.Region,
+        isManager,
+        managerId: isManager ? undefined : member.Manager_ID,
+        annualTarget: member.Annual_Quota,
+        closedYTD,
+        forecast,
+        pipelineValue,
+        monthlyAttainment,
+      };
+    });
+}
+
+function buildQuarterlyForecast(opps: Opportunity[], salesTeam: RealDataState['salesTeam']): QuarterlyForecast[] {
+  const yr = new Date().getFullYear();
+  const currentQuarter = Math.floor(new Date().getMonth() / 3) + 1;
+
+  // Total annual target from sales team
+  const totalAnnualTarget = salesTeam
+    .filter(m => m.Status === 'Active')
+    .reduce((sum, m) => sum + m.Annual_Quota, 0);
+  const quarterTarget = totalAnnualTarget / 4;
+
+  return [1, 2, 3, 4].map(q => {
+    const qStart = new Date(yr, (q - 1) * 3, 1);
+    const qEnd = new Date(yr, q * 3, 0);
+
+    const wonInQ = opps.filter(o => {
+      if (o.status !== 'Won') return false;
+      const d = new Date(o.expectedCloseDate);
+      return d >= qStart && d <= qEnd;
+    });
+    const actual = q < currentQuarter
+      ? wonInQ.reduce((sum, o) => sum + (o.closedACV || 0), 0)
+      : 0;
+
+    const activeInQ = opps.filter(o => {
+      if (o.status !== 'Active' && o.status !== 'Stalled') return false;
+      const d = new Date(o.expectedCloseDate);
+      return d >= qStart && d <= qEnd;
+    });
+    const weightedPipeline = activeInQ.reduce((sum, o) => sum + o.weightedValue, 0);
+    const forecast = actual + weightedPipeline;
+
+    return { quarter: `Q${q}`, forecast, actual, target: quarterTarget || 10000000 };
+  });
+}
+
+function buildRegionalForecast(opps: Opportunity[], salesTeam: RealDataState['salesTeam']): RegionalForecast[] {
+  const yr = new Date().getFullYear();
+
+  return REGIONS.map(region => {
+    const regionWon = opps.filter(o =>
+      o.status === 'Won' && o.region === region && o.expectedCloseDate.startsWith(String(yr))
+    );
+    const closedACV = regionWon.reduce((sum, o) => sum + (o.closedACV || 0), 0);
+
+    const regionActive = opps.filter(o =>
+      (o.status === 'Active' || o.status === 'Stalled') && o.region === region
+    );
+    const weightedPipeline = regionActive.reduce((sum, o) => sum + o.weightedValue, 0);
+    const forecast = closedACV + weightedPipeline;
+
+    const target = salesTeam
+      .filter(t => t.Region === region && t.Status === 'Active')
+      .reduce((sum, t) => sum + t.Annual_Quota, 0);
+
+    return {
+      region,
+      forecast,
+      target: target || 1000000,
+      closedACV,
+      variance: forecast - (target || 1000000),
+      percentToTarget: Math.round((forecast / (target || 1000000)) * 100),
+    };
+  });
+}
 
 // ==================== UTILITY FUNCTIONS ====================
 const formatCurrency = (value: number) => {
@@ -619,8 +840,35 @@ export default function SalesPage() {
   const arrSubCategoryStore = useARRSubCategoryStore();
   const productCategoryMappingStore = useProductCategoryMappingStore();
 
-  // Filters - now with multi-select support
-  const [yearFilter, setYearFilter] = useState<string[]>([String(currentYear)]);
+  // Real data store - loads actual CSV data
+  const realData = useRealDataStore();
+
+  // Build opportunities from real data or fall back to mock
+  const opportunities = useMemo(() => {
+    if (!realData.isLoaded || realData.closedAcv.length === 0) return MOCK_OPPORTUNITIES;
+    return buildRealOpportunities(realData);
+  }, [realData.isLoaded, realData.closedAcv, realData.pipelineSnapshots, realData.sowMappingIndex]);
+
+  // Build salespeople from real data or fall back to mock
+  const salespeople = useMemo(() => {
+    if (!realData.isLoaded || realData.salesTeam.length === 0) return MOCK_SALESPEOPLE;
+    return buildRealSalespeople(realData, opportunities);
+  }, [realData.isLoaded, realData.salesTeam, opportunities]);
+
+  // Build quarterly forecast from real data or fall back to mock
+  const quarterlyForecastData = useMemo(() => {
+    if (!realData.isLoaded) return MOCK_QUARTERLY_FORECAST;
+    return buildQuarterlyForecast(opportunities, realData.salesTeam);
+  }, [realData.isLoaded, opportunities, realData.salesTeam]);
+
+  // Build regional forecast from real data or fall back to mock
+  const regionalForecastData = useMemo(() => {
+    if (!realData.isLoaded) return MOCK_REGIONAL_FORECAST;
+    return buildRegionalForecast(opportunities, realData.salesTeam);
+  }, [realData.isLoaded, opportunities, realData.salesTeam]);
+
+  // Filters - now with multi-select support (empty = show all years for real data)
+  const [yearFilter, setYearFilter] = useState<string[]>([]);
   const [quarterFilter, setQuarterFilter] = useState<string[]>([]);
   const [monthFilter, setMonthFilter] = useState<string[]>([]);
   const [regionFilter, setRegionFilter] = useState<string[]>([]);
@@ -721,7 +969,7 @@ export default function SalesPage() {
 
       return enriched;
     });
-  }, [sowMappingStore.mappings, arrSubCategoryStore.records, pipelineSubCategoryStore.records, productCategoryMappingStore.records]);
+  }, [opportunities, sowMappingStore.mappings, arrSubCategoryStore.records, pipelineSubCategoryStore.records, productCategoryMappingStore.records]);
 
   // Filter opportunities based on selected filters (multi-select)
   const filteredOpportunities = useMemo(() => {
@@ -2033,7 +2281,7 @@ export default function SalesPage() {
     }
 
     return { filteredSalespeople, salespeopleWithTotals };
-  }, [tableColumnFilters, sortConfig]);
+  }, [salespeople, tableColumnFilters, sortConfig]);
 
   const renderQuotaTab = () => {
     const { filteredSalespeople, salespeopleWithTotals } = sortedSalespeople;

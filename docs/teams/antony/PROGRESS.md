@@ -7,6 +7,24 @@
 
 <!-- Add entries below in reverse chronological order (newest first) -->
 
+## 2026-02-12 - Replace Mock Data with Real CSV Data (8 Templates)
+**Task:** Copy 8 real data CSV files to frontend/public/data/, create a centralized Zustand store (realDataStore) that auto-loads all CSVs at runtime, and update SalesPage and RevenuePage to display real data instead of mock data.
+**Changes:**
+- `frontend/public/data/closed_acv.csv` - **NEW** Real closed ACV data (597 records)
+- `frontend/public/data/monthly_pipeline_snapshot.csv` - **NEW** Real pipeline snapshot data (5809 records)
+- `frontend/public/data/monthly_arr_snapshot.csv` - **NEW** Real ARR snapshot data (12054 records)
+- `frontend/public/data/sales_team_structure.csv` - **NEW** Real sales team data (42 members)
+- `frontend/public/data/customer_name_mapping.csv` - **NEW** Customer name mappings (356 entries)
+- `frontend/public/data/sow_mapping.csv` - **NEW** SOW mappings (840 entries)
+- `frontend/public/data/arr_subcategory_breakdown.csv` - **NEW** ARR sub-category breakdown (2825 records)
+- `frontend/public/data/product_category_mapping.csv` - **NEW** Product category mapping (29 entries)
+- `frontend/src/shared/store/realDataStore.ts` - **NEW** Central Zustand store: CSV parser with quoted field support, parseNumber/parseDate/normalizeLogoType/normalizeRegion helpers, 8 raw data interfaces, auto-loads all CSVs from /data/ on import, builds SOW/product/customer lookup indexes.
+- `frontend/src/modules/sales/pages/SalesPage.tsx` - Imports realDataStore, renames mock data with MOCK_ prefix, adds 4 builder functions (buildRealOpportunities, buildRealSalespeople, buildQuarterlyForecast, buildRegionalForecast), 4 useMemo hooks that return real data when loaded or mock fallback, updated dependency arrays, changed default yearFilter to [] (show all years).
+- `frontend/src/modules/revenue/pages/RevenuePage.tsx` - Imports realDataStore, renames mock data with MOCK_ prefix, adds 4 builder functions (buildRealCustomers, buildRealMonthlyARR, buildRealARRMovement, buildRealProducts), 4 useMemo hooks that return real data when loaded or mock fallback, updated dependency arrays. Also removed dead generateSOWMappings function from previous session cleanup.
+**Status:** Completed
+**Branch:** `antony-branch-changes`
+**Notes:** TypeScript compiles clean, Vite build succeeds. Real data auto-loads at runtime via fetch from /data/ CSVs. Pages show real data when loaded, fall back to mock data if CSVs unavailable. Closed ACV enriched from SOW mapping (region/vertical/segment). Pipeline deduped by Deal_Name+Customer_Name (latest snapshot). ARR grouped by SOW_ID with movement type detection.
+
 ## 2026-02-12 - Pipeline Sub-Category Breakdown + SOW_ID on Closed ACV
 **Task:** Add Pipeline Sub-Category Breakdown import template, add SOW_ID to Closed ACV template, create 3 new Zustand stores, enable expandable Closed ACV rows with product sub-category breakdown, and add product filters to Sales page.
 **Changes:**

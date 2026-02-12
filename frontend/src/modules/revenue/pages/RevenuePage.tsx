@@ -19,6 +19,7 @@ import {
   LabelList,
 } from 'recharts';
 import { useSOWMappingStore } from '@shared/store/sowMappingStore';
+import { useRealDataStore, normalizeRegion, type RealDataState } from '@shared/store/realDataStore';
 
 // ==================== TYPE DEFINITIONS ====================
 
@@ -356,11 +357,217 @@ const classifyPlatform = (quantumSmart: string | undefined, quantumGoLiveDate: s
   return (quantumSmart as 'Quantum' | 'SMART') || 'SMART';
 };
 
-// Initialize data
-const customers = generateCustomers();
-const products = generateProducts();
-const monthlyARRData = generateMonthlyARRData();
-const arrMovementHistory = generateARRMovementHistory();
+// Initialize mock data (used as fallback)
+const MOCK_CUSTOMERS = generateCustomers();
+const MOCK_PRODUCTS = generateProducts();
+const MOCK_MONTHLY_ARR = generateMonthlyARRData();
+const MOCK_ARR_MOVEMENT = generateARRMovementHistory();
+
+// ==================== REAL DATA BUILDERS ====================
+
+function buildRealCustomers(store: RealDataState): Customer[] {
+  // Group ARR snapshots by SOW_ID
+  const sowGroups = new Map<string, (typeof store.arrSnapshots)>();
+  store.arrSnapshots.forEach(row => {
+    const key = row.SOW_ID;
+    if (!sowGroups.has(key)) sowGroups.set(key, []);
+    sowGroups.get(key)!.push(row);
+  });
+
+  const year = new Date().getFullYear();
+  const result: Customer[] = [];
+
+  sowGroups.forEach((rows, sowId) => {
+    // Sort by Snapshot_Month descending → latest first
+    rows.sort((a, b) => b.Snapshot_Month.localeCompare(a.Snapshot_Month));
+    const latest = rows[0];
+    const previous = rows.length > 1 ? rows[1] : null;
+
+    const currentARR = latest.Ending_ARR;
+    const previousARR = previous ? previous.Ending_ARR : latest.Starting_ARR;
+
+    // Enrich from SOW Mapping
+    const sowMapping = store.sowMappingIndex[sowId];
+    const region = latest.Region || (sowMapping ? normalizeRegion(sowMapping.Region) : 'North America');
+    const vertical = latest.Vertical || (sowMapping ? sowMapping.Vertical : 'Other Services');
+    const segment = latest.Segment || (sowMapping ? sowMapping.Segment_Type : 'Enterprise');
+    const feesType = (sowMapping?.Fees_Type as 'Fees' | 'Travel') || 'Fees';
+
+    // Determine movement type from latest month's columns
+    let movementType: Customer['movementType'] = 'Flat';
+    if (latest.New_ARR > 0) movementType = 'New';
+    else if (latest.Expansion_ARR > 0) movementType = 'Expansion';
+    else if (Math.abs(latest.Schedule_Change) > 0) movementType = 'ScheduleChange';
+    else if (latest.Contraction_ARR < 0) movementType = 'Contraction';
+    else if (latest.Churn_ARR < 0) movementType = 'Churn';
+
+    // Products from ARR sub-category breakdown
+    const subCats = store.arrSubCategoryBreakdown.filter(s => s.SOW_ID === sowId);
+    const prods = subCats.map(s => s.Product_Sub_Category).filter(Boolean);
+    const productARR: Record<string, number> = {};
+    subCats.forEach(s => {
+      const pct = year <= 2024 ? s.Pct_2024 : year === 2025 ? s.Pct_2025 : s.Pct_2026;
+      if (pct > 0) productARR[s.Product_Sub_Category] = Math.round(currentARR * (pct / 100));
+    });
+
+    const productSubCategory = prods.length > 0
+      ? prods.sort((a, b) => (productARR[b] || 0) - (productARR[a] || 0))[0]
+      : 'Unallocated';
+
+    // Renewal risk
+    let renewalRiskLevel: Customer['renewalRiskLevel'];
+    if (latest.Renewal_Risk) {
+      const riskMap: Record<string, Customer['renewalRiskLevel']> = {
+        'Low': 'Low', 'Medium': 'Medium', 'High': 'High', 'Critical': 'Critical',
+      };
+      renewalRiskLevel = riskMap[latest.Renewal_Risk];
+    }
+
+    // Contract dates
+    const contractStartDate = latest.Contract_Start_Date || sowMapping?.Start_Date || '2022-01-01';
+    const contractEndDate = latest.Contract_End_Date || '2026-12-31';
+
+    // Quantum/SMART
+    const qSmart = latest.Quantum_SMART === 'Quantum' ? 'Quantum' : 'SMART';
+
+    result.push({
+      id: `CUST-${sowId}`,
+      name: latest.Customer_Name,
+      sowId: String(sowId),
+      currentARR: Math.round(currentARR),
+      previousARR: Math.round(previousARR),
+      region,
+      vertical,
+      segment: (segment === 'SMB' ? 'SMB' : 'Enterprise') as 'Enterprise' | 'SMB',
+      platform: latest.Quantum_SMART || 'SMART',
+      quantumSmart: qSmart as 'Quantum' | 'SMART',
+      quantumGoLiveDate: latest.Quantum_GoLive_Date || undefined,
+      feesType,
+      products: prods.length > 0 ? prods : [productSubCategory],
+      productARR,
+      productSubCategory,
+      contractStartDate,
+      contractEndDate,
+      renewalDate: contractEndDate,
+      renewalRiskLevel,
+      movementType,
+    });
+  });
+
+  return result;
+}
+
+function buildRealMonthlyARR(store: RealDataState): MonthlyARR[] {
+  // Group by month, sum Ending_ARR
+  const monthMap = new Map<string, number>();
+  store.arrSnapshots.forEach(row => {
+    const month = row.Snapshot_Month.slice(0, 7); // YYYY-MM
+    monthMap.set(month, (monthMap.get(month) || 0) + row.Ending_ARR);
+  });
+
+  const months = Array.from(monthMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+
+  const data: MonthlyARR[] = months.map(([month, total]) => {
+    const d = new Date(month + '-01');
+    const monthName = d.toLocaleString('en-US', { month: 'short', year: '2-digit' });
+    const isActual = d < new Date();
+    return {
+      month: monthName,
+      currentARR: isActual ? Math.round(total) : 0,
+      forecastedARR: !isActual ? Math.round(total) : 0,
+    };
+  });
+
+  // Add forecast months (project forward from last actual)
+  if (data.length > 0) {
+    const lastActual = data.filter(d => d.currentARR > 0);
+    const lastARR = lastActual.length > 0 ? lastActual[lastActual.length - 1].currentARR : 0;
+    if (lastARR > 0) {
+      let baseARR = lastARR;
+      const lastMonth = months[months.length - 1][0];
+      const lastDate = new Date(lastMonth + '-01');
+      const endDate = new Date(2026, 11, 1);
+      const current = new Date(lastDate);
+      current.setMonth(current.getMonth() + 1);
+      while (current <= endDate) {
+        const monthName = current.toLocaleString('en-US', { month: 'short', year: '2-digit' });
+        if (!data.find(d => d.month === monthName)) {
+          baseARR *= 1.02;
+          data.push({ month: monthName, currentARR: 0, forecastedARR: Math.round(baseARR) });
+        }
+        current.setMonth(current.getMonth() + 1);
+      }
+    }
+  }
+
+  return data;
+}
+
+function buildRealARRMovement(store: RealDataState): ARRMovementRecord[] {
+  const monthMap = new Map<string, ARRMovementRecord>();
+
+  store.arrSnapshots.forEach(row => {
+    const month = row.Snapshot_Month.slice(0, 7);
+    if (!monthMap.has(month)) {
+      monthMap.set(month, {
+        date: row.Snapshot_Month,
+        newBusiness: 0, expansion: 0, scheduleChange: 0,
+        contraction: 0, churn: 0, netChange: 0,
+      });
+    }
+    const m = monthMap.get(month)!;
+    m.newBusiness += row.New_ARR;
+    m.expansion += row.Expansion_ARR;
+    m.scheduleChange += row.Schedule_Change;
+    m.contraction += row.Contraction_ARR;
+    m.churn += row.Churn_ARR;
+  });
+
+  return Array.from(monthMap.values())
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(m => ({
+      ...m,
+      newBusiness: Math.round(m.newBusiness),
+      expansion: Math.round(m.expansion),
+      scheduleChange: Math.round(m.scheduleChange),
+      contraction: Math.round(m.contraction),
+      churn: Math.round(m.churn),
+      netChange: Math.round(m.newBusiness + m.expansion + m.scheduleChange + m.contraction + m.churn),
+    }));
+}
+
+function buildRealProducts(store: RealDataState, custs: Customer[]): Product[] {
+  const productMap = new Map<string, { totalARR: number; customers: Set<string>; category: string }>();
+
+  custs.forEach(c => {
+    Object.entries(c.productARR).forEach(([product, arr]) => {
+      if (!productMap.has(product)) {
+        productMap.set(product, {
+          totalARR: 0,
+          customers: new Set(),
+          category: store.productCategoryIndex[product] || 'Other',
+        });
+      }
+      const p = productMap.get(product)!;
+      p.totalARR += arr;
+      p.customers.add(c.id);
+    });
+  });
+
+  let idx = 0;
+  return Array.from(productMap.entries())
+    .map(([name, data]) => ({
+      id: `PROD-${String(++idx).padStart(3, '0')}`,
+      name,
+      category: data.category,
+      subCategory: name,
+      totalARR: Math.round(data.totalARR),
+      customerCount: data.customers.size,
+      avgARRPerCustomer: data.customers.size > 0 ? Math.round(data.totalARR / data.customers.size) : 0,
+      growthPercent: 0,
+    }))
+    .sort((a, b) => b.totalARR - a.totalARR);
+}
 
 // ==================== UTILITY FUNCTIONS ====================
 const formatCurrency = (value: number) => {
@@ -663,6 +870,30 @@ export default function RevenuePage() {
   // SOW Mapping store for enrichment
   const sowMappingStore = useSOWMappingStore();
 
+  // Real data store - loads actual CSV data
+  const realData = useRealDataStore();
+
+  // Build data from real CSVs or fall back to mock
+  const customers = useMemo(() => {
+    if (!realData.isLoaded || realData.arrSnapshots.length === 0) return MOCK_CUSTOMERS;
+    return buildRealCustomers(realData);
+  }, [realData.isLoaded, realData.arrSnapshots, realData.sowMappingIndex, realData.arrSubCategoryBreakdown]);
+
+  const products = useMemo(() => {
+    if (!realData.isLoaded || realData.arrSnapshots.length === 0) return MOCK_PRODUCTS;
+    return buildRealProducts(realData, customers);
+  }, [realData.isLoaded, realData.arrSnapshots, customers, realData.productCategoryIndex]);
+
+  const monthlyARRData = useMemo(() => {
+    if (!realData.isLoaded || realData.arrSnapshots.length === 0) return MOCK_MONTHLY_ARR;
+    return buildRealMonthlyARR(realData);
+  }, [realData.isLoaded, realData.arrSnapshots]);
+
+  const arrMovementHistory = useMemo(() => {
+    if (!realData.isLoaded || realData.arrSnapshots.length === 0) return MOCK_ARR_MOVEMENT;
+    return buildRealARRMovement(realData);
+  }, [realData.isLoaded, realData.arrSnapshots]);
+
   // Filters - Multi-select support (standard filters per requirements)
   const [yearFilterMulti, setYearFilterMulti] = useState<string[]>([]);
   const [monthFilterMulti, setMonthFilterMulti] = useState<string[]>([]);
@@ -712,7 +943,7 @@ export default function RevenuePage() {
         feesType: (mapping.Fees_Type as 'Fees' | 'Travel') || c.feesType,
       };
     });
-  }, [sowMappingStore.mappings]);
+  }, [customers, sowMappingStore.mappings]);
 
   // Filter customers (multi-select support with standard filters)
   const filteredCustomers = useMemo(() => {
@@ -980,7 +1211,7 @@ export default function RevenuePage() {
       ...totals,
       waterfallData,
     };
-  }, [lookbackPeriod, metrics.currentARR]);
+  }, [lookbackPeriod, metrics.currentARR, arrMovementHistory]);
 
   // Customers with movement - with sorting support
   const customersWithMovement = useMemo(() => {
@@ -1767,7 +1998,7 @@ export default function RevenuePage() {
     }
 
     return data;
-  }, [productCategoryFilter, productSubCategoryFilter, sortConfig]);
+  }, [products, productCategoryFilter, productSubCategoryFilter, sortConfig]);
 
   // Sorted customers list for Customers tab
   const sortedCustomersList = useMemo(() => {
