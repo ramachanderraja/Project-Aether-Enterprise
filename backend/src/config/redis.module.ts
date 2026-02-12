@@ -14,6 +14,13 @@ export const REDIS_CLIENT = 'REDIS_CLIENT';
         const port = configService.get<number>('redis.port') || 6379;
         const password = configService.get<string>('redis.password');
 
+        // Skip Redis connection if REDIS_ENABLED is explicitly set to false
+        const redisEnabled = configService.get<string>('REDIS_ENABLED', 'true');
+        if (redisEnabled === 'false') {
+          console.log('Redis is disabled via REDIS_ENABLED=false, skipping connection');
+          return null;
+        }
+
         console.log(`Connecting to Redis at ${host}:${port}`);
 
         // Check if this is Azure Redis (uses .redis.cache.windows.net)

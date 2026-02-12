@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useSOWMappingStore, SOWMappingRecord } from '@shared/store/sowMappingStore';
 
 interface ImportTemplate {
   id: string;
@@ -32,6 +33,7 @@ const importTemplates: ImportTemplate[] = [
   // Mapping & Reference Templates
   { id: 'customer_name_mapping', name: 'Customer Name Mapping', description: 'Mapping between ARR and Pipeline customer names (legal vs common names)', fileType: 'CSV', lastImport: '2025-01-25T09:15:00Z', recordCount: 30 },
   { id: 'product_category_mapping', name: 'Product Category Mapping', description: 'Sub-category to category mapping - the ONLY place Product Category is stored', fileType: 'CSV', lastImport: '2025-01-25T09:15:00Z', recordCount: 20 },
+  { id: 'sow_mapping', name: 'SOW Mapping', description: 'SOW-level metadata: Vertical, Region, Fees Type, Revenue Type, Segment Type, and contract start date. Used to enrich Closed ACV and ARR records for filtering.', fileType: 'CSV', lastImport: null, recordCount: null },
   // Legacy Templates (kept for backward compatibility)
   { id: 'cost_data', name: 'Cost Data', description: 'Cost line items with categories, vendors, and cost centers', fileType: 'CSV', lastImport: '2025-01-25T09:15:00Z', recordCount: 423 },
   { id: 'vendors', name: 'Vendors', description: 'Vendor master data with contacts, contracts, and spend info', fileType: 'CSV', lastImport: null, recordCount: null },
@@ -121,6 +123,17 @@ const templateCSVData: Record<string, { headers: string[]; sampleRows: string[][
     ],
     notes: 'ONLY place Product Category is stored. All other templates use Sub-Category only.'
   },
+  'sow_mapping': {
+    headers: ['SOW_ID', 'Vertical', 'Region', 'Fees_Type', 'Revenue_Type', 'Segment_Type', 'Start_Date'],
+    sampleRows: [
+      ['SOW-001', 'Life Sciences', 'North America', 'Fees', 'License', 'Enterprise', '2024-01-15'],
+      ['SOW-002', 'BFSI', 'APAC', 'Fees', 'License', 'Enterprise', '2024-03-01'],
+      ['SOW-003', 'CPG & Retail', 'Europe', 'Travel', 'Implementation', 'SMB', '2024-02-10'],
+      ['SOW-004', 'Telecom/Media/Tech', 'LATAM', 'Fees', 'License', 'Enterprise', '2024-04-20'],
+      ['SOW-005', 'Energy & Utilities', 'Middle East', 'Travel', 'Implementation', 'SMB', '2024-05-01'],
+    ],
+    notes: 'SOW-level metadata for enriching Closed ACV and ARR records. Used for filtering by Vertical, Region, Fees Type, Revenue Type, Segment Type.'
+  },
   // ============== LEGACY TEMPLATES (kept for backward compatibility) ==============
   'cost_data': {
     headers: ['Date', 'Cost_Center_ID', 'Cost_Center_Name', 'Category', 'Sub_Category', 'Vendor', 'Amount', 'Budget', 'Variance', 'Region', 'Department'],
@@ -196,13 +209,48 @@ const mockNotifications: Notification[] = [
   { id: '6', type: 'AI Insights', description: 'AI-generated insights and recommendations', enabled: true, channels: ['in_app'] },
 ];
 
+// Parse a CSV line respecting quoted fields
+function parseCSVLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (i + 1 < line.length && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        fields.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+}
+
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'general' | 'users' | 'notifications' | 'security' | 'billing' | 'data-import'>('general');
   const [notifications, setNotifications] = useState(mockNotifications);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [uploadingFile, setUploadingFile] = useState<File | null>(null);
   const [importStatus, setImportStatus] = useState<'idle' | 'validating' | 'importing' | 'complete' | 'error'>('idle');
+  const [importMessage, setImportMessage] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sowMappingStore = useSOWMappingStore();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -216,21 +264,92 @@ export default function SettingsPage() {
     if (!uploadingFile || !selectedTemplate) return;
 
     setImportStatus('validating');
-    // Simulate validation
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    setImportMessage('');
 
-    setImportStatus('importing');
-    // Simulate import
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    if (selectedTemplate === 'sow_mapping') {
+      // Actually parse the CSV for SOW Mapping
+      try {
+        const text = await uploadingFile.text();
+        const lines = text.split(/\r?\n/).filter(l => l.trim() && !l.trim().startsWith('#'));
 
-    setImportStatus('complete');
-    // Reset after showing success
-    setTimeout(() => {
-      setUploadingFile(null);
-      setSelectedTemplate(null);
-      setImportStatus('idle');
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }, 3000);
+        if (lines.length < 2) {
+          setImportStatus('error');
+          setImportMessage('File must contain a header row and at least one data row.');
+          return;
+        }
+
+        const headers = parseCSVLine(lines[0]);
+        const requiredColumns = ['SOW_ID', 'Vertical', 'Region', 'Fees_Type', 'Revenue_Type', 'Segment_Type', 'Start_Date'];
+        const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+
+        if (missingColumns.length > 0) {
+          setImportStatus('error');
+          setImportMessage(`Missing required columns: ${missingColumns.join(', ')}`);
+          return;
+        }
+
+        const colIndex: Record<string, number> = {};
+        headers.forEach((h, i) => { colIndex[h] = i; });
+
+        setImportStatus('importing');
+
+        const records: SOWMappingRecord[] = [];
+        const errors: string[] = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          const fields = parseCSVLine(lines[i]);
+          if (fields.length < requiredColumns.length) {
+            errors.push(`Row ${i + 1}: insufficient columns (${fields.length} found, ${requiredColumns.length} expected)`);
+            continue;
+          }
+
+          const sowId = fields[colIndex['SOW_ID']];
+          if (!sowId) {
+            errors.push(`Row ${i + 1}: empty SOW_ID`);
+            continue;
+          }
+
+          records.push({
+            SOW_ID: sowId,
+            Vertical: fields[colIndex['Vertical']] || '',
+            Region: fields[colIndex['Region']] || '',
+            Fees_Type: fields[colIndex['Fees_Type']] || '',
+            Revenue_Type: fields[colIndex['Revenue_Type']] || '',
+            Segment_Type: fields[colIndex['Segment_Type']] || '',
+            Start_Date: fields[colIndex['Start_Date']] || '',
+          });
+        }
+
+        sowMappingStore.setMappings(records);
+
+        setImportStatus('complete');
+        setImportMessage(`Successfully imported ${records.length} SOW mapping records.${errors.length > 0 ? ` ${errors.length} rows skipped.` : ''}`);
+
+        setTimeout(() => {
+          setUploadingFile(null);
+          setSelectedTemplate(null);
+          setImportStatus('idle');
+          setImportMessage('');
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }, 4000);
+      } catch {
+        setImportStatus('error');
+        setImportMessage('Failed to parse the CSV file. Please check the format and try again.');
+      }
+    } else {
+      // Simulate validation for other templates
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      setImportStatus('importing');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setImportStatus('complete');
+      setTimeout(() => {
+        setUploadingFile(null);
+        setSelectedTemplate(null);
+        setImportStatus('idle');
+        setImportMessage('');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }, 3000);
+    }
   };
 
   const downloadTemplate = (templateId: string) => {
@@ -607,7 +726,7 @@ export default function SettingsPage() {
                   <div>
                     <label className="block text-sm font-semibold text-secondary-800 mb-2">🔗 Mapping & Reference</label>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {importTemplates.filter(t => ['customer_name_mapping', 'product_category_mapping'].includes(t.id)).map((template) => (
+                      {importTemplates.filter(t => ['customer_name_mapping', 'product_category_mapping', 'sow_mapping'].includes(t.id)).map((template) => (
                         <button
                           key={template.id}
                           onClick={() => setSelectedTemplate(template.id)}
@@ -662,7 +781,7 @@ export default function SettingsPage() {
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept=".csv"
+                      accept={selectedTemplate === 'sow_mapping' ? '.csv,.xlsx' : '.csv'}
                       onChange={handleFileSelect}
                       className="hidden"
                       id="file-upload"
@@ -740,13 +859,13 @@ export default function SettingsPage() {
 
                         {importStatus === 'complete' && (
                           <div className="mt-4 text-green-600">
-                            <p className="font-medium">Import completed successfully!</p>
+                            <p className="font-medium">{importMessage || 'Import completed successfully!'}</p>
                           </div>
                         )}
 
                         {importStatus === 'error' && (
                           <div className="mt-4 text-red-600">
-                            <p className="font-medium">Import failed. Please check your file and try again.</p>
+                            <p className="font-medium">{importMessage || 'Import failed. Please check your file and try again.'}</p>
                           </div>
                         )}
                       </div>
@@ -859,6 +978,15 @@ export default function SettingsPage() {
                         <li><strong>Regions</strong>: North America, Europe, LATAM, Middle East, APAC</li>
                         <li><strong>Segments</strong>: Enterprise, SMB</li>
                         <li><strong>Logo Types</strong>: New Logo, Upsell, Cross-Sell, Extension, Renewal</li>
+                      </ul>
+                    </div>
+                    <div className="bg-orange-50 p-3 rounded-lg">
+                      <p className="font-semibold text-orange-800 mb-1">SOW Mapping</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>Enriches Closed ACV and ARR records with SOW-level metadata</li>
+                        <li><strong>Fees_Type</strong>: Fees, Travel (used for Revenue Type filter)</li>
+                        <li><strong>Revenue_Type</strong>: License, Implementation</li>
+                        <li>Upload updates Sales and Revenue pages automatically</li>
                       </ul>
                     </div>
                   </div>

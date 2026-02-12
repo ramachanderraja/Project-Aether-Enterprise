@@ -18,6 +18,7 @@ import {
   ReferenceLine,
   LabelList,
 } from 'recharts';
+import { useSOWMappingStore } from '@shared/store/sowMappingStore';
 
 // ==================== TYPE DEFINITIONS ====================
 
@@ -768,6 +769,9 @@ const ChartWrapper: React.FC<ChartWrapperProps> = ({ title, subtitle, children, 
 
 // ==================== MAIN COMPONENT ====================
 export default function RevenuePage() {
+  // SOW Mapping store for enrichment
+  const sowMappingStore = useSOWMappingStore();
+
   // Filters - Multi-select support (standard filters per requirements)
   const [yearFilterMulti, setYearFilterMulti] = useState<string[]>([]);
   const [monthFilterMulti, setMonthFilterMulti] = useState<string[]>([]);
@@ -802,11 +806,54 @@ export default function RevenuePage() {
     setSortConfig({ key, direction });
   };
 
+  // Enrich customers with SOW Mapping data when available
+  const enrichedCustomers = useMemo(() => {
+    if (sowMappingStore.mappings.length === 0) return customers;
+    return customers.map(c => {
+      if (!c.sowId) return c;
+      const mapping = sowMappingStore.getMappingBySOWId(c.sowId);
+      if (!mapping) return c;
+      return {
+        ...c,
+        vertical: mapping.Vertical || c.vertical,
+        region: mapping.Region || c.region,
+        segment: (mapping.Segment_Type as 'Enterprise' | 'SMB') || c.segment,
+        feesType: (mapping.Fees_Type as 'Fees' | 'Travel') || c.feesType,
+      };
+    });
+  }, [sowMappingStore.mappings]);
+
+  // Build enriched SOW Mappings using uploaded data when available, fallback to mock
+  const enrichedSOWMappings = useMemo(() => {
+    if (sowMappingStore.mappings.length > 0) {
+      // Convert uploaded SOW Mapping records to the SOWMapping interface used by the tab
+      return sowMappingStore.mappings.map(m => {
+        // Try to find matching customer for additional fields
+        const matchingCustomer = customers.find(c => c.sowId === m.SOW_ID);
+        return {
+          sowId: m.SOW_ID,
+          customerName: matchingCustomer?.name || m.SOW_ID,
+          vertical: m.Vertical,
+          region: m.Region,
+          feesType: (m.Fees_Type || 'Fees') as 'Fees' | 'Travel',
+          revenueType: m.Revenue_Type,
+          segmentType: (m.Segment_Type || 'Enterprise') as 'Enterprise' | 'SMB',
+          quantumSmart: (matchingCustomer?.quantumSmart || 'SMART') as 'Quantum' | 'SMART',
+          quantumGoLiveDate: matchingCustomer?.quantumGoLiveDate,
+          contractValue: matchingCustomer?.currentARR || 0,
+          startDate: m.Start_Date,
+          endDate: matchingCustomer?.contractEndDate || '',
+        } as SOWMapping;
+      });
+    }
+    return sowMappings;
+  }, [sowMappingStore.mappings]);
+
   // Filter customers (multi-select support with standard filters)
   const filteredCustomers = useMemo(() => {
     const currentMonth = new Date().toISOString().slice(0, 7);  // YYYY-MM format
 
-    return customers.filter(c => {
+    return enrichedCustomers.filter(c => {
       // Region filter (multi-select)
       if (regionFilter.length > 0 && !regionFilter.includes(c.region)) return false;
 
@@ -844,7 +891,7 @@ export default function RevenuePage() {
 
       return true;
     });
-  }, [regionFilter, verticalFilter, segmentFilter, platformFilter, quantumSmartFilter, yearFilterMulti, monthFilterMulti]);
+  }, [enrichedCustomers, regionFilter, verticalFilter, segmentFilter, platformFilter, quantumSmartFilter, yearFilterMulti, monthFilterMulti]);
 
   // Filtered customers for Products tab with Revenue Type filter (Change 4)
   const filteredCustomersForProducts = useMemo(() => {
@@ -2343,7 +2390,7 @@ export default function RevenuePage() {
   const renderSOWMappingTab = () => {
     // Filter SOW mappings based on current filters
     const filteredSOWMappings = useMemo(() => {
-      return sowMappings.filter(sow => {
+      return enrichedSOWMappings.filter(sow => {
         if (regionFilter.length > 0 && !regionFilter.includes(sow.region)) return false;
         if (verticalFilter.length > 0 && !verticalFilter.includes(sow.vertical)) return false;
         if (segmentFilter.length > 0 && !segmentFilter.includes(sow.segmentType)) return false;
@@ -2351,7 +2398,7 @@ export default function RevenuePage() {
         if (revenueTypeFilter !== 'All' && sow.feesType !== revenueTypeFilter) return false;
         return true;
       });
-    }, [regionFilter, verticalFilter, segmentFilter, quantumSmartFilter, revenueTypeFilter]);
+    }, [enrichedSOWMappings, regionFilter, verticalFilter, segmentFilter, quantumSmartFilter, revenueTypeFilter]);
 
     const [sowSortConfig, setSowSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
     const [sowSearchTerm, setSowSearchTerm] = useState('');

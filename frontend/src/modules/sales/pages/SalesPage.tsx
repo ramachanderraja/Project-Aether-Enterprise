@@ -16,6 +16,7 @@ import {
   LabelList,
   ReferenceLine,
 } from 'recharts';
+import { useSOWMappingStore } from '@shared/store/sowMappingStore';
 
 // ==================== TYPE DEFINITIONS ====================
 interface Opportunity {
@@ -604,6 +605,9 @@ const ChartWrapper: React.FC<ChartWrapperProps> = ({ title, subtitle, children, 
 
 // ==================== MAIN COMPONENT ====================
 export default function SalesPage() {
+  // SOW Mapping store for enrichment
+  const sowMappingStore = useSOWMappingStore();
+
   // Filters - now with multi-select support
   const [yearFilter, setYearFilter] = useState<string[]>([String(currentYear)]);
   const [quarterFilter, setQuarterFilter] = useState<string[]>([]);
@@ -640,9 +644,25 @@ export default function SalesPage() {
     }));
   };
 
+  // Enrich opportunities with SOW Mapping data when available
+  const enrichedOpportunities = useMemo(() => {
+    if (sowMappingStore.mappings.length === 0) return opportunities;
+    return opportunities.map(opp => {
+      if (!opp.sowId) return opp;
+      const mapping = sowMappingStore.getMappingBySOWId(opp.sowId);
+      if (!mapping) return opp;
+      return {
+        ...opp,
+        vertical: mapping.Vertical || opp.vertical,
+        region: mapping.Region || opp.region,
+        segment: (mapping.Segment_Type as 'Enterprise' | 'SMB') || opp.segment,
+      };
+    });
+  }, [sowMappingStore.mappings]);
+
   // Filter opportunities based on selected filters (multi-select)
   const filteredOpportunities = useMemo(() => {
-    return opportunities.filter(opp => {
+    return enrichedOpportunities.filter(opp => {
       // Region filter (multi-select)
       if (regionFilter.length > 0 && !regionFilter.includes(opp.region)) return false;
 
@@ -692,7 +712,7 @@ export default function SalesPage() {
 
       return true;
     });
-  }, [yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter, segmentFilter, channelFilter, logoTypeFilter, soldByFilter]);
+  }, [enrichedOpportunities, yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter, segmentFilter, channelFilter, logoTypeFilter, soldByFilter]);
 
   // Calculate metrics with proper Closed ACV rules
   const metrics = useMemo(() => {
