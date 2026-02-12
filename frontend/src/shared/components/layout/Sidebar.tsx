@@ -69,7 +69,7 @@ export function Sidebar() {
                 <path d="M2 12l10 5 10-5" />
               </svg>
             </div>
-            <span className="font-semibold text-lg">Aether123</span>
+            <span className="font-semibold text-lg">Aether_456</span>
           </div>
         )}
         <button
