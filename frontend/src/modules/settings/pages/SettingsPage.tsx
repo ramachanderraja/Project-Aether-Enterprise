@@ -1,5 +1,8 @@
 import { useState, useRef } from 'react';
 import { useSOWMappingStore, SOWMappingRecord } from '@shared/store/sowMappingStore';
+import { usePipelineSubCategoryStore, PipelineSubCategoryRecord } from '@shared/store/pipelineSubCategoryStore';
+import { useARRSubCategoryStore, ARRSubCategoryRecord } from '@shared/store/arrSubCategoryStore';
+import { useProductCategoryMappingStore, ProductCategoryMappingRecord } from '@shared/store/productCategoryMappingStore';
 
 interface ImportTemplate {
   id: string;
@@ -27,6 +30,7 @@ const importTemplates: ImportTemplate[] = [
   { id: 'monthly_pipeline_snapshot', name: 'Monthly Pipeline Snapshots', description: '12 months of deal progression showing new, growing, shrinking, and closing deals', fileType: 'CSV', lastImport: '2025-01-30T11:00:00Z', recordCount: 65 },
   { id: 'sales_team_structure', name: 'Sales Team Structure', description: 'Team hierarchy with quotas by rep, region, and manager relationships', fileType: 'CSV', lastImport: '2025-01-25T09:15:00Z', recordCount: 20 },
   { id: 'prior_year_performance', name: 'Prior Year Performance', description: 'Historical sales data with attainment, win rates, and deal counts by rep', fileType: 'CSV', lastImport: '2025-01-25T09:15:00Z', recordCount: 21 },
+  { id: 'pipeline_subcategory_breakdown', name: 'Pipeline Sub-Category Breakdown', description: 'Maps pipeline deals to product sub-category contribution percentages for weighted pipeline/forecast by product', fileType: 'CSV', lastImport: null, recordCount: null },
   // Revenue & ARR Templates
   { id: 'monthly_arr_snapshot', name: 'Monthly ARR Snapshots', description: '12 months of SOW-level ARR with movements (New, Expansion, Contraction, Churn)', fileType: 'CSV', lastImport: '2025-01-28T14:30:00Z', recordCount: 95 },
   { id: 'arr_subcategory_breakdown', name: 'ARR Sub-Category Breakdown', description: 'SOW-level annual contribution % by product sub-category for 2024-2026', fileType: 'CSV', lastImport: '2025-01-28T14:30:00Z', recordCount: 22 },
@@ -44,15 +48,15 @@ const importTemplates: ImportTemplate[] = [
 const templateCSVData: Record<string, { headers: string[]; sampleRows: string[][]; notes?: string }> = {
   // ============== SALES & PIPELINE TEMPLATES ==============
   'closed_acv': {
-    headers: ['Closed_ACV_ID', 'Pipeline_Deal_ID', 'Deal_Name', 'Customer_Name', 'Close_Date', 'Logo_Type', 'Value_Type', 'Amount', 'License_ACV', 'Implementation_Value', 'Region', 'Vertical', 'Segment', 'Platform', 'Sales_Rep', 'Notes'],
+    headers: ['Closed_ACV_ID', 'Pipeline_Deal_ID', 'Deal_Name', 'Customer_Name', 'Close_Date', 'Logo_Type', 'Value_Type', 'Amount', 'License_ACV', 'Implementation_Value', 'Region', 'Vertical', 'Segment', 'Platform', 'Sales_Rep', 'SOW_ID', 'Notes'],
     sampleRows: [
-      ['CACV-001', 'PD-101', 'Acme Corp Digital Transformation', 'Acme Corporation', '2024-01-15', 'New Logo', 'License', '450000', '450000', '0', 'North America', 'Life Sciences', 'Enterprise', 'Quantum', 'John Smith', 'New enterprise deal - License component'],
-      ['CACV-001', 'PD-101', 'Acme Corp Digital Transformation', 'Acme Corporation', '2024-01-15', 'New Logo', 'Implementation', '150000', '0', '150000', 'North America', 'Life Sciences', 'Enterprise', 'Quantum', 'John Smith', 'New enterprise deal - Implementation component'],
-      ['CACV-002', '', 'FinServ Direct Deal', 'FinServ Partners', '2024-03-22', 'New Logo', 'License', '520000', '520000', '0', 'APAC', 'BFSI', 'Enterprise', 'Opus', 'Wei Zhang', 'Direct deal - not from pipeline (NULL Pipeline Deal ID)'],
-      ['CACV-003', 'PD-104', 'RetailMax Contract Extension', 'RetailMax Holdings', '2024-02-28', 'Extension', 'License', '200000', '0', '0', 'LATAM', 'CPG & Retail', 'Enterprise', 'Quantum', 'Ana Rodriguez', 'Extension - License EXCLUDED from ACV'],
-      ['CACV-003', 'PD-104', 'RetailMax Contract Extension', 'RetailMax Holdings', '2024-02-28', 'Extension', 'Implementation', '50000', '0', '50000', 'LATAM', 'CPG & Retail', 'Enterprise', 'Quantum', 'Ana Rodriguez', 'Extension - Implementation COUNTS'],
+      ['CACV-001', 'PD-101', 'Acme Corp Digital Transformation', 'Acme Corporation', '2024-01-15', 'New Logo', 'License', '450000', '450000', '0', 'North America', 'Life Sciences', 'Enterprise', 'Quantum', 'John Smith', 'SOW-001', 'New enterprise deal - License component'],
+      ['CACV-001', 'PD-101', 'Acme Corp Digital Transformation', 'Acme Corporation', '2024-01-15', 'New Logo', 'Implementation', '150000', '0', '150000', 'North America', 'Life Sciences', 'Enterprise', 'Quantum', 'John Smith', 'SOW-001', 'New enterprise deal - Implementation component'],
+      ['CACV-002', '', 'FinServ Direct Deal', 'FinServ Partners', '2024-03-22', 'New Logo', 'License', '520000', '520000', '0', 'APAC', 'BFSI', 'Enterprise', 'Opus', 'Wei Zhang', 'SOW-002', 'Direct deal - not from pipeline (NULL Pipeline Deal ID)'],
+      ['CACV-003', 'PD-104', 'RetailMax Contract Extension', 'RetailMax Holdings', '2024-02-28', 'Extension', 'License', '200000', '0', '0', 'LATAM', 'CPG & Retail', 'Enterprise', 'Quantum', 'Ana Rodriguez', 'SOW-003', 'Extension - License EXCLUDED from ACV'],
+      ['CACV-003', 'PD-104', 'RetailMax Contract Extension', 'RetailMax Holdings', '2024-02-28', 'Extension', 'Implementation', '50000', '0', '50000', 'LATAM', 'CPG & Retail', 'Enterprise', 'Quantum', 'Ana Rodriguez', 'SOW-003', 'Extension - Implementation COUNTS'],
     ],
-    notes: 'Logo Types: New Logo, Upsell, Cross-Sell (License counts) | Extension, Renewal (License excluded, Implementation counts)'
+    notes: 'Logo Types: New Logo, Upsell, Cross-Sell (License counts) | Extension, Renewal (License excluded, Implementation counts). SOW_ID links to ARR Sub-Category Breakdown for product-level splits.'
   },
   'monthly_pipeline_snapshot': {
     headers: ['Snapshot_Month', 'Pipeline_Deal_ID', 'Deal_Name', 'Customer_Name', 'Deal_Value', 'License_ACV', 'Implementation_Value', 'Logo_Type', 'Deal_Stage', 'Current_Stage', 'Probability', 'Expected_Close_Date', 'Region', 'Vertical', 'Segment', 'Product_Sub_Category'],
@@ -122,6 +126,17 @@ const templateCSVData: Record<string, { headers: string[]; sampleRows: string[][
       ['Opus Enterprise', 'Enterprise Solutions', 'Full-stack enterprise solution with AI capabilities', 'Active'],
     ],
     notes: 'ONLY place Product Category is stored. All other templates use Sub-Category only.'
+  },
+  'pipeline_subcategory_breakdown': {
+    headers: ['Snapshot_Month', 'Pipeline_Deal_ID', 'Product_Sub_Category', 'Contribution_Pct'],
+    sampleRows: [
+      ['2024-01', 'PD-201', 'Quantum Platform', '0.70'],
+      ['2024-01', 'PD-201', 'SMART Analytics', '0.30'],
+      ['2024-02', 'PD-201', 'Quantum Platform', '0.60'],
+      ['2024-02', 'PD-201', 'SMART Analytics', '0.40'],
+      ['2024-01', 'PD-202', 'Cost Drivers Suite', '1.00'],
+    ],
+    notes: 'Contribution_Pct is a decimal 0-1. Total per deal per month must equal 1.0. Maps pipeline deals to product sub-categories.'
   },
   'sow_mapping': {
     headers: ['SOW_ID', 'Vertical', 'Region', 'Fees_Type', 'Revenue_Type', 'Segment_Type', 'Start_Date'],
@@ -249,8 +264,12 @@ export default function SettingsPage() {
   const [uploadingFile, setUploadingFile] = useState<File | null>(null);
   const [importStatus, setImportStatus] = useState<'idle' | 'validating' | 'importing' | 'complete' | 'error'>('idle');
   const [importMessage, setImportMessage] = useState<string>('');
+  const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sowMappingStore = useSOWMappingStore();
+  const pipelineSubCategoryStore = usePipelineSubCategoryStore();
+  const arrSubCategoryStore = useARRSubCategoryStore();
+  const productCategoryMappingStore = useProductCategoryMappingStore();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -266,7 +285,247 @@ export default function SettingsPage() {
     setImportStatus('validating');
     setImportMessage('');
 
-    if (selectedTemplate === 'sow_mapping') {
+    setValidationWarnings([]);
+
+    if (selectedTemplate === 'pipeline_subcategory_breakdown') {
+      try {
+        const text = await uploadingFile.text();
+        const lines = text.split(/\r?\n/).filter(l => l.trim() && !l.trim().startsWith('#'));
+
+        if (lines.length < 2) {
+          setImportStatus('error');
+          setImportMessage('File must contain a header row and at least one data row.');
+          return;
+        }
+
+        const headers = parseCSVLine(lines[0]);
+        const requiredColumns = ['Snapshot_Month', 'Pipeline_Deal_ID', 'Product_Sub_Category', 'Contribution_Pct'];
+        const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+
+        if (missingColumns.length > 0) {
+          setImportStatus('error');
+          setImportMessage(`Missing required columns: ${missingColumns.join(', ')}`);
+          return;
+        }
+
+        const colIndex: Record<string, number> = {};
+        headers.forEach((h, i) => { colIndex[h] = i; });
+
+        setImportStatus('importing');
+
+        const records: PipelineSubCategoryRecord[] = [];
+        const errors: string[] = [];
+        const warnings: string[] = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          const fields = parseCSVLine(lines[i]);
+          if (fields.length < requiredColumns.length) {
+            errors.push(`Row ${i + 1}: insufficient columns`);
+            continue;
+          }
+
+          const dealId = fields[colIndex['Pipeline_Deal_ID']];
+          const month = fields[colIndex['Snapshot_Month']];
+          const pct = parseFloat(fields[colIndex['Contribution_Pct']]);
+
+          if (!dealId) { errors.push(`Row ${i + 1}: empty Pipeline_Deal_ID`); continue; }
+          if (isNaN(pct) || pct < 0 || pct > 1) {
+            errors.push(`Row ${i + 1}: Contribution_Pct must be between 0 and 1 (got ${fields[colIndex['Contribution_Pct']]})`);
+            continue;
+          }
+
+          records.push({
+            Snapshot_Month: month,
+            Pipeline_Deal_ID: dealId,
+            Product_Sub_Category: fields[colIndex['Product_Sub_Category']] || '',
+            Contribution_Pct: pct,
+          });
+        }
+
+        // Validate sums per deal/month
+        const sumMap = new Map<string, number>();
+        records.forEach(r => {
+          const key = `${r.Pipeline_Deal_ID}|${r.Snapshot_Month}`;
+          sumMap.set(key, (sumMap.get(key) || 0) + r.Contribution_Pct);
+        });
+        sumMap.forEach((sum, key) => {
+          if (Math.abs(sum - 1.0) > 0.01) {
+            warnings.push(`Deal/Month ${key}: contributions sum to ${sum.toFixed(3)} (expected 1.0)`);
+          }
+        });
+
+        pipelineSubCategoryStore.setRecords(records, warnings);
+        setValidationWarnings(warnings);
+
+        setImportStatus('complete');
+        setImportMessage(`Successfully imported ${records.length} pipeline sub-category records.${errors.length > 0 ? ` ${errors.length} rows skipped.` : ''}`);
+
+        setTimeout(() => {
+          setUploadingFile(null);
+          setSelectedTemplate(null);
+          setImportStatus('idle');
+          setImportMessage('');
+          setValidationWarnings([]);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }, 5000);
+      } catch {
+        setImportStatus('error');
+        setImportMessage('Failed to parse the CSV file. Please check the format and try again.');
+      }
+    } else if (selectedTemplate === 'arr_subcategory_breakdown') {
+      try {
+        const text = await uploadingFile.text();
+        const lines = text.split(/\r?\n/).filter(l => l.trim() && !l.trim().startsWith('#'));
+
+        if (lines.length < 2) {
+          setImportStatus('error');
+          setImportMessage('File must contain a header row and at least one data row.');
+          return;
+        }
+
+        const headers = parseCSVLine(lines[0]);
+        const requiredColumns = ['SOW_ID', 'Customer_Name', 'Product_Sub_Category'];
+        const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+
+        if (missingColumns.length > 0) {
+          setImportStatus('error');
+          setImportMessage(`Missing required columns: ${missingColumns.join(', ')}`);
+          return;
+        }
+
+        const colIndex: Record<string, number> = {};
+        headers.forEach((h, i) => { colIndex[h] = i; });
+
+        // Find year contribution columns (e.g., 2024_Contribution_Pct, 2025_Contribution_Pct)
+        const yearColumns = headers.filter(h => /^\d{4}_Contribution_Pct$/.test(h));
+
+        setImportStatus('importing');
+
+        const records: ARRSubCategoryRecord[] = [];
+        const errors: string[] = [];
+        const warnings: string[] = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          const fields = parseCSVLine(lines[i]);
+          if (fields.length < requiredColumns.length) {
+            errors.push(`Row ${i + 1}: insufficient columns`);
+            continue;
+          }
+
+          const sowId = fields[colIndex['SOW_ID']];
+          if (!sowId) { errors.push(`Row ${i + 1}: empty SOW_ID`); continue; }
+
+          const contributions: Record<string, number> = {};
+          yearColumns.forEach(col => {
+            const year = col.split('_')[0];
+            const val = parseFloat(fields[colIndex[col]] || '0');
+            if (!isNaN(val)) contributions[year] = val;
+          });
+
+          records.push({
+            SOW_ID: sowId,
+            Customer_Name: fields[colIndex['Customer_Name']] || '',
+            Product_Sub_Category: fields[colIndex['Product_Sub_Category']] || '',
+            contributions,
+          });
+        }
+
+        // Validate sums per SOW/year = 100
+        const sumMap = new Map<string, number>();
+        records.forEach(r => {
+          Object.entries(r.contributions).forEach(([year, pct]) => {
+            const key = `${r.SOW_ID}|${year}`;
+            sumMap.set(key, (sumMap.get(key) || 0) + pct);
+          });
+        });
+        sumMap.forEach((sum, key) => {
+          if (Math.abs(sum - 100) > 1) {
+            warnings.push(`SOW/Year ${key}: contributions sum to ${sum.toFixed(1)}% (expected 100%)`);
+          }
+        });
+
+        arrSubCategoryStore.setRecords(records, warnings);
+        setValidationWarnings(warnings);
+
+        setImportStatus('complete');
+        setImportMessage(`Successfully imported ${records.length} ARR sub-category records.${errors.length > 0 ? ` ${errors.length} rows skipped.` : ''}`);
+
+        setTimeout(() => {
+          setUploadingFile(null);
+          setSelectedTemplate(null);
+          setImportStatus('idle');
+          setImportMessage('');
+          setValidationWarnings([]);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }, 5000);
+      } catch {
+        setImportStatus('error');
+        setImportMessage('Failed to parse the CSV file. Please check the format and try again.');
+      }
+    } else if (selectedTemplate === 'product_category_mapping') {
+      try {
+        const text = await uploadingFile.text();
+        const lines = text.split(/\r?\n/).filter(l => l.trim() && !l.trim().startsWith('#'));
+
+        if (lines.length < 2) {
+          setImportStatus('error');
+          setImportMessage('File must contain a header row and at least one data row.');
+          return;
+        }
+
+        const headers = parseCSVLine(lines[0]);
+        const requiredColumns = ['Product_Sub_Category', 'Product_Category'];
+        const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+
+        if (missingColumns.length > 0) {
+          setImportStatus('error');
+          setImportMessage(`Missing required columns: ${missingColumns.join(', ')}`);
+          return;
+        }
+
+        const colIndex: Record<string, number> = {};
+        headers.forEach((h, i) => { colIndex[h] = i; });
+
+        setImportStatus('importing');
+
+        const records: ProductCategoryMappingRecord[] = [];
+        const errors: string[] = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          const fields = parseCSVLine(lines[i]);
+          if (fields.length < requiredColumns.length) {
+            errors.push(`Row ${i + 1}: insufficient columns`);
+            continue;
+          }
+
+          const subCategory = fields[colIndex['Product_Sub_Category']];
+          if (!subCategory) { errors.push(`Row ${i + 1}: empty Product_Sub_Category`); continue; }
+
+          records.push({
+            Product_Sub_Category: subCategory,
+            Product_Category: fields[colIndex['Product_Category']] || '',
+            Description: fields[colIndex['Description']] || '',
+            Status: fields[colIndex['Status']] || 'Active',
+          });
+        }
+
+        productCategoryMappingStore.setRecords(records);
+
+        setImportStatus('complete');
+        setImportMessage(`Successfully imported ${records.length} product category mapping records.${errors.length > 0 ? ` ${errors.length} rows skipped.` : ''}`);
+
+        setTimeout(() => {
+          setUploadingFile(null);
+          setSelectedTemplate(null);
+          setImportStatus('idle');
+          setImportMessage('');
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }, 4000);
+      } catch {
+        setImportStatus('error');
+        setImportMessage('Failed to parse the CSV file. Please check the format and try again.');
+      }
+    } else if (selectedTemplate === 'sow_mapping') {
       // Actually parse the CSV for SOW Mapping
       try {
         const text = await uploadingFile.text();
@@ -674,7 +933,7 @@ export default function SettingsPage() {
                   <div>
                     <label className="block text-sm font-semibold text-secondary-800 mb-2">📊 Sales & Pipeline</label>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {importTemplates.filter(t => ['closed_acv', 'monthly_pipeline_snapshot', 'sales_team_structure', 'prior_year_performance'].includes(t.id)).map((template) => (
+                      {importTemplates.filter(t => ['closed_acv', 'monthly_pipeline_snapshot', 'sales_team_structure', 'prior_year_performance', 'pipeline_subcategory_breakdown'].includes(t.id)).map((template) => (
                         <button
                           key={template.id}
                           onClick={() => setSelectedTemplate(template.id)}
@@ -781,7 +1040,7 @@ export default function SettingsPage() {
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept={selectedTemplate === 'sow_mapping' ? '.csv,.xlsx' : '.csv'}
+                      accept={['sow_mapping', 'pipeline_subcategory_breakdown', 'arr_subcategory_breakdown', 'product_category_mapping'].includes(selectedTemplate) ? '.csv,.xlsx' : '.csv'}
                       onChange={handleFileSelect}
                       className="hidden"
                       id="file-upload"
@@ -860,6 +1119,20 @@ export default function SettingsPage() {
                         {importStatus === 'complete' && (
                           <div className="mt-4 text-green-600">
                             <p className="font-medium">{importMessage || 'Import completed successfully!'}</p>
+                          </div>
+                        )}
+
+                        {importStatus === 'complete' && validationWarnings.length > 0 && (
+                          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-left max-w-lg mx-auto">
+                            <p className="text-sm font-medium text-yellow-800 mb-1">Validation Warnings ({validationWarnings.length})</p>
+                            <ul className="text-xs text-yellow-700 space-y-0.5 max-h-32 overflow-y-auto">
+                              {validationWarnings.slice(0, 10).map((w, i) => (
+                                <li key={i}>{w}</li>
+                              ))}
+                              {validationWarnings.length > 10 && (
+                                <li className="italic">...and {validationWarnings.length - 10} more</li>
+                              )}
+                            </ul>
                           </div>
                         )}
 

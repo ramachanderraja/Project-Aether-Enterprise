@@ -18,6 +18,7 @@ export interface ClosedACVRecord {
   segment: Segment;
   salesperson: string;
   salesManager: string;
+  sowId?: string;                // SOW ID for sub-category breakdown linkage
   notes?: string;
 }
 
@@ -30,6 +31,7 @@ export interface CalculatedClosedACV extends ClosedACVRecord {
   normalizedLogoType: string;    // Extension and Renewal combined
   productSubCategory?: string;   // From Pipeline linkage
   productCategory?: string;      // Derived from mapping
+  subCategoryBreakdown?: { subCategory: string; pct: number }[]; // From ARR Sub-Category data
 }
 
 // =============================================================================

@@ -46,41 +46,6 @@ interface Customer {
   movementReason?: string;
 }
 
-// SOW Mapping Interface (Change 3)
-interface SOWMapping {
-  sowId: string;
-  customerName: string;
-  vertical: string;
-  region: string;
-  feesType: 'Fees' | 'Travel';
-  revenueType: string;
-  segmentType: 'Enterprise' | 'SMB';
-  quantumSmart: 'Quantum' | 'SMART';
-  quantumGoLiveDate?: string;
-  contractValue: number;
-  startDate: string;
-  endDate: string;
-}
-
-// Sub-Category Contribution Interface (Change 1/2)
-interface SubCategoryContribution {
-  subCategory: string;
-  closedACV: number;
-  percentOfTotal: number;
-  customerCount: number;
-  avgDealSize: number;
-}
-
-// Pipeline Sub-Category Breakdown Interface (Change 2)
-interface PipelineSubCategoryBreakdown {
-  month: string;
-  subCategory: string;
-  pipelineValue: number;
-  dealCount: number;
-  avgDealSize: number;
-  conversionRate: number;
-}
-
 interface Product {
   id: string;
   name: string;
@@ -391,85 +356,11 @@ const classifyPlatform = (quantumSmart: string | undefined, quantumGoLiveDate: s
   return (quantumSmart as 'Quantum' | 'SMART') || 'SMART';
 };
 
-// Generate SOW Mapping data (Change 3)
-const generateSOWMappings = (customerList: Customer[]): SOWMapping[] => {
-  return customerList.map(c => ({
-    sowId: c.sowId,
-    customerName: c.name,
-    vertical: c.vertical,
-    region: c.region,
-    feesType: c.feesType || 'Fees',
-    revenueType: c.productSubCategory,
-    segmentType: c.segment,
-    quantumSmart: c.quantumSmart || 'SMART',
-    quantumGoLiveDate: c.quantumGoLiveDate,
-    contractValue: c.currentARR,
-    startDate: c.contractStartDate,
-    endDate: c.contractEndDate,
-  }));
-};
-
-// Generate Sub-Category Contributions for Closed ACV (Change 1)
-const generateSubCategoryContributions = (customerList: Customer[]): SubCategoryContribution[] => {
-  const subCategoryMap = new Map<string, { totalACV: number; customers: Customer[] }>();
-
-  customerList.forEach(c => {
-    const subCat = c.productSubCategory;
-    if (!subCategoryMap.has(subCat)) {
-      subCategoryMap.set(subCat, { totalACV: 0, customers: [] });
-    }
-    const entry = subCategoryMap.get(subCat)!;
-    entry.totalACV += c.currentARR;
-    entry.customers.push(c);
-  });
-
-  const totalACV = customerList.reduce((sum, c) => sum + c.currentARR, 0);
-
-  return Array.from(subCategoryMap.entries()).map(([subCategory, data]) => ({
-    subCategory,
-    closedACV: data.totalACV,
-    percentOfTotal: totalACV > 0 ? (data.totalACV / totalACV) * 100 : 0,
-    customerCount: data.customers.length,
-    avgDealSize: data.customers.length > 0 ? data.totalACV / data.customers.length : 0,
-  })).sort((a, b) => b.closedACV - a.closedACV);
-};
-
-// Generate Pipeline Sub-Category Breakdown (Change 2)
-const generatePipelineSubCategoryBreakdown = (customerList: Customer[]): PipelineSubCategoryBreakdown[] => {
-  const breakdown: PipelineSubCategoryBreakdown[] = [];
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const subCategories = [...new Set(customerList.map(c => c.productSubCategory))];
-
-  subCategories.forEach(subCat => {
-    const customersInSubCat = customerList.filter(c => c.productSubCategory === subCat);
-    months.forEach((month, idx) => {
-      // Simulate pipeline data based on customer data
-      const basePipeline = customersInSubCat.reduce((sum, c) => sum + c.currentARR, 0) * 0.2;
-      const seasonalMultiplier = 1 + (Math.sin(idx * Math.PI / 6) * 0.3);
-      const pipelineValue = basePipeline * seasonalMultiplier * (0.8 + Math.random() * 0.4);
-      const dealCount = Math.max(1, Math.floor(customersInSubCat.length * (0.3 + Math.random() * 0.4)));
-
-      breakdown.push({
-        month: `${month} ${currentYear}`,
-        subCategory: subCat,
-        pipelineValue,
-        dealCount,
-        avgDealSize: dealCount > 0 ? pipelineValue / dealCount : 0,
-        conversionRate: 25 + Math.random() * 30, // 25-55% conversion rate
-      });
-    });
-  });
-
-  return breakdown;
-};
-
 // Initialize data
 const customers = generateCustomers();
 const products = generateProducts();
 const monthlyARRData = generateMonthlyARRData();
 const arrMovementHistory = generateARRMovementHistory();
-const sowMappings = generateSOWMappings(customers);
-const pipelineSubCategoryBreakdown = generatePipelineSubCategoryBreakdown(customers);
 
 // ==================== UTILITY FUNCTIONS ====================
 const formatCurrency = (value: number) => {
@@ -785,7 +676,7 @@ export default function RevenuePage() {
   const [revenueTypeFilter, setRevenueTypeFilter] = useState<string>('Fees');   // Revenue Type filter - default Fees (Change 4)
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<'overview' | 'movement' | 'customers' | 'products' | 'sowMapping' | 'subCategory'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'movement' | 'customers' | 'products'>('overview');
 
   // ARR Movement
   const [lookbackPeriod, setLookbackPeriod] = useState<'1' | '3' | '6' | '12'>('1');
@@ -821,32 +712,6 @@ export default function RevenuePage() {
         feesType: (mapping.Fees_Type as 'Fees' | 'Travel') || c.feesType,
       };
     });
-  }, [sowMappingStore.mappings]);
-
-  // Build enriched SOW Mappings using uploaded data when available, fallback to mock
-  const enrichedSOWMappings = useMemo(() => {
-    if (sowMappingStore.mappings.length > 0) {
-      // Convert uploaded SOW Mapping records to the SOWMapping interface used by the tab
-      return sowMappingStore.mappings.map(m => {
-        // Try to find matching customer for additional fields
-        const matchingCustomer = customers.find(c => c.sowId === m.SOW_ID);
-        return {
-          sowId: m.SOW_ID,
-          customerName: matchingCustomer?.name || m.SOW_ID,
-          vertical: m.Vertical,
-          region: m.Region,
-          feesType: (m.Fees_Type || 'Fees') as 'Fees' | 'Travel',
-          revenueType: m.Revenue_Type,
-          segmentType: (m.Segment_Type || 'Enterprise') as 'Enterprise' | 'SMB',
-          quantumSmart: (matchingCustomer?.quantumSmart || 'SMART') as 'Quantum' | 'SMART',
-          quantumGoLiveDate: matchingCustomer?.quantumGoLiveDate,
-          contractValue: matchingCustomer?.currentARR || 0,
-          startDate: m.Start_Date,
-          endDate: matchingCustomer?.contractEndDate || '',
-        } as SOWMapping;
-      });
-    }
-    return sowMappings;
   }, [sowMappingStore.mappings]);
 
   // Filter customers (multi-select support with standard filters)
@@ -2234,304 +2099,7 @@ export default function RevenuePage() {
     );
   };
 
-  // ==================== SUB-CATEGORY BREAKDOWN TAB (Changes 1 & 2) ====================
-  const renderSubCategoryTab = () => {
-    // Filter sub-category contributions based on current filters
-    const filteredSubCategoryContributions = useMemo(() => {
-      return generateSubCategoryContributions(filteredCustomers);
-    }, [filteredCustomers]);
 
-    // Get pipeline breakdown for current year
-    const currentYearPipeline = pipelineSubCategoryBreakdown.filter(p =>
-      p.month.includes(currentYear.toString())
-    );
-
-    // Aggregate pipeline by sub-category
-    const pipelineBySubCategory = useMemo(() => {
-      const aggregated = new Map<string, { total: number; deals: number; avgConversion: number }>();
-      currentYearPipeline.forEach(p => {
-        if (!aggregated.has(p.subCategory)) {
-          aggregated.set(p.subCategory, { total: 0, deals: 0, avgConversion: 0 });
-        }
-        const entry = aggregated.get(p.subCategory)!;
-        entry.total += p.pipelineValue;
-        entry.deals += p.dealCount;
-        entry.avgConversion += p.conversionRate;
-      });
-      return Array.from(aggregated.entries()).map(([subCategory, data]) => ({
-        subCategory,
-        pipelineValue: data.total,
-        dealCount: data.deals,
-        avgConversion: data.avgConversion / 12, // Average over 12 months
-      })).sort((a, b) => b.pipelineValue - a.pipelineValue);
-    }, [currentYearPipeline]);
-
-    return (
-      <div className="space-y-6 mt-6">
-        {/* Closed ACV Sub-Category Breakdown (Change 1) */}
-        <div className="card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-secondary-900">Closed ACV by Sub-Category</h3>
-            <button
-              onClick={() => exportToCSV(filteredSubCategoryContributions, 'closed_acv_subcategory')}
-              className="text-sm text-primary-600 hover:text-primary-700"
-            >
-              Export CSV
-            </button>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Pie Chart */}
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={filteredSubCategoryContributions.slice(0, 7)}
-                    dataKey="closedACV"
-                    nameKey="subCategory"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    labelLine={false}
-                  >
-                    {filteredSubCategoryContributions.slice(0, 7).map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            {/* Table */}
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-secondary-200">
-                    <th className="px-3 py-2 text-left font-semibold text-secondary-700">Sub-Category</th>
-                    <th className="px-3 py-2 text-right font-semibold text-secondary-700">Closed ACV</th>
-                    <th className="px-3 py-2 text-right font-semibold text-secondary-700">% of Total</th>
-                    <th className="px-3 py-2 text-right font-semibold text-secondary-700">Customers</th>
-                    <th className="px-3 py-2 text-right font-semibold text-secondary-700">Avg Deal</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-secondary-100">
-                  {filteredSubCategoryContributions.map((sc, idx) => (
-                    <tr key={sc.subCategory} className="hover:bg-secondary-50">
-                      <td className="px-3 py-2 font-medium text-secondary-900">
-                        <span className="inline-block w-3 h-3 rounded-full mr-2" style={{ backgroundColor: PIE_COLORS[idx % PIE_COLORS.length] }}></span>
-                        {sc.subCategory}
-                      </td>
-                      <td className="px-3 py-2 text-right text-secondary-700">{formatCurrency(sc.closedACV)}</td>
-                      <td className="px-3 py-2 text-right text-secondary-700">{sc.percentOfTotal.toFixed(1)}%</td>
-                      <td className="px-3 py-2 text-right text-secondary-700">{sc.customerCount}</td>
-                      <td className="px-3 py-2 text-right text-secondary-700">{formatCurrency(sc.avgDealSize)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        {/* Monthly Pipeline Sub-Category Breakdown (Change 2) */}
-        <div className="card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-secondary-900">Pipeline by Sub-Category (Monthly Snapshots)</h3>
-            <button
-              onClick={() => exportToCSV(currentYearPipeline, 'pipeline_subcategory_monthly')}
-              className="text-sm text-primary-600 hover:text-primary-700"
-            >
-              Export CSV
-            </button>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Bar Chart */}
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={pipelineBySubCategory} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                  <XAxis dataKey="subCategory" tick={{ fontSize: 10, fill: '#64748b' }} angle={-45} textAnchor="end" height={60} />
-                  <YAxis tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(v) => formatCurrency(v)} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                  <Bar dataKey="pipelineValue" name="Pipeline Value" fill={COLORS.primary} radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            {/* Summary Table */}
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-secondary-200">
-                    <th className="px-3 py-2 text-left font-semibold text-secondary-700">Sub-Category</th>
-                    <th className="px-3 py-2 text-right font-semibold text-secondary-700">Pipeline ($)</th>
-                    <th className="px-3 py-2 text-right font-semibold text-secondary-700">Deals</th>
-                    <th className="px-3 py-2 text-right font-semibold text-secondary-700">Avg Conv %</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-secondary-100">
-                  {pipelineBySubCategory.map((p) => (
-                    <tr key={p.subCategory} className="hover:bg-secondary-50">
-                      <td className="px-3 py-2 font-medium text-secondary-900">{p.subCategory}</td>
-                      <td className="px-3 py-2 text-right text-secondary-700">{formatCurrency(p.pipelineValue)}</td>
-                      <td className="px-3 py-2 text-right text-secondary-700">{p.dealCount}</td>
-                      <td className="px-3 py-2 text-right text-secondary-700">{p.avgConversion.toFixed(1)}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // ==================== SOW MAPPING TAB (Change 3) ====================
-  const renderSOWMappingTab = () => {
-    // Filter SOW mappings based on current filters
-    const filteredSOWMappings = useMemo(() => {
-      return enrichedSOWMappings.filter(sow => {
-        if (regionFilter.length > 0 && !regionFilter.includes(sow.region)) return false;
-        if (verticalFilter.length > 0 && !verticalFilter.includes(sow.vertical)) return false;
-        if (segmentFilter.length > 0 && !segmentFilter.includes(sow.segmentType)) return false;
-        if (quantumSmartFilter !== 'All' && sow.quantumSmart !== quantumSmartFilter) return false;
-        if (revenueTypeFilter !== 'All' && sow.feesType !== revenueTypeFilter) return false;
-        return true;
-      });
-    }, [enrichedSOWMappings, regionFilter, verticalFilter, segmentFilter, quantumSmartFilter, revenueTypeFilter]);
-
-    const [sowSortConfig, setSowSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
-    const [sowSearchTerm, setSowSearchTerm] = useState('');
-
-    const sortedSOWMappings = useMemo(() => {
-      let filtered = filteredSOWMappings.filter(sow =>
-        sow.sowId.toLowerCase().includes(sowSearchTerm.toLowerCase()) ||
-        sow.customerName.toLowerCase().includes(sowSearchTerm.toLowerCase())
-      );
-
-      if (sowSortConfig) {
-        filtered = [...filtered].sort((a, b) => {
-          const aVal = a[sowSortConfig.key as keyof SOWMapping];
-          const bVal = b[sowSortConfig.key as keyof SOWMapping];
-          if (typeof aVal === 'number' && typeof bVal === 'number') {
-            return sowSortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
-          }
-          return sowSortConfig.direction === 'asc'
-            ? String(aVal).localeCompare(String(bVal))
-            : String(bVal).localeCompare(String(aVal));
-        });
-      }
-      return filtered;
-    }, [filteredSOWMappings, sowSortConfig, sowSearchTerm]);
-
-    const handleSowSort = (key: string) => {
-      setSowSortConfig(prev => ({
-        key,
-        direction: prev?.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-      }));
-    };
-
-    return (
-      <div className="space-y-6 mt-6">
-        <div className="card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-lg font-semibold text-secondary-900">SOW Mapping Master Data</h3>
-              <p className="text-sm text-secondary-500">Contract metadata with Vertical, Region, Fees_Type, Revenue_Type, Segment_Type</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <input
-                type="text"
-                placeholder="Search SOW ID or Customer..."
-                value={sowSearchTerm}
-                onChange={(e) => setSowSearchTerm(e.target.value)}
-                className="px-3 py-2 border border-secondary-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-              <button
-                onClick={() => exportToCSV(sortedSOWMappings, 'sow_mapping')}
-                className="btn-primary"
-              >
-                Export CSV
-              </button>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-secondary-200 bg-secondary-50">
-                  {[
-                    { key: 'sowId', label: 'SOW ID' },
-                    { key: 'customerName', label: 'Customer' },
-                    { key: 'vertical', label: 'Vertical' },
-                    { key: 'region', label: 'Region' },
-                    { key: 'feesType', label: 'Fees Type' },
-                    { key: 'revenueType', label: 'Revenue Type' },
-                    { key: 'segmentType', label: 'Segment' },
-                    { key: 'quantumSmart', label: 'Quantum/SMART' },
-                    { key: 'contractValue', label: 'Contract Value' },
-                    { key: 'startDate', label: 'Start Date' },
-                    { key: 'endDate', label: 'End Date' },
-                  ].map(col => (
-                    <th
-                      key={col.key}
-                      onClick={() => handleSowSort(col.key)}
-                      className="px-3 py-3 text-left font-semibold text-secondary-700 cursor-pointer hover:bg-secondary-100"
-                    >
-                      <div className="flex items-center gap-1">
-                        {col.label}
-                        {sowSortConfig?.key === col.key && (
-                          <span>{sowSortConfig.direction === 'asc' ? '↑' : '↓'}</span>
-                        )}
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-secondary-100">
-                {sortedSOWMappings.slice(0, 50).map((sow) => (
-                  <tr key={sow.sowId} className="hover:bg-secondary-50">
-                    <td className="px-3 py-2 font-mono text-xs text-primary-600">{sow.sowId}</td>
-                    <td className="px-3 py-2 font-medium text-secondary-900">{sow.customerName}</td>
-                    <td className="px-3 py-2 text-secondary-700">{sow.vertical}</td>
-                    <td className="px-3 py-2 text-secondary-700">{sow.region}</td>
-                    <td className="px-3 py-2">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        sow.feesType === 'Fees' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
-                      }`}>
-                        {sow.feesType}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-secondary-700">{sow.revenueType}</td>
-                    <td className="px-3 py-2">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        sow.segmentType === 'Enterprise' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'
-                      }`}>
-                        {sow.segmentType}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        sow.quantumSmart === 'Quantum' ? 'bg-indigo-100 text-indigo-700' : 'bg-orange-100 text-orange-700'
-                      }`}>
-                        {sow.quantumSmart}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right font-medium text-secondary-900">{formatCurrency(sow.contractValue)}</td>
-                    <td className="px-3 py-2 text-secondary-600 text-xs">{sow.startDate}</td>
-                    <td className="px-3 py-2 text-secondary-600 text-xs">{sow.endDate}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="text-sm text-secondary-500 mt-4">
-            Showing {Math.min(50, sortedSOWMappings.length)} of {sortedSOWMappings.length} SOW records
-          </p>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="space-y-6">
@@ -2672,8 +2240,6 @@ export default function RevenuePage() {
             { id: 'movement', label: 'ARR Movement' },
             { id: 'customers', label: 'Customers' },
             { id: 'products', label: 'ARR by Products' },
-            { id: 'subCategory', label: 'Sub-Category Breakdown' },
-            { id: 'sowMapping', label: 'SOW Mapping' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -2695,8 +2261,6 @@ export default function RevenuePage() {
       {activeTab === 'movement' && renderMovementTab()}
       {activeTab === 'customers' && renderCustomersTab()}
       {activeTab === 'products' && renderProductsTab()}
-      {activeTab === 'subCategory' && renderSubCategoryTab()}
-      {activeTab === 'sowMapping' && renderSOWMappingTab()}
     </div>
   );
 }

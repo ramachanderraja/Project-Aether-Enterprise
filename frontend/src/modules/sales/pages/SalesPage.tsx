@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -17,6 +17,9 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { useSOWMappingStore } from '@shared/store/sowMappingStore';
+import { usePipelineSubCategoryStore } from '@shared/store/pipelineSubCategoryStore';
+import { useARRSubCategoryStore } from '@shared/store/arrSubCategoryStore';
+import { useProductCategoryMappingStore } from '@shared/store/productCategoryMappingStore';
 
 // ==================== TYPE DEFINITIONS ====================
 interface Opportunity {
@@ -49,6 +52,11 @@ interface Opportunity {
   soldBy: 'Sales' | 'GD' | 'TSO';
   // SOW ID for sub-category breakdown (Change 1)
   sowId?: string;
+  // Product breakdown fields (Change 2/3)
+  productSubCategory?: string;
+  productCategory?: string;
+  subCategoryBreakdown?: { subCategory: string; pct: number }[];
+  pipelineSubCategoryBreakdown?: { subCategory: string; pct: number }[];
 }
 
 interface Salesperson {
@@ -605,8 +613,11 @@ const ChartWrapper: React.FC<ChartWrapperProps> = ({ title, subtitle, children, 
 
 // ==================== MAIN COMPONENT ====================
 export default function SalesPage() {
-  // SOW Mapping store for enrichment
+  // Stores for enrichment
   const sowMappingStore = useSOWMappingStore();
+  const pipelineSubCategoryStore = usePipelineSubCategoryStore();
+  const arrSubCategoryStore = useARRSubCategoryStore();
+  const productCategoryMappingStore = useProductCategoryMappingStore();
 
   // Filters - now with multi-select support
   const [yearFilter, setYearFilter] = useState<string[]>([String(currentYear)]);
@@ -618,6 +629,19 @@ export default function SalesPage() {
   const [channelFilter, setChannelFilter] = useState<string[]>([]);
   const [logoTypeFilter, setLogoTypeFilter] = useState<string[]>([]);
   const [soldByFilter, setSoldByFilter] = useState<string>('All');  // Sold By filter (Change 9)
+  const [productCategoryFilter, setProductCategoryFilter] = useState<string[]>([]);
+  const [productSubCategoryFilter, setProductSubCategoryFilter] = useState<string[]>([]);
+
+  // Expandable rows for Closed ACV table
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const toggleRowExpansion = (id: string) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   // Tabs
   const [activeTab, setActiveTab] = useState<'overview' | 'forecast' | 'pipeline' | 'quota'>('overview');
@@ -644,21 +668,60 @@ export default function SalesPage() {
     }));
   };
 
-  // Enrich opportunities with SOW Mapping data when available
+  // Enrich opportunities with SOW Mapping + sub-category data when available
   const enrichedOpportunities = useMemo(() => {
-    if (sowMappingStore.mappings.length === 0) return opportunities;
     return opportunities.map(opp => {
-      if (!opp.sowId) return opp;
-      const mapping = sowMappingStore.getMappingBySOWId(opp.sowId);
-      if (!mapping) return opp;
-      return {
-        ...opp,
-        vertical: mapping.Vertical || opp.vertical,
-        region: mapping.Region || opp.region,
-        segment: (mapping.Segment_Type as 'Enterprise' | 'SMB') || opp.segment,
-      };
+      let enriched = { ...opp };
+
+      // Enrich from SOW Mapping
+      if (opp.sowId && sowMappingStore.mappings.length > 0) {
+        const mapping = sowMappingStore.getMappingBySOWId(opp.sowId);
+        if (mapping) {
+          enriched = {
+            ...enriched,
+            vertical: mapping.Vertical || opp.vertical,
+            region: mapping.Region || opp.region,
+            segment: (mapping.Segment_Type as 'Enterprise' | 'SMB') || opp.segment,
+          };
+        }
+      }
+
+      // For won deals with sowId: attach ARR sub-category breakdown
+      if (opp.status === 'Won' && opp.sowId && arrSubCategoryStore.records.length > 0) {
+        const year = new Date(opp.expectedCloseDate).getFullYear().toString();
+        const contributions = arrSubCategoryStore.getContributionForSOWAndYear(opp.sowId, year);
+        if (contributions.length > 0) {
+          enriched.subCategoryBreakdown = contributions;
+          // Use the highest pct sub-category as primary
+          const primary = contributions.sort((a, b) => b.pct - a.pct)[0];
+          enriched.productSubCategory = primary.subCategory;
+          enriched.productCategory = productCategoryMappingStore.getCategoryForSubCategory(primary.subCategory) || 'Unallocated';
+        }
+      }
+
+      // For active deals: attach pipeline sub-category breakdown
+      if (opp.status === 'Active' && pipelineSubCategoryStore.records.length > 0) {
+        const breakdown = pipelineSubCategoryStore.getLatestBreakdownForDeal(opp.id);
+        if (breakdown.length > 0) {
+          enriched.pipelineSubCategoryBreakdown = breakdown.map(b => ({
+            subCategory: b.Product_Sub_Category,
+            pct: b.Contribution_Pct,
+          }));
+          const primary = breakdown.sort((a, b) => b.Contribution_Pct - a.Contribution_Pct)[0];
+          enriched.productSubCategory = primary.Product_Sub_Category;
+          enriched.productCategory = productCategoryMappingStore.getCategoryForSubCategory(primary.Product_Sub_Category) || 'Unallocated';
+        }
+      }
+
+      // Default to Unallocated if no product data
+      if (!enriched.productSubCategory) {
+        enriched.productSubCategory = 'Unallocated';
+        enriched.productCategory = 'Unallocated';
+      }
+
+      return enriched;
     });
-  }, [sowMappingStore.mappings]);
+  }, [sowMappingStore.mappings, arrSubCategoryStore.records, pipelineSubCategoryStore.records, productCategoryMappingStore.records]);
 
   // Filter opportunities based on selected filters (multi-select)
   const filteredOpportunities = useMemo(() => {
@@ -710,9 +773,15 @@ export default function SalesPage() {
       // Sold By filter (Change 9)
       if (soldByFilter !== 'All' && opp.soldBy !== soldByFilter) return false;
 
+      // Product Category filter
+      if (productCategoryFilter.length > 0 && opp.productCategory && !productCategoryFilter.includes(opp.productCategory)) return false;
+
+      // Product Sub-Category filter
+      if (productSubCategoryFilter.length > 0 && opp.productSubCategory && !productSubCategoryFilter.includes(opp.productSubCategory)) return false;
+
       return true;
     });
-  }, [enrichedOpportunities, yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter, segmentFilter, channelFilter, logoTypeFilter, soldByFilter]);
+  }, [enrichedOpportunities, yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter, segmentFilter, channelFilter, logoTypeFilter, soldByFilter, productCategoryFilter, productSubCategoryFilter]);
 
   // Calculate metrics with proper Closed ACV rules
   const metrics = useMemo(() => {
@@ -1192,6 +1261,139 @@ export default function SalesPage() {
           </table>
         </div>
       </div>
+
+      {/* Closed ACV Deals Table with Expandable Sub-Category Breakdown */}
+      {(() => {
+        const closedWonDeals = filteredOpportunities
+          .filter(o => o.status === 'Won')
+          .sort((a, b) => (b.closedACV || 0) - (a.closedACV || 0));
+
+        if (closedWonDeals.length === 0) return null;
+
+        return (
+          <div className="card overflow-hidden">
+            <div className="p-5 border-b border-secondary-200 flex justify-between items-center">
+              <div>
+                <h2 className="text-lg font-semibold text-secondary-900">Closed ACV Deals</h2>
+                <p className="text-sm text-secondary-500">Won deals with sub-category breakdown (click to expand)</p>
+              </div>
+              <button
+                onClick={() => exportToCSV(closedWonDeals.map(d => ({
+                  dealName: d.name,
+                  account: d.accountName,
+                  logoType: d.logoType,
+                  licenseValue: d.licenseValue,
+                  implValue: d.implementationValue,
+                  closedACV: d.closedACV,
+                  sowId: d.sowId || '',
+                  closeDate: d.expectedCloseDate,
+                  productSubCategory: d.productSubCategory || 'Unallocated',
+                })), 'closed_acv_deals')}
+                className="px-3 py-1.5 text-sm border border-secondary-200 rounded-lg hover:bg-secondary-50 flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-secondary-50">
+                  <tr>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-secondary-500 uppercase w-8"></th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Deal Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Account</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Logo Type</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">License ACV</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Impl ACV</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Closed ACV</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">SOW ID</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Close Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-secondary-100">
+                  {closedWonDeals.slice(0, 20).map((deal) => {
+                    const hasBreakdown = deal.subCategoryBreakdown && deal.subCategoryBreakdown.length > 0;
+                    const isExpanded = expandedRows.has(deal.id);
+                    const licenseCountsToACV = LICENSE_ACV_LOGO_TYPES.includes(deal.logoType);
+
+                    return (
+                      <React.Fragment key={deal.id}>
+                        <tr
+                          className={`hover:bg-secondary-50 ${hasBreakdown ? 'cursor-pointer' : ''} ${isExpanded ? 'bg-primary-50' : ''}`}
+                          onClick={() => hasBreakdown && toggleRowExpansion(deal.id)}
+                        >
+                          <td className="px-3 py-3 text-center">
+                            {hasBreakdown ? (
+                              <span className={`text-secondary-400 transition-transform inline-block ${isExpanded ? 'rotate-90' : ''}`}>
+                                &#9654;
+                              </span>
+                            ) : (
+                              <span className="text-secondary-200">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 font-medium text-secondary-900 text-sm">{deal.name}</td>
+                          <td className="px-4 py-3 text-secondary-600 text-sm">{deal.accountName}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                              licenseCountsToACV ? 'bg-green-100 text-green-800' : 'bg-secondary-100 text-secondary-600'
+                            }`}>
+                              {deal.logoType}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right text-sm font-medium">
+                            {licenseCountsToACV ? formatCurrency(deal.licenseValue) : <span className="text-secondary-400">-</span>}
+                          </td>
+                          <td className="px-4 py-3 text-right text-sm font-medium">{formatCurrency(deal.implementationValue)}</td>
+                          <td className="px-4 py-3 text-right text-sm font-bold text-green-600">{formatCurrency(deal.closedACV || 0)}</td>
+                          <td className="px-4 py-3 text-sm text-secondary-600 font-mono">{deal.sowId || '-'}</td>
+                          <td className="px-4 py-3 text-sm text-secondary-600">
+                            {new Date(deal.expectedCloseDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </td>
+                        </tr>
+                        {isExpanded && hasBreakdown && deal.subCategoryBreakdown!.map((sc, idx) => (
+                          <tr key={`${deal.id}-sc-${idx}`} className="bg-blue-50">
+                            <td className="px-3 py-2"></td>
+                            <td colSpan={2} className="px-4 py-2 text-sm text-secondary-700">
+                              <span className="text-secondary-400 mr-2">{idx < deal.subCategoryBreakdown!.length - 1 ? '├──' : '└──'}</span>
+                              {sc.subCategory}
+                              {productCategoryMappingStore.getCategoryForSubCategory(sc.subCategory) && (
+                                <span className="text-xs text-secondary-400 ml-2">({productCategoryMappingStore.getCategoryForSubCategory(sc.subCategory)})</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2 text-right text-sm text-secondary-600">
+                              {sc.pct.toFixed(0)}%
+                            </td>
+                            <td className="px-4 py-2 text-right text-sm text-secondary-600">
+                              {licenseCountsToACV ? formatCurrency(deal.licenseValue * (sc.pct / 100)) : '-'}
+                            </td>
+                            <td className="px-4 py-2 text-right text-sm text-secondary-600">
+                              {formatCurrency(deal.implementationValue * (sc.pct / 100))}
+                            </td>
+                            <td className="px-4 py-2 text-right text-sm font-medium text-blue-600">
+                              {formatCurrency((deal.closedACV || 0) * (sc.pct / 100))}
+                            </td>
+                            <td colSpan={2}></td>
+                          </tr>
+                        ))}
+                        {isExpanded && !hasBreakdown && (
+                          <tr className="bg-secondary-50">
+                            <td className="px-3 py-2"></td>
+                            <td colSpan={8} className="px-4 py-2 text-sm text-secondary-400 italic">
+                              No sub-category breakdown available for this deal
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 
@@ -1314,6 +1516,77 @@ export default function SalesPage() {
             </ResponsiveContainer>
           </div>
         </ChartWrapper>
+
+        {/* Forecast by Product Sub-Category */}
+        {(() => {
+          const activeDeals = filteredOpportunities.filter(o => o.status === 'Active');
+          const subCatMap = new Map<string, { weighted: number; count: number }>();
+
+          activeDeals.forEach(deal => {
+            if (deal.pipelineSubCategoryBreakdown && deal.pipelineSubCategoryBreakdown.length > 0) {
+              deal.pipelineSubCategoryBreakdown.forEach(sc => {
+                const key = sc.subCategory;
+                const entry = subCatMap.get(key) || { weighted: 0, count: 0 };
+                entry.weighted += deal.weightedValue * sc.pct;
+                entry.count += 1;
+                subCatMap.set(key, entry);
+              });
+            } else {
+              const key = deal.productSubCategory || 'Unallocated';
+              const entry = subCatMap.get(key) || { weighted: 0, count: 0 };
+              entry.weighted += deal.weightedValue;
+              entry.count += 1;
+              subCatMap.set(key, entry);
+            }
+          });
+
+          const subCatData = Array.from(subCatMap.entries())
+            .map(([subCategory, data]) => ({
+              subCategory,
+              category: productCategoryMappingStore.getCategoryForSubCategory(subCategory) || 'Unallocated',
+              weightedForecast: data.weighted,
+              dealCount: data.count,
+            }))
+            .sort((a, b) => b.weightedForecast - a.weightedForecast);
+
+          if (subCatData.length <= 1 && subCatData[0]?.subCategory === 'Unallocated') return null;
+
+          return (
+            <div className="card p-6">
+              <h3 className="text-lg font-semibold text-secondary-900 mb-1">Forecast by Product Sub-Category</h3>
+              <p className="text-sm text-secondary-500 mb-4">Weighted forecast values allocated by product</p>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-secondary-200">
+                      <th className="px-3 py-2 text-left font-semibold text-secondary-700">Sub-Category</th>
+                      <th className="px-3 py-2 text-left font-semibold text-secondary-700">Category</th>
+                      <th className="px-3 py-2 text-right font-semibold text-secondary-700">Weighted Forecast</th>
+                      <th className="px-3 py-2 text-right font-semibold text-secondary-700">% of Total</th>
+                      <th className="px-3 py-2 text-right font-semibold text-secondary-700">Deals</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-secondary-100">
+                    {subCatData.map(sc => {
+                      const totalWeighted = subCatData.reduce((s, d) => s + d.weightedForecast, 0);
+                      return (
+                        <tr key={sc.subCategory} className="hover:bg-secondary-50">
+                          <td className="px-3 py-2 font-medium text-secondary-900">{sc.subCategory}</td>
+                          <td className="px-3 py-2 text-secondary-600">{sc.category}</td>
+                          <td className="px-3 py-2 text-right font-medium text-blue-600">{formatCurrency(sc.weightedForecast)}</td>
+                          <td className="px-3 py-2 text-right text-secondary-700">
+                            {totalWeighted > 0 ? ((sc.weightedForecast / totalWeighted) * 100).toFixed(1) : '0.0'}%
+                          </td>
+                          <td className="px-3 py-2 text-right text-secondary-700">{sc.dealCount}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     );
   };
@@ -1611,6 +1884,88 @@ export default function SalesPage() {
           </table>
         </div>
       </div>
+
+      {/* Pipeline by Product Sub-Category */}
+      {(() => {
+        const activeDeals = filteredOpportunities.filter(o => o.status === 'Active');
+        const subCatMap = new Map<string, { totalWeighted: number; totalPipeline: number; count: number }>();
+
+        activeDeals.forEach(deal => {
+          if (deal.pipelineSubCategoryBreakdown && deal.pipelineSubCategoryBreakdown.length > 0) {
+            deal.pipelineSubCategoryBreakdown.forEach(sc => {
+              const key = sc.subCategory;
+              const entry = subCatMap.get(key) || { totalWeighted: 0, totalPipeline: 0, count: 0 };
+              entry.totalWeighted += deal.weightedValue * sc.pct;
+              entry.totalPipeline += deal.dealValue * sc.pct;
+              entry.count += 1;
+              subCatMap.set(key, entry);
+            });
+          } else {
+            const key = deal.productSubCategory || 'Unallocated';
+            const entry = subCatMap.get(key) || { totalWeighted: 0, totalPipeline: 0, count: 0 };
+            entry.totalWeighted += deal.weightedValue;
+            entry.totalPipeline += deal.dealValue;
+            entry.count += 1;
+            subCatMap.set(key, entry);
+          }
+        });
+
+        const subCatData = Array.from(subCatMap.entries())
+          .map(([subCategory, data]) => ({
+            subCategory,
+            category: productCategoryMappingStore.getCategoryForSubCategory(subCategory) || 'Unallocated',
+            totalPipeline: data.totalPipeline,
+            weightedValue: data.totalWeighted,
+            dealCount: data.count,
+          }))
+          .sort((a, b) => b.weightedValue - a.weightedValue);
+
+        if (subCatData.length <= 1 && subCatData[0]?.subCategory === 'Unallocated') return null;
+
+        return (
+          <div className="card p-6">
+            <h3 className="text-lg font-semibold text-secondary-900 mb-1">Pipeline by Product Sub-Category</h3>
+            <p className="text-sm text-secondary-500 mb-4">Weighted pipeline values allocated to product sub-categories</p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={subCatData.slice(0, 8)} margin={{ top: 10, right: 30, left: 0, bottom: 40 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                    <XAxis dataKey="subCategory" tick={{ fontSize: 10, fill: '#64748b' }} angle={-45} textAnchor="end" height={60} />
+                    <YAxis tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(v) => formatCurrency(v)} />
+                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                    <Bar dataKey="weightedValue" name="Weighted Pipeline" fill={COLORS.primary} radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-secondary-200">
+                      <th className="px-3 py-2 text-left font-semibold text-secondary-700">Sub-Category</th>
+                      <th className="px-3 py-2 text-left font-semibold text-secondary-700">Category</th>
+                      <th className="px-3 py-2 text-right font-semibold text-secondary-700">Pipeline</th>
+                      <th className="px-3 py-2 text-right font-semibold text-secondary-700">Weighted</th>
+                      <th className="px-3 py-2 text-right font-semibold text-secondary-700">Deals</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-secondary-100">
+                    {subCatData.map(sc => (
+                      <tr key={sc.subCategory} className="hover:bg-secondary-50">
+                        <td className="px-3 py-2 font-medium text-secondary-900">{sc.subCategory}</td>
+                        <td className="px-3 py-2 text-secondary-600">{sc.category}</td>
+                        <td className="px-3 py-2 text-right text-secondary-700">{formatCurrency(sc.totalPipeline)}</td>
+                        <td className="px-3 py-2 text-right font-medium text-blue-600">{formatCurrency(sc.weightedValue)}</td>
+                        <td className="px-3 py-2 text-right text-secondary-700">{sc.dealCount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 
@@ -2064,6 +2419,41 @@ export default function SalesPage() {
             placeholder="All Channels"
           />
 
+          {/* Product Category Filters */}
+          {(() => {
+            const allCategories = productCategoryMappingStore.getAllCategories();
+            if (allCategories.length === 0) return null;
+            return (
+              <>
+                <MultiSelectDropdown
+                  label="Product Category"
+                  options={allCategories}
+                  selected={productCategoryFilter}
+                  onChange={(vals) => {
+                    setProductCategoryFilter(vals);
+                    // Clear sub-category filter if categories changed
+                    if (vals.length > 0) {
+                      const validSubCats = vals.flatMap(c => productCategoryMappingStore.getSubCategoriesForCategory(c));
+                      setProductSubCategoryFilter(prev => prev.filter(sc => validSubCats.includes(sc)));
+                    }
+                  }}
+                  placeholder="All Categories"
+                />
+                <MultiSelectDropdown
+                  label="Sub-Category"
+                  options={
+                    productCategoryFilter.length > 0
+                      ? productCategoryFilter.flatMap(c => productCategoryMappingStore.getSubCategoriesForCategory(c))
+                      : productCategoryMappingStore.records.map(r => r.Product_Sub_Category).sort()
+                  }
+                  selected={productSubCategoryFilter}
+                  onChange={setProductSubCategoryFilter}
+                  placeholder="All Sub-Categories"
+                />
+              </>
+            );
+          })()}
+
           {/* Sold By Filter (Change 9) */}
           <div className="flex items-center gap-2">
             <label className="text-sm text-secondary-600">Sold By:</label>
@@ -2080,7 +2470,7 @@ export default function SalesPage() {
           </div>
 
           {/* Clear All Filters Button */}
-          {(yearFilter.length > 0 || quarterFilter.length > 0 || monthFilter.length > 0 || regionFilter.length > 0 || verticalFilter.length > 0 || segmentFilter.length > 0 || logoTypeFilter.length > 0 || channelFilter.length > 0 || soldByFilter !== 'All') && (
+          {(yearFilter.length > 0 || quarterFilter.length > 0 || monthFilter.length > 0 || regionFilter.length > 0 || verticalFilter.length > 0 || segmentFilter.length > 0 || logoTypeFilter.length > 0 || channelFilter.length > 0 || soldByFilter !== 'All' || productCategoryFilter.length > 0 || productSubCategoryFilter.length > 0) && (
             <button
               onClick={() => {
                 setYearFilter([]);
@@ -2092,6 +2482,8 @@ export default function SalesPage() {
                 setLogoTypeFilter([]);
                 setChannelFilter([]);
                 setSoldByFilter('All');
+                setProductCategoryFilter([]);
+                setProductSubCategoryFilter([]);
               }}
               className="px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg"
             >
