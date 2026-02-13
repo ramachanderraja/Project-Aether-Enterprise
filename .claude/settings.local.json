@@ -3,7 +3,8 @@
     "allow": [
       "Bash(gh secret:*)",
       "Bash(curl:*)",
-      "Bash(node ./node_modules/typescript/bin/tsc:*)"
+      "Bash(node ./node_modules/typescript/bin/tsc:*)",
+      "Bash(node:*)"
     ]
   }
 }

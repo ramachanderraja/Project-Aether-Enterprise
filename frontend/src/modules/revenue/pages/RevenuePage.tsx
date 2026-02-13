@@ -72,6 +72,10 @@ interface MonthlyARR {
   month: string;
   currentARR: number;
   forecastedARR: number;
+  // Forecast breakdown components (stacked)
+  forecastBase: number;       // Last actual Ending ARR (carried forward)
+  forecastRenewals: number;   // Cumulative Renewal + Extension pipeline
+  forecastNewBusiness: number; // Cumulative New Logo + Upsell + Cross-Sell pipeline
 }
 
 type SortDirection = 'asc' | 'desc';
@@ -301,21 +305,34 @@ const generateMonthlyARRData = (): MonthlyARR[] => {
       month: monthName,
       currentARR: isActual ? Math.round(baseARR) : 0,
       forecastedARR: 0,
+      forecastBase: 0,
+      forecastRenewals: 0,
+      forecastNewBusiness: 0,
     });
   }
 
   // Forecast data (through end of 2026)
+  const lastActual = baseARR;
   const monthsToForecast = (2026 - currentYear) * 12 + (12 - currentMonth);
+  let cumulativeRenewals = 0;
+  let cumulativeNew = 0;
   for (let i = 0; i < monthsToForecast; i++) {
     const date = new Date(currentYear, currentMonth + i, 1);
     const monthName = date.toLocaleString('en-US', { month: 'short', year: '2-digit' });
     const growth = baseARR * (0.015 + Math.random() * 0.025);
+    const renewalPortion = growth * 0.4;
+    const newPortion = growth * 0.6;
+    cumulativeRenewals += renewalPortion;
+    cumulativeNew += newPortion;
     baseARR += growth;
 
     data.push({
       month: monthName,
       currentARR: 0,
       forecastedARR: Math.round(baseARR),
+      forecastBase: Math.round(lastActual),
+      forecastRenewals: Math.round(cumulativeRenewals),
+      forecastNewBusiness: Math.round(cumulativeNew),
     });
   }
 
@@ -365,10 +382,30 @@ const MOCK_ARR_MOVEMENT = generateARRMovementHistory();
 
 // ==================== REAL DATA BUILDERS ====================
 
+// Compute the "prior month" YYYY-MM string (month before the user's current date)
+function getPriorMonth(): string {
+  const now = new Date();
+  const prior = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const y = prior.getFullYear();
+  const m = String(prior.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
+}
+
+// Format a YYYY-MM string to a display label like "Jan 2026"
+function formatMonthLabel(yyyyMm: string): string {
+  const [y, m] = yyyyMm.split('-');
+  const date = new Date(parseInt(y), parseInt(m) - 1, 1);
+  return date.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+}
+
 function buildRealCustomers(store: RealDataState): Customer[] {
-  // Group ARR snapshots by SOW_ID
+  const priorMonth = getPriorMonth(); // e.g. "2026-01"
+
+  // Group ARR snapshots by SOW_ID, only include months <= prior month
   const sowGroups = new Map<string, (typeof store.arrSnapshots)>();
   store.arrSnapshots.forEach(row => {
+    const rowMonth = row.Snapshot_Month.slice(0, 7); // YYYY-MM
+    if (rowMonth > priorMonth) return; // Skip future months
     const key = row.SOW_ID;
     if (!sowGroups.has(key)) sowGroups.set(key, []);
     sowGroups.get(key)!.push(row);
@@ -378,7 +415,7 @@ function buildRealCustomers(store: RealDataState): Customer[] {
   const result: Customer[] = [];
 
   sowGroups.forEach((rows, sowId) => {
-    // Sort by Snapshot_Month descending → latest first
+    // Sort by Snapshot_Month descending → latest first (up to prior month)
     rows.sort((a, b) => b.Snapshot_Month.localeCompare(a.Snapshot_Month));
     const latest = rows[0];
     const previous = rows.length > 1 ? rows[1] : null;
@@ -457,47 +494,95 @@ function buildRealCustomers(store: RealDataState): Customer[] {
   return result;
 }
 
-function buildRealMonthlyARR(store: RealDataState): MonthlyARR[] {
-  // Group by month, sum Ending_ARR
-  const monthMap = new Map<string, number>();
+function buildRealMonthlyARR(
+  store: RealDataState,
+  arrFilter: (row: RealDataState['arrSnapshots'][0]) => boolean,
+  pipelineFilter: (row: RealDataState['pipelineSnapshots'][0]) => boolean,
+): MonthlyARR[] {
+  const priorMonth = getPriorMonth(); // Actual data cutoff (e.g. "2026-01")
+
+  // 1. Aggregate actual Ending_ARR by month from ARR snapshots (only up to prior month, with filters)
+  const actualMonthMap = new Map<string, number>();
   store.arrSnapshots.forEach(row => {
     const month = row.Snapshot_Month.slice(0, 7); // YYYY-MM
-    monthMap.set(month, (monthMap.get(month) || 0) + row.Ending_ARR);
-  });
-
-  const months = Array.from(monthMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-
-  const data: MonthlyARR[] = months.map(([month, total]) => {
-    const d = new Date(month + '-01');
-    const monthName = d.toLocaleString('en-US', { month: 'short', year: '2-digit' });
-    const isActual = d < new Date();
-    return {
-      month: monthName,
-      currentARR: isActual ? Math.round(total) : 0,
-      forecastedARR: !isActual ? Math.round(total) : 0,
-    };
-  });
-
-  // Add forecast months (project forward from last actual)
-  if (data.length > 0) {
-    const lastActual = data.filter(d => d.currentARR > 0);
-    const lastARR = lastActual.length > 0 ? lastActual[lastActual.length - 1].currentARR : 0;
-    if (lastARR > 0) {
-      let baseARR = lastARR;
-      const lastMonth = months[months.length - 1][0];
-      const lastDate = new Date(lastMonth + '-01');
-      const endDate = new Date(2026, 11, 1);
-      const current = new Date(lastDate);
-      current.setMonth(current.getMonth() + 1);
-      while (current <= endDate) {
-        const monthName = current.toLocaleString('en-US', { month: 'short', year: '2-digit' });
-        if (!data.find(d => d.month === monthName)) {
-          baseARR *= 1.02;
-          data.push({ month: monthName, currentARR: 0, forecastedARR: Math.round(baseARR) });
-        }
-        current.setMonth(current.getMonth() + 1);
-      }
+    if (month <= priorMonth && arrFilter(row)) {
+      actualMonthMap.set(month, (actualMonthMap.get(month) || 0) + row.Ending_ARR);
     }
+  });
+
+  // 2. Build the actual data points (Jan 2024 to prior month)
+  const data: MonthlyARR[] = [];
+  const startDate = new Date(2024, 0, 1); // Jan 2024
+  const priorDate = new Date(parseInt(priorMonth.slice(0, 4)), parseInt(priorMonth.slice(5, 7)) - 1, 1);
+
+  let lastActualARR = 0;
+  const cursor = new Date(startDate);
+  while (cursor <= priorDate) {
+    const ym = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
+    const monthLabel = cursor.toLocaleString('en-US', { month: 'short', year: '2-digit' });
+    const endingARR = actualMonthMap.get(ym) || 0;
+    if (endingARR > 0) lastActualARR = endingARR;
+    data.push({
+      month: monthLabel,
+      currentARR: Math.round(endingARR),
+      forecastedARR: 0,
+      forecastBase: 0,
+      forecastRenewals: 0,
+      forecastNewBusiness: 0,
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  // 3. Build pipeline forecast by month, split by logo type (latest snapshot only, with filters)
+  // Pipeline values (License_ACV) are already weighted (pre-multiplied by probability)
+  // Renewal logo types: Renewal, Extension (Extension = Renewal per business rules)
+  // New business logo types: New Logo, Upsell, Cross-Sell
+  let latestSnapshotMonth = '';
+  store.pipelineSnapshots.forEach(row => {
+    if (row.Snapshot_Month > latestSnapshotMonth) latestSnapshotMonth = row.Snapshot_Month;
+  });
+
+  const RENEWAL_TYPES = new Set(['Renewal', 'Extension']);
+  const renewalByMonth = new Map<string, number>();
+  const newBizByMonth = new Map<string, number>();
+  store.pipelineSnapshots.forEach(row => {
+    if (row.Snapshot_Month !== latestSnapshotMonth) return;
+    if (row.Current_Stage.includes('Closed Won') || row.Current_Stage.includes('Closed Lost') ||
+        row.Current_Stage.includes('Closed Dead') || row.Current_Stage.includes('Closed Declined')) return;
+    if (!pipelineFilter(row)) return;
+    const closeMonth = row.Expected_Close_Date.slice(0, 7);
+    if (closeMonth <= priorMonth) return;
+    const logoType = row.Logo_Type.trim();
+    if (RENEWAL_TYPES.has(logoType)) {
+      renewalByMonth.set(closeMonth, (renewalByMonth.get(closeMonth) || 0) + row.License_ACV);
+    } else {
+      newBizByMonth.set(closeMonth, (newBizByMonth.get(closeMonth) || 0) + row.License_ACV);
+    }
+  });
+
+  // 4. Generate forecast months (month after prior through Dec 2026)
+  const endDate = new Date(2026, 11, 1); // Dec 2026
+  const forecastStart = new Date(priorDate);
+  forecastStart.setMonth(forecastStart.getMonth() + 1);
+
+  let cumulativeRenewals = 0;
+  let cumulativeNewBiz = 0;
+  const fc = new Date(forecastStart);
+  while (fc <= endDate) {
+    const ym = `${fc.getFullYear()}-${String(fc.getMonth() + 1).padStart(2, '0')}`;
+    const monthLabel = fc.toLocaleString('en-US', { month: 'short', year: '2-digit' });
+    cumulativeRenewals += (renewalByMonth.get(ym) || 0);
+    cumulativeNewBiz += (newBizByMonth.get(ym) || 0);
+    const totalForecast = lastActualARR + cumulativeRenewals + cumulativeNewBiz;
+    data.push({
+      month: monthLabel,
+      currentARR: 0,
+      forecastedARR: Math.round(totalForecast),
+      forecastBase: Math.round(lastActualARR),
+      forecastRenewals: Math.round(cumulativeRenewals),
+      forecastNewBusiness: Math.round(cumulativeNewBiz),
+    });
+    fc.setMonth(fc.getMonth() + 1);
   }
 
   return data;
@@ -873,6 +958,8 @@ export default function RevenuePage() {
   // Real data store - loads actual CSV data
   const realData = useRealDataStore();
 
+  // currentARRMonthLabel is defined below after selectedARRMonth
+
   // Build data from real CSVs or fall back to mock
   const customers = useMemo(() => {
     if (!realData.isLoaded || realData.arrSnapshots.length === 0) return MOCK_CUSTOMERS;
@@ -884,19 +971,32 @@ export default function RevenuePage() {
     return buildRealProducts(realData, customers);
   }, [realData.isLoaded, realData.arrSnapshots, customers, realData.productCategoryIndex]);
 
-  const monthlyARRData = useMemo(() => {
-    if (!realData.isLoaded || realData.arrSnapshots.length === 0) return MOCK_MONTHLY_ARR;
-    return buildRealMonthlyARR(realData);
-  }, [realData.isLoaded, realData.arrSnapshots]);
-
   const arrMovementHistory = useMemo(() => {
     if (!realData.isLoaded || realData.arrSnapshots.length === 0) return MOCK_ARR_MOVEMENT;
     return buildRealARRMovement(realData);
   }, [realData.isLoaded, realData.arrSnapshots]);
 
+  // Compute prior month defaults for year/month filters
+  const priorMonthDefaults = useMemo(() => {
+    const now = new Date();
+    const prior = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return { year: String(prior.getFullYear()), month: monthNames[prior.getMonth()] };
+  }, []);
+
   // Filters - Multi-select support (standard filters per requirements)
-  const [yearFilterMulti, setYearFilterMulti] = useState<string[]>([]);
-  const [monthFilterMulti, setMonthFilterMulti] = useState<string[]>([]);
+  // Default year and month to prior month from login
+  const [yearFilterMulti, setYearFilterMulti] = useState<string[]>(() => {
+    const now = new Date();
+    const prior = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    return [String(prior.getFullYear())];
+  });
+  const [monthFilterMulti, setMonthFilterMulti] = useState<string[]>(() => {
+    const now = new Date();
+    const prior = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return [monthNames[prior.getMonth()]];
+  });
   const [regionFilter, setRegionFilter] = useState<string[]>([]);
   const [verticalFilter, setVerticalFilter] = useState<string[]>([]);
   const [segmentFilter, setSegmentFilter] = useState<string[]>([]);
@@ -970,24 +1070,12 @@ export default function RevenuePage() {
 
       // Revenue Type filter (Change 4) - Applied only in Products tab but filter logic here
       // Note: The actual filtering for Products tab is done separately below
-      // This filter affects the overall customer set for calculations
 
-      // Year filter on renewal date (multi-select)
-      if (yearFilterMulti.length > 0) {
-        const renewalYear = new Date(c.renewalDate).getFullYear().toString();
-        if (!yearFilterMulti.includes(renewalYear)) return false;
-      }
-
-      // Month filter on renewal date (multi-select)
-      if (monthFilterMulti.length > 0) {
-        const renewalMonth = new Date(c.renewalDate).getMonth();
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        if (!monthFilterMulti.includes(monthNames[renewalMonth])) return false;
-      }
+      // Year/Month filters now control the ARR snapshot month for Current ARR (not customer filtering)
 
       return true;
     });
-  }, [enrichedCustomers, regionFilter, verticalFilter, segmentFilter, platformFilter, quantumSmartFilter, yearFilterMulti, monthFilterMulti]);
+  }, [enrichedCustomers, regionFilter, verticalFilter, segmentFilter, platformFilter, quantumSmartFilter]);
 
   // Filtered customers for Products tab with Revenue Type filter (Change 4)
   const filteredCustomersForProducts = useMemo(() => {
@@ -1000,16 +1088,221 @@ export default function RevenuePage() {
     });
   }, [filteredCustomers, revenueTypeFilter]);
 
+  // Determine the selected ARR snapshot month from filters
+  const selectedARRMonth = useMemo(() => {
+    const monthNameToNum: Record<string, string> = {
+      'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+      'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12',
+    };
+    const year = yearFilterMulti.length > 0 ? yearFilterMulti[0] : priorMonthDefaults.year;
+    const month = monthFilterMulti.length > 0 ? monthNameToNum[monthFilterMulti[0]] || '12' : '12';
+    return `${year}-${month}`;
+  }, [yearFilterMulti, monthFilterMulti, priorMonthDefaults]);
+
+  // Label for the selected ARR month (e.g. "Jan 2026")
+  const currentARRMonthLabel = useMemo(() => {
+    if (!realData.isLoaded || realData.arrSnapshots.length === 0) return '';
+    return formatMonthLabel(selectedARRMonth);
+  }, [realData.isLoaded, realData.arrSnapshots, selectedARRMonth]);
+
+  // Helper: check if an ARR snapshot row passes active filters
+  const arrRowPassesFilters = useMemo(() => {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    return (row: typeof realData.arrSnapshots[0]) => {
+      // Enrich from SOW mapping
+      const sowMapping = realData.sowMappingIndex[row.SOW_ID];
+      const rowRegion = row.Region || (sowMapping ? normalizeRegion(sowMapping.Region) : '');
+      const rowVertical = row.Vertical || (sowMapping ? sowMapping.Vertical : '');
+      const rowSegment = row.Segment || (sowMapping ? sowMapping.Segment_Type : '');
+
+      if (regionFilter.length > 0 && !regionFilter.includes(rowRegion)) return false;
+      if (verticalFilter.length > 0 && !verticalFilter.includes(rowVertical)) return false;
+      if (segmentFilter.length > 0 && !segmentFilter.includes(rowSegment)) return false;
+      if (platformFilter.length > 0 && !platformFilter.includes(row.Quantum_SMART || 'SMART')) return false;
+      if (quantumSmartFilter !== 'All') {
+        const effectivePlatform = classifyPlatform(
+          row.Quantum_SMART || undefined,
+          row.Quantum_GoLive_Date || undefined,
+          currentMonth
+        );
+        if (effectivePlatform !== quantumSmartFilter) return false;
+      }
+      return true;
+    };
+  }, [realData.sowMappingIndex, regionFilter, verticalFilter, segmentFilter, platformFilter, quantumSmartFilter]);
+
+  // Helper: check if a pipeline row passes active filters
+  const pipelineRowPassesFilters = useMemo(() => {
+    return (row: typeof realData.pipelineSnapshots[0]) => {
+      if (regionFilter.length > 0 && !regionFilter.includes(row.Region)) return false;
+      if (verticalFilter.length > 0 && !verticalFilter.includes(row.Vertical)) return false;
+      if (segmentFilter.length > 0 && row.Segment && !segmentFilter.includes(row.Segment)) return false;
+      // Pipeline doesn't have Quantum/SMART field, skip that filter
+      return true;
+    };
+  }, [regionFilter, verticalFilter, segmentFilter]);
+
+  // Monthly ARR data for trend chart (must be after filter helpers)
+  const monthlyARRData = useMemo(() => {
+    if (!realData.isLoaded || realData.arrSnapshots.length === 0) return MOCK_MONTHLY_ARR;
+    return buildRealMonthlyARR(realData, arrRowPassesFilters, pipelineRowPassesFilters);
+  }, [realData.isLoaded, realData.arrSnapshots, realData.pipelineSnapshots, arrRowPassesFilters, pipelineRowPassesFilters]);
+
+  // Current ARR: aggregate Ending_ARR from snapshot for selected month, applying filters
+  const snapshotCurrentARR = useMemo(() => {
+    if (!realData.isLoaded || realData.arrSnapshots.length === 0) return 0;
+    let total = 0;
+    realData.arrSnapshots.forEach(row => {
+      const rowMonth = row.Snapshot_Month.slice(0, 7);
+      if (rowMonth === selectedARRMonth && arrRowPassesFilters(row)) {
+        total += row.Ending_ARR;
+      }
+    });
+    return Math.round(total);
+  }, [realData.isLoaded, realData.arrSnapshots, selectedARRMonth, arrRowPassesFilters]);
+
+  // Previous month ARR (month before selectedARRMonth) for YTD growth, applying filters
+  const snapshotPreviousARR = useMemo(() => {
+    if (!realData.isLoaded || realData.arrSnapshots.length === 0) return 0;
+    const [y, m] = selectedARRMonth.split('-').map(Number);
+    const prevDate = new Date(y, m - 2, 1);
+    const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+    let total = 0;
+    realData.arrSnapshots.forEach(row => {
+      const rowMonth = row.Snapshot_Month.slice(0, 7);
+      if (rowMonth === prevMonth && arrRowPassesFilters(row)) {
+        total += row.Ending_ARR;
+      }
+    });
+    return Math.round(total);
+  }, [realData.isLoaded, realData.arrSnapshots, selectedARRMonth, arrRowPassesFilters]);
+
+  // Forecast ARR = Dec Ending ARR of filtered year
+  // If year is past → Dec of that year from snapshot
+  // If year is current/future → last actual ARR + cumulative pipeline through Dec of filtered year
+  const forecastARR = useMemo(() => {
+    if (!realData.isLoaded || realData.arrSnapshots.length === 0) return 0;
+    const priorMonth = getPriorMonth();
+    const filteredYear = yearFilterMulti.length > 0 ? yearFilterMulti[0] : priorMonthDefaults.year;
+    const decOfYear = `${filteredYear}-12`;
+
+    // If Dec of filtered year is at or before the prior month, get actual Dec Ending_ARR
+    if (decOfYear <= priorMonth) {
+      let total = 0;
+      realData.arrSnapshots.forEach(row => {
+        const rowMonth = row.Snapshot_Month.slice(0, 7);
+        if (rowMonth === decOfYear && arrRowPassesFilters(row)) {
+          total += row.Ending_ARR;
+        }
+      });
+      return Math.round(total);
+    }
+
+    // Otherwise, compute forecast: last actual ARR + cumulative pipeline through Dec of filtered year
+    // Get the last actual month's ARR (up to prior month, with filters)
+    let lastActualARR = 0;
+    const actualMonthMap = new Map<string, number>();
+    realData.arrSnapshots.forEach(row => {
+      const rowMonth = row.Snapshot_Month.slice(0, 7);
+      if (rowMonth <= priorMonth && arrRowPassesFilters(row)) {
+        actualMonthMap.set(rowMonth, (actualMonthMap.get(rowMonth) || 0) + row.Ending_ARR);
+      }
+    });
+    const sortedMonths = Array.from(actualMonthMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    if (sortedMonths.length > 0) lastActualARR = sortedMonths[sortedMonths.length - 1][1];
+
+    // Get latest pipeline snapshot month
+    let latestSnapshotMonth = '';
+    realData.pipelineSnapshots.forEach(row => {
+      if (row.Snapshot_Month > latestSnapshotMonth) latestSnapshotMonth = row.Snapshot_Month;
+    });
+
+    // Sum pipeline deals closing from (prior month + 1) through Dec of filtered year
+    let cumulativePipeline = 0;
+    realData.pipelineSnapshots.forEach(row => {
+      if (row.Snapshot_Month !== latestSnapshotMonth) return;
+      if (row.Current_Stage.includes('Closed Won') || row.Current_Stage.includes('Closed Lost') ||
+          row.Current_Stage.includes('Closed Dead') || row.Current_Stage.includes('Closed Declined')) return;
+      if (!pipelineRowPassesFilters(row)) return;
+      const closeMonth = row.Expected_Close_Date.slice(0, 7);
+      if (closeMonth > priorMonth && closeMonth <= decOfYear) {
+        cumulativePipeline += row.License_ACV; // Already weighted
+      }
+    });
+
+    return Math.round(lastActualARR + cumulativePipeline);
+  }, [realData.isLoaded, realData.arrSnapshots, realData.pipelineSnapshots, yearFilterMulti, priorMonthDefaults, arrRowPassesFilters, pipelineRowPassesFilters]);
+
+  // Forecasted ARR for the specific selected month (not year-end)
+  // If selected month is past → actual Ending ARR for that month
+  // If selected month is current/future → last actual ARR + cumulative pipeline through selected month
+  const monthForecastARR = useMemo(() => {
+    if (!realData.isLoaded || realData.arrSnapshots.length === 0) return 0;
+    const priorMonth = getPriorMonth();
+
+    // If selected month is at or before prior month, return actual Ending_ARR
+    if (selectedARRMonth <= priorMonth) {
+      let total = 0;
+      realData.arrSnapshots.forEach(row => {
+        const rowMonth = row.Snapshot_Month.slice(0, 7);
+        if (rowMonth === selectedARRMonth && arrRowPassesFilters(row)) {
+          total += row.Ending_ARR;
+        }
+      });
+      return Math.round(total);
+    }
+
+    // Otherwise, compute forecast: last actual ARR + cumulative pipeline through selected month
+    let lastActualARR = 0;
+    const actualMonthMap = new Map<string, number>();
+    realData.arrSnapshots.forEach(row => {
+      const rowMonth = row.Snapshot_Month.slice(0, 7);
+      if (rowMonth <= priorMonth && arrRowPassesFilters(row)) {
+        actualMonthMap.set(rowMonth, (actualMonthMap.get(rowMonth) || 0) + row.Ending_ARR);
+      }
+    });
+    const sortedMonths = Array.from(actualMonthMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    if (sortedMonths.length > 0) lastActualARR = sortedMonths[sortedMonths.length - 1][1];
+
+    let latestSnapshotMonth = '';
+    realData.pipelineSnapshots.forEach(row => {
+      if (row.Snapshot_Month > latestSnapshotMonth) latestSnapshotMonth = row.Snapshot_Month;
+    });
+
+    let cumulativePipeline = 0;
+    realData.pipelineSnapshots.forEach(row => {
+      if (row.Snapshot_Month !== latestSnapshotMonth) return;
+      if (row.Current_Stage.includes('Closed Won') || row.Current_Stage.includes('Closed Lost') ||
+          row.Current_Stage.includes('Closed Dead') || row.Current_Stage.includes('Closed Declined')) return;
+      if (!pipelineRowPassesFilters(row)) return;
+      const closeMonth = row.Expected_Close_Date.slice(0, 7);
+      if (closeMonth > priorMonth && closeMonth <= selectedARRMonth) {
+        cumulativePipeline += row.License_ACV;
+      }
+    });
+
+    return Math.round(lastActualARR + cumulativePipeline);
+  }, [realData.isLoaded, realData.arrSnapshots, realData.pipelineSnapshots, selectedARRMonth, arrRowPassesFilters, pipelineRowPassesFilters]);
+
+  // Determine if the filtered year is in the past (for KPI card labeling)
+  const filteredYear = yearFilterMulti.length > 0 ? yearFilterMulti[0] : priorMonthDefaults.year;
+  const currentCalendarYear = String(new Date().getFullYear());
+  const isFilteredYearPast = parseInt(filteredYear) < parseInt(currentCalendarYear);
+
   // Calculate metrics
   const metrics = useMemo(() => {
-    const activeCustomers = filteredCustomers.filter(c => c.currentARR > 0);
-    const currentARR = activeCustomers.reduce((sum, c) => sum + c.currentARR, 0);
-    const previousARR = filteredCustomers.reduce((sum, c) => sum + c.previousARR, 0);
+    const useRealARR = realData.isLoaded && realData.arrSnapshots.length > 0 && snapshotCurrentARR > 0;
+    const currentARR = useRealARR ? snapshotCurrentARR : filteredCustomers.filter(c => c.currentARR > 0).reduce((sum, c) => sum + c.currentARR, 0);
+    const previousARR = useRealARR ? snapshotPreviousARR : filteredCustomers.reduce((sum, c) => sum + c.previousARR, 0);
     const ytdGrowth = previousARR > 0 ? ((currentARR - previousARR) / previousARR) * 100 : 0;
 
-    // Forecasted ARR (simple projection)
-    const forecastedARR = currentARR * 1.15;
-    const forecastedGrowth = ((forecastedARR - currentARR) / currentARR) * 100;
+    // Year End Forecasted ARR = Dec of filtered year
+    const yearEndARR = useRealARR ? forecastARR : currentARR * 1.15;
+    const yearEndGrowth = currentARR > 0 ? ((yearEndARR - currentARR) / currentARR) * 100 : 0;
+
+    // Month-specific Forecasted ARR
+    const monthForecast = useRealARR ? monthForecastARR : currentARR * 1.05;
+    const monthForecastGrowth = currentARR > 0 ? ((monthForecast - currentARR) / currentARR) * 100 : 0;
 
     // NRR and GRR
     const expansion = filteredCustomers
@@ -1027,14 +1320,16 @@ export default function RevenuePage() {
 
     return {
       currentARR,
-      forecastedARR,
+      yearEndARR,
+      monthForecast,
       ytdGrowth,
-      forecastedGrowth,
+      yearEndGrowth,
+      monthForecastGrowth,
       nrr,
       grr,
-      customerCount: activeCustomers.length,
+      customerCount: filteredCustomers.filter(c => c.currentARR > 0).length,
     };
-  }, [filteredCustomers]);
+  }, [filteredCustomers, snapshotCurrentARR, snapshotPreviousARR, forecastARR, monthForecastARR, realData.isLoaded, realData.arrSnapshots]);
 
   // ARR by Region
   const arrByRegion = useMemo(() => {
@@ -1272,18 +1567,29 @@ export default function RevenuePage() {
   const renderOverviewTab = () => (
     <div className="space-y-6">
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="card p-5">
-          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Current ARR</p>
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">
+            Current ARR{currentARRMonthLabel ? ` (${currentARRMonthLabel})` : ''}
+          </p>
           <p className="text-3xl font-bold text-secondary-900">{formatCurrency(metrics.currentARR)}</p>
           <p className={`text-sm mt-1 ${metrics.ytdGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
             {formatPercent(metrics.ytdGrowth)} YTD Growth
           </p>
         </div>
         <div className="card p-5">
-          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Forecasted ARR</p>
-          <p className="text-3xl font-bold text-primary-600">{formatCurrency(metrics.forecastedARR)}</p>
-          <p className="text-sm text-primary-500 mt-1">{formatPercent(metrics.forecastedGrowth)} projected</p>
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">
+            {isFilteredYearPast ? `Year End ARR (Dec ${filteredYear})` : `Year End Forecasted ARR (Dec ${filteredYear})`}
+          </p>
+          <p className="text-3xl font-bold text-primary-600">{formatCurrency(metrics.yearEndARR)}</p>
+          <p className="text-sm text-primary-500 mt-1">{formatPercent(metrics.yearEndGrowth)} vs current</p>
+        </div>
+        <div className="card p-5">
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">
+            Forecasted ARR{currentARRMonthLabel ? ` (${formatMonthLabel(selectedARRMonth)})` : ''}
+          </p>
+          <p className="text-3xl font-bold text-purple-600">{formatCurrency(metrics.monthForecast)}</p>
+          <p className="text-sm text-purple-500 mt-1">{formatPercent(metrics.monthForecastGrowth)} vs current</p>
         </div>
         <div className="card p-5">
           <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Net Revenue Retention</p>
@@ -1299,35 +1605,64 @@ export default function RevenuePage() {
         </div>
       </div>
 
-      {/* ARR Trend */}
+      {/* ARR Trend - Jan 2024 to Dec 2026 */}
       <ChartWrapper
-        title="ARR Trend"
-        data={monthlyARRData.slice(-24)}
+        title="ARR Trend (Jan 2024 – Dec 2026)"
+        data={monthlyARRData}
         filename="arr_trend"
       >
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={monthlyARRData.slice(-24)} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <AreaChart data={monthlyARRData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b' }} />
+              <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#64748b' }} interval={2} />
               <YAxis tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(v) => formatCurrency(v)} />
-              <Tooltip formatter={(value: number) => formatCurrency(value)} />
+              <Tooltip
+                formatter={(value: number, name: string) => {
+                  // Hide the base from tooltip since it's just the carry-forward
+                  if (name === 'Ending ARR (Base)') return [formatCurrency(value), name];
+                  return [formatCurrency(value), name];
+                }}
+              />
               <Legend />
+              {/* Actual Ending ARR - shown for historical months */}
               <Area
                 type="monotone"
                 dataKey="currentARR"
-                name="Current ARR"
+                name="Ending ARR (Actual)"
                 stroke={COLORS.primary}
                 fill={COLORS.primary}
                 fillOpacity={0.3}
               />
+              {/* Forecast breakdown - stacked areas for forecast months */}
               <Area
                 type="monotone"
-                dataKey="forecastedARR"
-                name="Forecasted ARR"
+                dataKey="forecastBase"
+                name="Ending ARR (Base)"
+                stackId="forecast"
+                stroke={COLORS.primary}
+                fill={COLORS.primary}
+                fillOpacity={0.15}
+                strokeDasharray="5 5"
+              />
+              <Area
+                type="monotone"
+                dataKey="forecastRenewals"
+                name="Renewals / Extensions"
+                stackId="forecast"
+                stroke={COLORS.success}
+                fill={COLORS.success}
+                fillOpacity={0.3}
+                strokeDasharray="5 5"
+              />
+              <Area
+                type="monotone"
+                dataKey="forecastNewBusiness"
+                name="New / Upsell / Cross-Sell"
+                stackId="forecast"
                 stroke={COLORS.purple}
                 fill={COLORS.purple}
-                fillOpacity={0.2}
+                fillOpacity={0.3}
                 strokeDasharray="5 5"
               />
             </AreaChart>
@@ -2343,7 +2678,8 @@ export default function RevenuePage() {
         <button
           onClick={() => exportToCSV([
             { Metric: 'Current ARR', Value: metrics.currentARR },
-            { Metric: 'Forecasted ARR', Value: metrics.forecastedARR },
+            { Metric: isFilteredYearPast ? `Year End ARR (Dec ${filteredYear})` : `Year End Forecasted ARR (Dec ${filteredYear})`, Value: metrics.yearEndARR },
+            { Metric: `Forecasted ARR (${formatMonthLabel(selectedARRMonth)})`, Value: metrics.monthForecast },
             { Metric: 'NRR', Value: metrics.nrr },
             { Metric: 'GRR', Value: metrics.grr },
             { Metric: 'Customer Count', Value: metrics.customerCount },
@@ -2442,12 +2778,12 @@ export default function RevenuePage() {
             </div>
           )}
 
-          {/* Clear All Filters Button */}
-          {(yearFilterMulti.length > 0 || monthFilterMulti.length > 0 || regionFilter.length > 0 || verticalFilter.length > 0 || segmentFilter.length > 0 || platformFilter.length !== DEFAULT_PLATFORMS.length || quantumSmartFilter !== 'All' || revenueTypeFilter !== 'Fees') && (
+          {/* Clear All Filters Button - resets year/month to prior month defaults */}
+          {(regionFilter.length > 0 || verticalFilter.length > 0 || segmentFilter.length > 0 || platformFilter.length !== DEFAULT_PLATFORMS.length || quantumSmartFilter !== 'All' || revenueTypeFilter !== 'Fees' || yearFilterMulti[0] !== priorMonthDefaults.year || monthFilterMulti[0] !== priorMonthDefaults.month) && (
             <button
               onClick={() => {
-                setYearFilterMulti([]);
-                setMonthFilterMulti([]);
+                setYearFilterMulti([priorMonthDefaults.year]);
+                setMonthFilterMulti([priorMonthDefaults.month]);
                 setRegionFilter([]);
                 setVerticalFilter([]);
                 setSegmentFilter([]);

@@ -7,6 +7,88 @@
 
 <!-- Add entries below in reverse chronological order (newest first) -->
 
+## 2026-02-12 - Year End ARR Card + Month Forecast Card + ARR Trend Breakdown
+**Task:** 1) Rename "Forecasted ARR" KPI card to "Year End Forecasted ARR" (or "Year End ARR" for past years). 2) Add new "Forecasted ARR" card showing forecast for the specific selected month. 3) Break forecast in ARR Trend chart into stacked components: Ending ARR (Base), Renewals/Extensions, New/Upsell/Cross-Sell. 4) Remember: all pipeline in latest snapshot is Quantum.
+**Changes:**
+- `frontend/src/modules/revenue/pages/RevenuePage.tsx`:
+  - Extended `MonthlyARR` interface with `forecastBase`, `forecastRenewals`, `forecastNewBusiness` fields
+  - Updated mock data generator to populate forecast breakdown fields
+  - Updated `buildRealMonthlyARR` to split pipeline by Logo_Type: Renewal+Extension vs New Logo+Upsell+Cross-Sell. Two separate cumulative trackers (`cumulativeRenewals`, `cumulativeNewBiz`) populate the breakdown fields.
+  - Added `monthForecastARR` useMemo — computes forecast for the specific selected month (past months show actual Ending ARR, future months show last actual + cumulative pipeline through that month)
+  - Added `isFilteredYearPast` and `filteredYear` variables for KPI card labeling
+  - Updated `metrics` useMemo: renamed `forecastedARR`→`yearEndARR`, added `monthForecast`, `yearEndGrowth`, `monthForecastGrowth`
+  - Changed KPI grid from 4 to 5 columns: Current ARR, Year End Forecasted ARR (or Year End ARR), Forecasted ARR (month), NRR, GRR
+  - Year End card label: "Year End Forecasted ARR (Dec 2026)" for current/future, "Year End ARR (Dec 2025)" for past
+  - Forecasted ARR card shows forecast for selected month with month label
+  - ARR Trend chart: replaced single `forecastedARR` area with 3 stacked areas (`forecastBase`, `forecastRenewals`, `forecastNewBusiness`) using `stackId="forecast"`
+  - Updated export CSV to use new metric names
+**Status:** Completed
+**Branch:** `antony-branch-changes`
+**Notes:** Build clean. Pipeline = Quantum (saved to memory). Chart shows actual Ending ARR (solid) then stacked forecast breakdown (dashed): base ARR + renewals/extensions + new/upsell/cross-sell.
+
+## 2026-02-12 - Pipeline Already Weighted + Forecast = End of Year + Filters on KPIs
+**Task:** 1) Pipeline values (License_ACV, Deal_Value, Implementation_Value) are already weighted — remove double-weighting. 2) Forecast ARR = end of filtered year (Dec snapshot for past years, last actual + cumulative pipeline for current/future). 3) All filters (region, vertical, segment, Quantum/SMART) must work on Current ARR and Forecast ARR KPIs.
+**Changes:**
+- `frontend/src/modules/revenue/pages/RevenuePage.tsx`:
+  - Removed `* (row.Probability / 100)` from `buildRealMonthlyARR` pipeline forecast calculation (values already weighted)
+  - Removed `* (row.Probability / 100)` from `pipelineForecastARR` useMemo (values already weighted)
+  - Added `arrRowPassesFilters` useMemo — enriches ARR snapshot rows via SOW mapping, checks region/vertical/segment/platform/Quantum-SMART filters
+  - Added `pipelineRowPassesFilters` useMemo — checks region/vertical/segment filters on pipeline rows
+  - Updated `snapshotCurrentARR` to use `arrRowPassesFilters`
+  - Updated `snapshotPreviousARR` to use `arrRowPassesFilters`
+  - Added `forecastARR` useMemo — handles past years (actual Dec Ending_ARR) and current/future (last actual + cumulative filtered pipeline through Dec)
+  - Updated `buildRealMonthlyARR` signature to accept filter functions `(store, arrFilter, pipelineFilter)`
+  - Moved `monthlyARRData` useMemo after filter definitions, now passes filter functions to `buildRealMonthlyARR`
+  - Updated `metrics` to use `forecastARR` instead of `pipelineForecastARR`
+- `frontend/src/modules/sales/pages/SalesPage.tsx`:
+  - Removed `* (prob / 100)` from pipeline `weightedValue` in `buildRealOpportunities` (values already weighted)
+**Status:** Completed
+**Branch:** `antony-branch-changes`
+**Notes:** Build clean. Pipeline CSV values are pre-multiplied by probability — no further weighting needed anywhere. Filters now propagate to KPI cards (Current ARR, Forecast ARR) and to the ARR Trend chart. Forecast for past years shows actual Dec Ending_ARR.
+
+## 2026-02-12 - Fix Forecast: Latest Snapshot Month Only + Include Extension/Renewals
+**Task:** Forecast ARR should use only the latest pipeline snapshot month (not latest per deal), include Extension/Renewals, and calculate cumulative weighted pipeline by expected close month.
+**Changes:**
+- `frontend/src/modules/revenue/pages/RevenuePage.tsx`:
+  - `buildRealMonthlyARR`: Changed from "latest snapshot per deal" to "only latest Snapshot_Month" (Feb 2026). All deals in that snapshot included (Extension/Renewals not excluded). Weighted = License_ACV × Probability/100.
+  - `pipelineForecastARR` useMemo: Same fix - finds max Snapshot_Month, filters to only that month's records. Includes all logo types (Extension, Renewal, New Logo, etc.).
+  - Forecast for month M = Last actual Ending ARR + cumulative weighted pipeline deals closing from (prior month + 1) through M.
+**Status:** Completed
+**Branch:** `antony-branch-changes`
+**Notes:** Build clean. E.g., Forecast Mar'26 = Jan'26 Ending ARR + weighted deals closing Feb'26 + weighted deals closing Mar'26.
+
+## 2026-02-12 - ARR Overview Rework: Snapshot-Based Current ARR + Pipeline Forecast + Trend Graph
+**Task:** 1) Re-upload updated Monthly_ARR_Snapshot CSV (new column names). 2) Current ARR = aggregate Ending_ARR from snapshot for selected year/month filter. 3) Year/Month filters default to prior month. 4) If year selected but no month → show Dec. 5) Forecasted ARR = Current ARR + weighted pipeline (License_ACV × Probability). 6) ARR Trend graph: actual Jan 2024 to prior month, forecast from current month to Dec 2026.
+**Changes:**
+- `frontend/public/data/monthly_arr_snapshot.csv` - **REPLACED** with updated data (new column names: `New Business_ARR`, `Schedule Change_ARR`)
+- `frontend/src/shared/store/realDataStore.ts` - Updated ARR snapshot parsing to handle both old and new column names (`New_ARR`/`New Business_ARR`, `Schedule Change`/`Schedule Change_ARR`)
+- `frontend/src/modules/revenue/pages/RevenuePage.tsx` - Major rework:
+  - Year/month filter defaults now set to prior month (e.g., Year=2026, Month=Jan when today is Feb 2026)
+  - Added `priorMonthDefaults` useMemo, `selectedARRMonth` useMemo, `currentARRMonthLabel` based on selected filters
+  - Added `snapshotCurrentARR` - aggregates Ending_ARR directly from raw snapshot for selected month/year
+  - Added `snapshotPreviousARR` - previous month's aggregate for YTD growth
+  - Added `pipelineForecastARR` - weighted pipeline (License_ACV × Probability/100) from latest snapshot per deal
+  - Metrics now uses snapshot-based Current ARR and pipeline-based Forecasted ARR (Current + Weighted Pipeline)
+  - Completely rewrote `buildRealMonthlyARR`: actual Ending_ARR from Jan 2024 to prior month + forecast (last actual ARR + cumulative weighted pipeline) from current month to Dec 2026
+  - ARR Trend chart shows full Jan 2024 - Dec 2026 range (removed `.slice(-24)`)
+  - Chart labels updated: "Ending ARR (Actual)" and "Forecasted ARR"
+  - X-axis interval set to 2 for readability with 36 months
+  - Year/month filters no longer filter customers by renewal date (they control snapshot month selection)
+  - Clear All resets year/month to prior month defaults instead of empty
+**Status:** Completed
+**Branch:** `antony-branch-changes`
+**Notes:** TypeScript and Vite build clean. If user selects Year=2025, Month empty → shows Dec 2025 Ending ARR. ARR Trend shows smooth transition from actual to forecast at the prior month boundary.
+
+## 2026-02-12 - Current ARR Prior Month Logic + Revenue Type Filter on Sales
+**Task:** 1) Re-upload updated Monthly_ARR_Snapshot CSV. 2) Make Current ARR on RevenuePage always reflect the month prior to user's login date, and show which month it represents. 3) Add Revenue Type filter to SalesPage defaulting to License.
+**Changes:**
+- `frontend/public/data/monthly_arr_snapshot.csv` - **REPLACED** with updated data from Upload templates (12054 records, Jan 2024 - Dec 2026)
+- `frontend/src/modules/revenue/pages/RevenuePage.tsx` - Added `getPriorMonth()` and `formatMonthLabel()` helpers. Modified `buildRealCustomers` to filter ARR snapshots to months <= prior month (Jan 2026 when today is Feb 2026). Modified `buildRealMonthlyARR` to use prior month as actual/forecast cutoff. Added `currentARRMonthLabel` useMemo. Updated Current ARR KPI card to show month label (e.g. "Current ARR (Jan 2026)").
+- `frontend/src/modules/sales/pages/SalesPage.tsx` - Added `revenueType?: string` to Opportunity interface. Added `REVENUE_TYPE_OPTIONS` constant (License, Implementation, Services). Populated `revenueType` in `buildRealOpportunities` from SOW Mapping Revenue_Type (won deals) and default 'License' (pipeline deals). Added `revenueTypeFilter` state defaulting to 'License'. Added Revenue Type dropdown in filter bar. Added filter logic in `filteredOpportunities`. Updated Clear All to reset to 'License'.
+**Status:** Completed
+**Branch:** `antony-branch-changes`
+**Notes:** TypeScript compiles clean, Vite build succeeds. Current ARR now shows data for the month prior to the user's login (e.g., Jan 2026 when accessed in Feb 2026). Revenue Type filter on Sales tab defaults to License, showing only License revenue type deals by default.
+
 ## 2026-02-12 - Replace Mock Data with Real CSV Data (8 Templates)
 **Task:** Copy 8 real data CSV files to frontend/public/data/, create a centralized Zustand store (realDataStore) that auto-loads all CSVs at runtime, and update SalesPage and RevenuePage to display real data instead of mock data.
 **Changes:**

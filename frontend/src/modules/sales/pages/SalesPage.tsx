@@ -58,6 +58,8 @@ interface Opportunity {
   productCategory?: string;
   subCategoryBreakdown?: { subCategory: string; pct: number }[];
   pipelineSubCategoryBreakdown?: { subCategory: string; pct: number }[];
+  // Revenue Type from SOW Mapping (License, Implementation, Services)
+  revenueType?: string;
 }
 
 interface Salesperson {
@@ -124,6 +126,9 @@ const MOVEMENT_REASONS = ['Expanded Scope', 'Reduced Scope', 'Lost to Competitor
 
 // Sold By classification (Change 9)
 const SOLD_BY_OPTIONS = ['Sales', 'GD', 'TSO'] as const;
+
+// Revenue Type options (from SOW Mapping Revenue_Type)
+const REVENUE_TYPE_OPTIONS = ['License', 'Implementation', 'Services'] as const;
 
 // Product Sub-Categories for breakdown (Change 1, 2)
 const SALESPERSON_NAMES = [
@@ -216,6 +221,7 @@ const generateOpportunities = (): Opportunity[] => {
       soldBy,
       // SOW ID (Change 1) - only for won deals
       sowId: isWon ? `SOW-${String(Math.floor(Math.random() * 100) + 1).padStart(5, '0')}` : undefined,
+      revenueType: ['License', 'Implementation', 'Services'][Math.floor(Math.random() * 3)],
     });
   }
   return opportunities;
@@ -346,6 +352,7 @@ function buildRealOpportunities(store: RealDataState): Opportunity[] {
       closedACV,
       soldBy,
       sowId: row.SOW_ID,
+      revenueType: sowMapping?.Revenue_Type || row.Value_Type || 'License',
     });
   });
 
@@ -391,10 +398,11 @@ function buildRealOpportunities(store: RealDataState): Opportunity[] {
       channel: 'Direct',
       stage: status === 'Lost' ? 'Closed Lost' : simpleStage,
       probability: prob,
+      // Pipeline values (Deal_Value, License_ACV, Implementation_Value) are already weighted
       dealValue: row.Deal_Value,
       licenseValue: row.License_ACV,
       implementationValue: row.Implementation_Value,
-      weightedValue: Math.round(row.Deal_Value * (prob / 100)),
+      weightedValue: row.Deal_Value,
       expectedCloseDate: row.Expected_Close_Date,
       daysInStage: 30,
       owner: row.Sales_Rep,
@@ -404,6 +412,7 @@ function buildRealOpportunities(store: RealDataState): Opportunity[] {
       createdDate: row.Snapshot_Month,
       soldBy: 'Sales',
       productSubCategory: row.Product_Sub_Category || undefined,
+      revenueType: 'License',
     });
   });
 
@@ -877,6 +886,7 @@ export default function SalesPage() {
   const [channelFilter, setChannelFilter] = useState<string[]>([]);
   const [logoTypeFilter, setLogoTypeFilter] = useState<string[]>([]);
   const [soldByFilter, setSoldByFilter] = useState<string>('All');  // Sold By filter (Change 9)
+  const [revenueTypeFilter, setRevenueTypeFilter] = useState<string>('License');  // Revenue Type filter - default License
   const [productCategoryFilter, setProductCategoryFilter] = useState<string[]>([]);
   const [productSubCategoryFilter, setProductSubCategoryFilter] = useState<string[]>([]);
 
@@ -1021,6 +1031,9 @@ export default function SalesPage() {
       // Sold By filter (Change 9)
       if (soldByFilter !== 'All' && opp.soldBy !== soldByFilter) return false;
 
+      // Revenue Type filter
+      if (revenueTypeFilter !== 'All' && opp.revenueType && opp.revenueType !== revenueTypeFilter) return false;
+
       // Product Category filter
       if (productCategoryFilter.length > 0 && opp.productCategory && !productCategoryFilter.includes(opp.productCategory)) return false;
 
@@ -1029,7 +1042,7 @@ export default function SalesPage() {
 
       return true;
     });
-  }, [enrichedOpportunities, yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter, segmentFilter, channelFilter, logoTypeFilter, soldByFilter, productCategoryFilter, productSubCategoryFilter]);
+  }, [enrichedOpportunities, yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter, segmentFilter, channelFilter, logoTypeFilter, soldByFilter, revenueTypeFilter, productCategoryFilter, productSubCategoryFilter]);
 
   // Calculate metrics with proper Closed ACV rules
   const metrics = useMemo(() => {
@@ -2717,8 +2730,23 @@ export default function SalesPage() {
             </select>
           </div>
 
+          {/* Revenue Type Filter */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-secondary-600">Revenue Type:</label>
+            <select
+              value={revenueTypeFilter}
+              onChange={(e) => setRevenueTypeFilter(e.target.value)}
+              className="px-3 py-2 text-sm border border-secondary-200 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="All">All</option>
+              {REVENUE_TYPE_OPTIONS.map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Clear All Filters Button */}
-          {(yearFilter.length > 0 || quarterFilter.length > 0 || monthFilter.length > 0 || regionFilter.length > 0 || verticalFilter.length > 0 || segmentFilter.length > 0 || logoTypeFilter.length > 0 || channelFilter.length > 0 || soldByFilter !== 'All' || productCategoryFilter.length > 0 || productSubCategoryFilter.length > 0) && (
+          {(yearFilter.length > 0 || quarterFilter.length > 0 || monthFilter.length > 0 || regionFilter.length > 0 || verticalFilter.length > 0 || segmentFilter.length > 0 || logoTypeFilter.length > 0 || channelFilter.length > 0 || soldByFilter !== 'All' || revenueTypeFilter !== 'License' || productCategoryFilter.length > 0 || productSubCategoryFilter.length > 0) && (
             <button
               onClick={() => {
                 setYearFilter([]);
@@ -2730,6 +2758,7 @@ export default function SalesPage() {
                 setLogoTypeFilter([]);
                 setChannelFilter([]);
                 setSoldByFilter('All');
+                setRevenueTypeFilter('License');
                 setProductCategoryFilter([]);
                 setProductSubCategoryFilter([]);
               }}
