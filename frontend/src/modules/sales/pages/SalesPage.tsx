@@ -1778,7 +1778,7 @@ export default function SalesPage() {
           </div>
         </ChartWrapper>
 
-        {/* Forecast by Product Sub-Category */}
+        {/* Forecast by Sub-Category */}
         {(() => {
           const activeDeals = filteredOpportunities.filter(o => o.status === 'Active');
           const subCatMap = new Map<string, { weighted: number; count: number }>();
@@ -1814,8 +1814,8 @@ export default function SalesPage() {
 
           return (
             <div className="card p-6">
-              <h3 className="text-lg font-semibold text-secondary-900 mb-1">Forecast by Product Sub-Category</h3>
-              <p className="text-sm text-secondary-500 mb-4">Weighted forecast values allocated by product</p>
+              <h3 className="text-lg font-semibold text-secondary-900 mb-1">Forecast by Sub-Category</h3>
+              <p className="text-sm text-secondary-500 mb-4">Weighted forecast values allocated by sub-category</p>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead>
@@ -2146,7 +2146,7 @@ export default function SalesPage() {
         </div>
       </div>
 
-      {/* Pipeline by Product Sub-Category */}
+      {/* Pipeline by Sub-Category */}
       {(() => {
         const activeDeals = filteredOpportunities.filter(o => o.status === 'Active');
         const subCatMap = new Map<string, { totalWeighted: number; totalPipeline: number; count: number }>();
@@ -2185,8 +2185,8 @@ export default function SalesPage() {
 
         return (
           <div className="card p-6">
-            <h3 className="text-lg font-semibold text-secondary-900 mb-1">Pipeline by Product Sub-Category</h3>
-            <p className="text-sm text-secondary-500 mb-4">Weighted pipeline values allocated to product sub-categories</p>
+            <h3 className="text-lg font-semibold text-secondary-900 mb-1">Pipeline by Sub-Category</h3>
+            <p className="text-sm text-secondary-500 mb-4">Weighted pipeline values allocated by sub-category</p>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
@@ -2680,14 +2680,14 @@ export default function SalesPage() {
             placeholder="All Channels"
           />
 
-          {/* Product Category Filters */}
+          {/* Category / Sub-Category Filters */}
           {(() => {
             const allCategories = productCategoryMappingStore.getAllCategories();
             if (allCategories.length === 0) return null;
             return (
               <>
                 <MultiSelectDropdown
-                  label="Product Category"
+                  label="Category"
                   options={allCategories}
                   selected={productCategoryFilter}
                   onChange={(vals) => {

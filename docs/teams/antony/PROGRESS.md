@@ -7,6 +7,62 @@
 
 <!-- Add entries below in reverse chronological order (newest first) -->
 
+## 2026-02-13 - Movement Tab Tables & Chart Aligned with ARR Bridge Filters
+**Task:** Make all tables below the ARR Bridge (ARR Movement Details, Top Expansions, Top Contractions & Churns) and the Monthly Movement Trend chart use the same filters and date range as the waterfall bridge. Customer-wise details should reflect what is shown in the waterfall. Monthly Movement Trend shows gains and losses from Jan 2024 to prior month.
+**Changes:**
+- `frontend/src/modules/revenue/pages/RevenuePage.tsx`:
+  - Rewrote `customersWithMovement` useMemo to aggregate ARR snapshot rows by Customer_Name for the same date range and filters as the bridge (selectedARRMonth + lookback). Returns per-customer: Starting ARR, New Business, Expansion, Schedule Change, Contraction, Churn, Ending ARR, Net Change, movement type classification.
+  - Added `filteredMovementTrend` useMemo — aggregates monthly movement data from Jan 2024 to prior month using filtered ARR snapshots, producing per-month: newBusiness, expansion, scheduleChange, contraction, churn, netChange.
+  - Updated ARR Movement Details table with new columns: Starting ARR, New Business, Expansion, Schedule Chg, Contraction, Churn, Ending ARR, Net Change, Type.
+  - Updated Top Expansions and Top Contractions & Churns cards to use snapshot-based customer data.
+  - Replaced Monthly Movement Trend chart: changed from AreaChart (only gains) to BarChart with stacked gains (New Business + Expansion) and stacked losses (Contraction + Churn) with ReferenceLine at y=0. Shows full date range Jan 2024 to prior month. Schedule Change shown separately as it can be positive or negative.
+**Status:** Completed
+**Branch:** `antony-branch-changes`
+**Notes:** Build clean. Contraction and Churn values are negative in the CSV data so they naturally display below the zero line. All movement tab components now react to region/vertical/segment/Quantum-SMART filters and the same lookback period as the bridge.
+
+## 2026-02-13 - ARR Bridge Uses Real Snapshot Data
+**Task:** Rewrite the ARR Bridge (waterfall chart) in the Movement tab to use actual Monthly ARR Snapshot columns (Starting_ARR, New Business_ARR, Expansion_ARR, Schedule Change_ARR, Contraction_ARR, Churn_ARR, Ending_ARR) instead of mock data. Lookback period controls how many months back from the filtered month to aggregate.
+**Changes:**
+- `frontend/src/modules/revenue/pages/RevenuePage.tsx`:
+  - Extracted `buildWaterfallFromTotals()` helper function from the inline waterfall logic — takes startingARR, endingARR, and component totals, returns waterfall data structure
+  - Rewrote `arrMovementData` useMemo to use `realData.arrSnapshots` directly:
+    - Ending month = `selectedARRMonth` (from year/month filters)
+    - Starting month = lookback months before that (1/3/6/12)
+    - Aggregates all snapshot rows in the date range, applying `arrRowPassesFilters`
+    - Starting ARR = sum of Starting_ARR from first month in range
+    - Ending ARR = sum of Ending_ARR from last month in range
+    - Components (New Business, Expansion, Schedule Change, Contraction, Churn) = sum across all months in range
+    - Falls back to mock `arrMovementHistory` when real data unavailable
+  - Dependencies updated: `selectedARRMonth`, `arrRowPassesFilters` added to useMemo deps
+**Status:** Completed
+**Branch:** `antony-branch-changes`
+**Notes:** Build clean. E.g., if filter = Jan 2026, lookback = 3: aggregates Nov 2025 + Dec 2025 + Jan 2026. Starting ARR = Nov 2025 Starting_ARR, Ending ARR = Jan 2026 Ending_ARR. All filters (region, vertical, segment, Quantum/SMART) apply to the bridge data.
+
+## 2026-02-13 - Refresh CSVs + ARR by Category + Category/Sub-Category Terminology
+**Task:** 1) Re-upload updated monthly_pipeline_snapshot (Quantum/SMART updates), sow_mapping (full region names). 2) Change "ARR by Product" in overview tab to "ARR by Category" (aggregated from sub-categories). 3) Use Category/Sub-Category terminology throughout (Sub-Category is the lowest classification level).
+**Changes:**
+- `frontend/public/data/monthly_pipeline_snapshot.csv` — **REPLACED** with updated data from Upload templates (Quantum/SMART updates, Feb 13)
+- `frontend/public/data/sow_mapping.csv` — **REPLACED** with updated data (full region names: "North America" instead of "NA", "Middle East" instead of "ME", etc.)
+- `frontend/src/modules/revenue/pages/RevenuePage.tsx`:
+  - Added `arrByCategory` useMemo — aggregates sub-category ARR up to Category level using `productCategoryIndex`
+  - Changed overview tab chart from "ARR by Product" (sub-category level, with category filter) to "ARR by Category" (category level, no extra filter needed)
+  - Tab "ARR by Products" → "ARR by Sub-Category"
+  - View toggle "By Product" → "By Sub-Category"
+  - KPI labels: "Total Products" → "Total Sub-Categories", "Top Product" → "Top Sub-Category", "Most Customers" → "Most Adopted"
+  - "Product Performance" table → "Sub-Category Performance", column "Product" → "Sub-Category"
+  - "Product ARR Comparison" chart → "Sub-Category ARR Comparison"
+  - "Customer-Product Matrix" → "Customer Sub-Category Matrix"
+  - Cross-sell labels: "1 Product" → "1 Sub-Category", "2 Products" → "2 Sub-Categories", etc.
+  - "Product Performance Matrix" → "Sub-Category Performance Matrix"
+  - Customer table column "Products" → "Sub-Categories"
+- `frontend/src/modules/sales/pages/SalesPage.tsx`:
+  - Filter label "Product Category" → "Category"
+  - Section headings: "Pipeline by Product Sub-Category" → "Pipeline by Sub-Category"
+  - "Forecast by Product Sub-Category" → "Forecast by Sub-Category"
+**Status:** Completed
+**Branch:** `antony-branch-changes`
+**Notes:** Build clean. SOW mapping now has full region names so `normalizeRegion()` passes them through (no abbreviation needed). Pipeline CSV header has whitespace around `License_ACV` but `parseCSV` already trims headers. No code changes needed for data parsing.
+
 ## 2026-02-12 - Year End ARR Card + Month Forecast Card + ARR Trend Breakdown
 **Task:** 1) Rename "Forecasted ARR" KPI card to "Year End Forecasted ARR" (or "Year End ARR" for past years). 2) Add new "Forecasted ARR" card showing forecast for the specific selected month. 3) Break forecast in ARR Trend chart into stacked components: Ending ARR (Base), Renewals/Extensions, New/Upsell/Cross-Sell. 4) Remember: all pipeline in latest snapshot is Quantum.
 **Changes:**

@@ -588,6 +588,90 @@ function buildRealMonthlyARR(
   return data;
 }
 
+// Build waterfall chart data from aggregated totals
+function buildWaterfallFromTotals(
+  startingARR: number,
+  endingARR: number,
+  totals: { newBusiness: number; expansion: number; scheduleChange: number; contraction: number; churn: number; netChange: number }
+) {
+  let runningTotal = startingARR;
+
+  const waterfallData: Array<{
+    name: string;
+    bottom: number;
+    value: number;
+    displayValue: number;
+    fill: string;
+    type: 'initial' | 'increase' | 'decrease' | 'final';
+    connectTo?: number;
+  }> = [];
+
+  // Starting ARR
+  waterfallData.push({
+    name: 'Starting\nARR', bottom: 0, value: startingARR, displayValue: startingARR,
+    fill: COLORS.gray, type: 'initial', connectTo: startingARR
+  });
+
+  // New Business (positive)
+  waterfallData.push({
+    name: 'New\nBusiness', bottom: runningTotal, value: totals.newBusiness, displayValue: totals.newBusiness,
+    fill: COLORS.success, type: 'increase', connectTo: runningTotal + totals.newBusiness
+  });
+  runningTotal += totals.newBusiness;
+
+  // Expansion (positive)
+  waterfallData.push({
+    name: 'Expansion', bottom: runningTotal, value: totals.expansion, displayValue: totals.expansion,
+    fill: COLORS.primary, type: 'increase', connectTo: runningTotal + totals.expansion
+  });
+  runningTotal += totals.expansion;
+
+  // Schedule Change (can be positive or negative)
+  if (totals.scheduleChange >= 0) {
+    waterfallData.push({
+      name: 'Schedule\nChange', bottom: runningTotal, value: totals.scheduleChange, displayValue: totals.scheduleChange,
+      fill: COLORS.purple, type: 'increase', connectTo: runningTotal + totals.scheduleChange
+    });
+    runningTotal += totals.scheduleChange;
+  } else {
+    const abs = Math.abs(totals.scheduleChange);
+    waterfallData.push({
+      name: 'Schedule\nChange', bottom: runningTotal - abs, value: abs, displayValue: totals.scheduleChange,
+      fill: COLORS.purple, type: 'decrease', connectTo: runningTotal - abs
+    });
+    runningTotal -= abs;
+  }
+
+  // Contraction (negative)
+  const contractionAbs = Math.abs(totals.contraction);
+  waterfallData.push({
+    name: 'Contraction', bottom: runningTotal - contractionAbs, value: contractionAbs, displayValue: totals.contraction,
+    fill: COLORS.warning, type: 'decrease', connectTo: runningTotal - contractionAbs
+  });
+  runningTotal -= contractionAbs;
+
+  // Churn (negative)
+  const churnAbs = Math.abs(totals.churn);
+  waterfallData.push({
+    name: 'Churn', bottom: runningTotal - churnAbs, value: churnAbs, displayValue: totals.churn,
+    fill: COLORS.danger, type: 'decrease', connectTo: runningTotal - churnAbs
+  });
+  runningTotal -= churnAbs;
+
+  // Ending ARR - use actual ending ARR from snapshot (not running total) to avoid float drift
+  waterfallData.push({
+    name: 'Ending\nARR', bottom: 0, value: endingARR, displayValue: endingARR,
+    fill: COLORS.primary, type: 'final'
+  });
+
+  return {
+    startingARR,
+    endingARR,
+    ...totals,
+    waterfallData,
+  };
+}
+
 function buildRealARRMovement(store: RealDataState): ARRMovementRecord[] {
   const monthMap = new Map<string, ARRMovementRecord>();
 
@@ -1353,199 +1437,265 @@ export default function RevenuePage() {
       .sort((a, b) => b.value - a.value);
   }, [filteredCustomers]);
 
-  // ARR by Product
-  const arrByProduct = useMemo(() => {
-    const productData: Record<string, number> = {};
+  // ARR by Category (aggregated from Sub-Category → Category via product_category_mapping)
+  const arrByCategory = useMemo(() => {
+    const categoryData: Record<string, number> = {};
     filteredCustomers.forEach(c => {
-      Object.entries(c.productARR).forEach(([product, arr]) => {
-        productData[product] = (productData[product] || 0) + arr;
+      Object.entries(c.productARR).forEach(([subCategory, arr]) => {
+        const category = realData.productCategoryIndex[subCategory] || 'Other';
+        categoryData[category] = (categoryData[category] || 0) + arr;
       });
     });
-    return Object.entries(productData)
+    return Object.entries(categoryData)
       .map(([name, arr]) => ({ name, arr }))
       .sort((a, b) => b.arr - a.arr);
-  }, [filteredCustomers]);
+  }, [filteredCustomers, realData.productCategoryIndex]);
 
   // ARR Movement Data based on lookback - TRUE FLOATING WATERFALL
   const arrMovementData = useMemo(() => {
     const months = parseInt(lookbackPeriod);
-    const recentData = arrMovementHistory.slice(-months);
 
+    // Use real ARR snapshot data directly when available
+    if (realData.isLoaded && realData.arrSnapshots.length > 0) {
+      // Determine the range of months to aggregate
+      // Ending month = selectedARRMonth (e.g. "2026-01")
+      // Starting month = lookback months before that
+      const endMonth = selectedARRMonth; // YYYY-MM
+      const endYear = parseInt(endMonth.slice(0, 4));
+      const endMon = parseInt(endMonth.slice(5, 7));
+
+      // Compute the first month in the range
+      const startDate = new Date(endYear, endMon - 1 - (months - 1), 1);
+      const startMonth = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+
+      // Collect all months in range
+      const monthsInRange: string[] = [];
+      const cursor = new Date(startDate);
+      const endDate = new Date(endYear, endMon - 1, 1);
+      while (cursor <= endDate) {
+        monthsInRange.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`);
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+
+      // Aggregate snapshot data for each month, applying filters
+      // For each month, sum up the components across all filtered SOW rows
+      const monthAggregates = new Map<string, {
+        starting: number; newBiz: number; expansion: number;
+        scheduleChange: number; contraction: number; churn: number; ending: number;
+      }>();
+
+      monthsInRange.forEach(m => {
+        monthAggregates.set(m, { starting: 0, newBiz: 0, expansion: 0, scheduleChange: 0, contraction: 0, churn: 0, ending: 0 });
+      });
+
+      realData.arrSnapshots.forEach(row => {
+        const rowMonth = row.Snapshot_Month.slice(0, 7);
+        if (!monthAggregates.has(rowMonth)) return;
+        if (!arrRowPassesFilters(row)) return;
+        const agg = monthAggregates.get(rowMonth)!;
+        agg.starting += row.Starting_ARR;
+        agg.newBiz += row.New_ARR;
+        agg.expansion += row.Expansion_ARR;
+        agg.scheduleChange += row.Schedule_Change;
+        agg.contraction += row.Contraction_ARR;
+        agg.churn += row.Churn_ARR;
+        agg.ending += row.Ending_ARR;
+      });
+
+      // Starting ARR = Starting_ARR of the first month in range
+      // Ending ARR = Ending_ARR of the last month in range
+      // Components = sum across all months in range
+      const firstMonthAgg = monthAggregates.get(monthsInRange[0]);
+      const lastMonthAgg = monthAggregates.get(monthsInRange[monthsInRange.length - 1]);
+
+      const startingARR = Math.round(firstMonthAgg?.starting || 0);
+      const endingARR = Math.round(lastMonthAgg?.ending || 0);
+
+      let totalNewBiz = 0, totalExpansion = 0, totalScheduleChange = 0, totalContraction = 0, totalChurn = 0;
+      monthAggregates.forEach(agg => {
+        totalNewBiz += agg.newBiz;
+        totalExpansion += agg.expansion;
+        totalScheduleChange += agg.scheduleChange;
+        totalContraction += agg.contraction;
+        totalChurn += agg.churn;
+      });
+
+      const totals = {
+        newBusiness: Math.round(totalNewBiz),
+        expansion: Math.round(totalExpansion),
+        scheduleChange: Math.round(totalScheduleChange),
+        contraction: Math.round(-Math.abs(totalContraction)), // Ensure negative
+        churn: Math.round(-Math.abs(totalChurn)),             // Ensure negative
+        netChange: Math.round(endingARR - startingARR),
+      };
+
+      // Build waterfall
+      return buildWaterfallFromTotals(startingARR, endingARR, totals);
+    }
+
+    // Fallback to mock data
+    const recentData = arrMovementHistory.slice(-months);
     const totals = recentData.reduce(
       (acc, record) => ({
         newBusiness: acc.newBusiness + record.newBusiness,
         expansion: acc.expansion + record.expansion,
-        scheduleChange: acc.scheduleChange + record.scheduleChange,  // Added (Change 8)
+        scheduleChange: acc.scheduleChange + record.scheduleChange,
         contraction: acc.contraction + record.contraction,
         churn: acc.churn + record.churn,
         netChange: acc.netChange + record.netChange,
       }),
       { newBusiness: 0, expansion: 0, scheduleChange: 0, contraction: 0, churn: 0, netChange: 0 }
     );
-
-    // Starting ARR (go back X months)
     const currentARR = metrics.currentARR;
     const startingARR = currentARR - totals.netChange;
+    return buildWaterfallFromTotals(startingARR, currentARR, totals);
+  }, [lookbackPeriod, selectedARRMonth, realData.isLoaded, realData.arrSnapshots, arrRowPassesFilters, metrics.currentARR, arrMovementHistory]);
 
-    // Build floating waterfall data with proper structure for stacked bars
-    // Each bar has: bottom (invisible spacer), value (visible bar)
-    let runningTotal = startingARR;
+  // Customer-wise movement details from ARR snapshot (same filters + date range as bridge)
+  const customersWithMovement = useMemo(() => {
+    // Use real snapshot data when available
+    if (realData.isLoaded && realData.arrSnapshots.length > 0) {
+      const months = parseInt(lookbackPeriod);
+      const endMonth = selectedARRMonth;
+      const endYear = parseInt(endMonth.slice(0, 4));
+      const endMon = parseInt(endMonth.slice(5, 7));
+      const startDate = new Date(endYear, endMon - 1 - (months - 1), 1);
+      const startMonth = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
 
-    const waterfallData: Array<{
-      name: string;
-      bottom: number;       // Invisible spacer height (where bar starts)
-      value: number;        // Visible bar height (always positive for rendering)
-      displayValue: number; // Value to display (can be negative)
-      fill: string;
-      type: 'initial' | 'increase' | 'decrease' | 'final';
-      connectTo?: number;   // Y value to connect to next bar
-    }> = [];
+      // Aggregate by customer across the lookback range
+      const customerMap = new Map<string, {
+        name: string; startingARR: number; endingARR: number;
+        newBiz: number; expansion: number; scheduleChange: number;
+        contraction: number; churn: number;
+      }>();
 
-    // Starting ARR - anchored to axis (bottom = 0)
-    waterfallData.push({
-      name: 'Starting\nARR',
-      bottom: 0,
-      value: startingARR,
-      displayValue: startingARR,
-      fill: COLORS.gray,
-      type: 'initial',
-      connectTo: startingARR
-    });
+      realData.arrSnapshots.forEach(row => {
+        const rowMonth = row.Snapshot_Month.slice(0, 7);
+        if (rowMonth < startMonth || rowMonth > endMonth) return;
+        if (!arrRowPassesFilters(row)) return;
 
-    // New Business - positive, floats from running total
-    waterfallData.push({
-      name: 'New\nBusiness',
-      bottom: runningTotal,
-      value: totals.newBusiness,
-      displayValue: totals.newBusiness,
-      fill: COLORS.success,
-      type: 'increase',
-      connectTo: runningTotal + totals.newBusiness
-    });
-    runningTotal += totals.newBusiness;
-
-    // Expansion - positive, floats from running total
-    waterfallData.push({
-      name: 'Expansion',
-      bottom: runningTotal,
-      value: totals.expansion,
-      displayValue: totals.expansion,
-      fill: COLORS.primary,
-      type: 'increase',
-      connectTo: runningTotal + totals.expansion
-    });
-    runningTotal += totals.expansion;
-
-    // Schedule Change - can be positive or negative (Change 8)
-    if (totals.scheduleChange >= 0) {
-      // Positive schedule change - floats from running total
-      waterfallData.push({
-        name: 'Schedule\nChange',
-        bottom: runningTotal,
-        value: totals.scheduleChange,
-        displayValue: totals.scheduleChange,
-        fill: COLORS.purple,
-        type: 'increase',
-        connectTo: runningTotal + totals.scheduleChange
+        const custName = row.Customer_Name;
+        if (!customerMap.has(custName)) {
+          customerMap.set(custName, {
+            name: custName, startingARR: 0, endingARR: 0,
+            newBiz: 0, expansion: 0, scheduleChange: 0, contraction: 0, churn: 0,
+          });
+        }
+        const c = customerMap.get(custName)!;
+        // Starting ARR = sum of Starting_ARR from first month only
+        if (rowMonth === startMonth) c.startingARR += row.Starting_ARR;
+        // Ending ARR = sum of Ending_ARR from last month only
+        if (rowMonth === endMonth) c.endingARR += row.Ending_ARR;
+        // Components sum across all months in range
+        c.newBiz += row.New_ARR;
+        c.expansion += row.Expansion_ARR;
+        c.scheduleChange += row.Schedule_Change;
+        c.contraction += row.Contraction_ARR;
+        c.churn += row.Churn_ARR;
       });
-      runningTotal += totals.scheduleChange;
-    } else {
-      // Negative schedule change - bar hangs down
-      const scheduleChangeAbs = Math.abs(totals.scheduleChange);
-      waterfallData.push({
-        name: 'Schedule\nChange',
-        bottom: runningTotal - scheduleChangeAbs,
-        value: scheduleChangeAbs,
-        displayValue: totals.scheduleChange,
-        fill: COLORS.purple,
-        type: 'decrease',
-        connectTo: runningTotal - scheduleChangeAbs
-      });
-      runningTotal -= scheduleChangeAbs;
+
+      let data = Array.from(customerMap.values())
+        .map(c => {
+          const change = Math.round(c.endingARR - c.startingARR);
+          // Classify movement type based on dominant component
+          let movementType: string;
+          if (Math.abs(c.churn) > 0 && c.endingARR === 0) movementType = 'Churn';
+          else if (c.newBiz > 0 && c.startingARR === 0) movementType = 'New';
+          else if (change > 0 && c.expansion > 0) movementType = 'Expansion';
+          else if (c.contraction < 0 || change < 0) movementType = 'Contraction';
+          else if (c.scheduleChange !== 0) movementType = 'ScheduleChange';
+          else movementType = 'Flat';
+          return {
+            id: c.name,
+            name: c.name,
+            previousARR: Math.round(c.startingARR),
+            currentARR: Math.round(c.endingARR),
+            change,
+            changePercent: c.startingARR > 0 ? ((c.endingARR - c.startingARR) / c.startingARR) * 100 : (c.endingARR > 0 ? 100 : 0),
+            movementType,
+            newBiz: Math.round(c.newBiz),
+            expansion: Math.round(c.expansion),
+            scheduleChange: Math.round(c.scheduleChange),
+            contraction: Math.round(c.contraction),
+            churn: Math.round(c.churn),
+          };
+        })
+        .filter(c => c.movementType !== 'Flat' || c.change !== 0);
+
+      // Sort
+      if (sortConfig) {
+        data = [...data].sort((a: any, b: any) => {
+          const aVal = a[sortConfig.key];
+          const bVal = b[sortConfig.key];
+          if (typeof aVal === 'number' && typeof bVal === 'number') {
+            return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+          }
+          const aStr = String(aVal || '').toLowerCase();
+          const bStr = String(bVal || '').toLowerCase();
+          return sortConfig.direction === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
+        });
+      } else {
+        data = data.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
+      }
+      return data;
     }
 
-    // Contraction - negative, bar hangs down from running total
-    const contractionAbs = Math.abs(totals.contraction);
-    waterfallData.push({
-      name: 'Contraction',
-      bottom: runningTotal - contractionAbs,  // Bar bottom is at lower level
-      value: contractionAbs,                   // Bar height
-      displayValue: totals.contraction,        // Display as negative
-      fill: COLORS.warning,
-      type: 'decrease',
-      connectTo: runningTotal - contractionAbs
-    });
-    runningTotal -= contractionAbs;
-
-    // Churn - negative, bar hangs down from running total
-    const churnAbs = Math.abs(totals.churn);
-    waterfallData.push({
-      name: 'Churn',
-      bottom: runningTotal - churnAbs,
-      value: churnAbs,
-      displayValue: totals.churn,
-      fill: COLORS.danger,
-      type: 'decrease',
-      connectTo: runningTotal - churnAbs
-    });
-    runningTotal -= churnAbs;
-
-    // Ending ARR - anchored to axis (bottom = 0)
-    waterfallData.push({
-      name: 'Ending\nARR',
-      bottom: 0,
-      value: runningTotal,
-      displayValue: runningTotal,
-      fill: COLORS.primary,
-      type: 'final'
-    });
-
-    return {
-      startingARR,
-      endingARR: currentARR,
-      ...totals,
-      waterfallData,
-    };
-  }, [lookbackPeriod, metrics.currentARR, arrMovementHistory]);
-
-  // Customers with movement - with sorting support
-  const customersWithMovement = useMemo(() => {
+    // Fallback to customer-derived movement
     let data = filteredCustomers
       .filter(c => c.movementType && c.movementType !== 'Flat')
       .map(c => ({
         ...c,
         change: c.currentARR - c.previousARR,
         changePercent: c.previousARR > 0 ? ((c.currentARR - c.previousARR) / c.previousARR) * 100 : 100,
+        newBiz: 0, expansion: 0, scheduleChange: 0, contraction: 0, churn: 0,
       }));
-
-    // Apply sorting if set
     if (sortConfig) {
       data = [...data].sort((a: any, b: any) => {
-        let aVal = a[sortConfig.key];
-        let bVal = b[sortConfig.key];
-
-        // Handle string comparison
-        if (typeof aVal === 'string') {
-          aVal = aVal.toLowerCase();
-          bVal = bVal?.toLowerCase() || '';
-        }
-
-        // Handle numeric comparison
-        if (typeof aVal === 'number' && typeof bVal === 'number') {
-          return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
-        }
-
-        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
-        return 0;
+        const aVal = a[sortConfig.key]; const bVal = b[sortConfig.key];
+        if (typeof aVal === 'number' && typeof bVal === 'number') return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+        return sortConfig.direction === 'asc' ? String(aVal).localeCompare(String(bVal)) : String(bVal).localeCompare(String(aVal));
       });
     } else {
-      // Default sort by absolute change
       data = data.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
     }
-
     return data;
-  }, [filteredCustomers, sortConfig]);
+  }, [realData.isLoaded, realData.arrSnapshots, lookbackPeriod, selectedARRMonth, arrRowPassesFilters, filteredCustomers, sortConfig]);
+
+  // Monthly Movement Trend - from Jan 2024 to prior month, using filtered snapshot data
+  const filteredMovementTrend = useMemo(() => {
+    if (!realData.isLoaded || realData.arrSnapshots.length === 0) return arrMovementHistory;
+
+    const priorMonth = getPriorMonth();
+    const monthMap = new Map<string, { date: string; newBusiness: number; expansion: number; scheduleChange: number; contraction: number; churn: number; netChange: number }>();
+
+    realData.arrSnapshots.forEach(row => {
+      const rowMonth = row.Snapshot_Month.slice(0, 7);
+      if (rowMonth < '2024-01' || rowMonth > priorMonth) return;
+      if (!arrRowPassesFilters(row)) return;
+
+      if (!monthMap.has(rowMonth)) {
+        monthMap.set(rowMonth, { date: rowMonth + '-01', newBusiness: 0, expansion: 0, scheduleChange: 0, contraction: 0, churn: 0, netChange: 0 });
+      }
+      const m = monthMap.get(rowMonth)!;
+      m.newBusiness += row.New_ARR;
+      m.expansion += row.Expansion_ARR;
+      m.scheduleChange += row.Schedule_Change;
+      m.contraction += row.Contraction_ARR;
+      m.churn += row.Churn_ARR;
+    });
+
+    return Array.from(monthMap.values())
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map(m => ({
+        ...m,
+        newBusiness: Math.round(m.newBusiness),
+        expansion: Math.round(m.expansion),
+        scheduleChange: Math.round(m.scheduleChange),
+        contraction: Math.round(m.contraction),
+        churn: Math.round(m.churn),
+        netChange: Math.round(m.newBusiness + m.expansion + m.scheduleChange + m.contraction + m.churn),
+      }));
+  }, [realData.isLoaded, realData.arrSnapshots, arrRowPassesFilters, arrMovementHistory]);
 
   // 2026 Renewals
   const renewals2026 = useMemo(() => {
@@ -1671,27 +1821,17 @@ export default function RevenuePage() {
       </ChartWrapper>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* ARR by Product */}
+        {/* ARR by Category */}
         <ChartWrapper
-          title="ARR by Product"
-          data={arrByProduct}
-          filename="arr_by_product"
+          title="ARR by Category"
+          data={arrByCategory}
+          filename="arr_by_category"
         >
-          <div className="flex items-center justify-end mb-4">
-            <select
-              value={productCategoryFilter}
-              onChange={(e) => setProductCategoryFilter(e.target.value)}
-              className="px-3 py-1 border border-secondary-200 rounded text-sm"
-            >
-              <option value="All">All Categories</option>
-              {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 layout="vertical"
-                data={arrByProduct.slice(0, 8)}
+                data={arrByCategory.slice(0, 10)}
                 margin={{ top: 0, right: 30, left: 100, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
@@ -1956,16 +2096,19 @@ export default function RevenuePage() {
             <thead className="bg-secondary-50 sticky top-0">
               <tr>
                 <SortableHeader label="Customer" sortKey="name" currentSort={sortConfig} onSort={handleSort} />
-                <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Previous ARR</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Current ARR</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Change ($)</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Change (%)</th>
+                <SortableHeader label="Starting ARR" sortKey="previousARR" currentSort={sortConfig} onSort={handleSort} />
+                <SortableHeader label="New Business" sortKey="newBiz" currentSort={sortConfig} onSort={handleSort} />
+                <SortableHeader label="Expansion" sortKey="expansion" currentSort={sortConfig} onSort={handleSort} />
+                <SortableHeader label="Schedule Chg" sortKey="scheduleChange" currentSort={sortConfig} onSort={handleSort} />
+                <SortableHeader label="Contraction" sortKey="contraction" currentSort={sortConfig} onSort={handleSort} />
+                <SortableHeader label="Churn" sortKey="churn" currentSort={sortConfig} onSort={handleSort} />
+                <SortableHeader label="Ending ARR" sortKey="currentARR" currentSort={sortConfig} onSort={handleSort} />
+                <SortableHeader label="Net Change" sortKey="change" currentSort={sortConfig} onSort={handleSort} />
                 <SortableHeader label="Type" sortKey="movementType" currentSort={sortConfig} onSort={handleSort} filterOptions={['New', 'Expansion', 'ScheduleChange', 'Contraction', 'Churn']} />
-                <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Reason</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-secondary-100">
-              {customersWithMovement.slice(0, 20).map((customer) => (
+              {customersWithMovement.slice(0, 50).map((customer) => (
                 <tr
                   key={customer.id}
                   className={`${
@@ -1980,24 +2123,28 @@ export default function RevenuePage() {
                 >
                   <td className="px-4 py-3 font-medium text-secondary-900">{customer.name}</td>
                   <td className="px-4 py-3 text-right text-secondary-600">{formatCurrency(customer.previousARR)}</td>
+                  <td className="px-4 py-3 text-right text-green-600">{customer.newBiz > 0 ? `+${formatCurrency(customer.newBiz)}` : '-'}</td>
+                  <td className="px-4 py-3 text-right text-blue-600">{customer.expansion > 0 ? `+${formatCurrency(customer.expansion)}` : '-'}</td>
+                  <td className={`px-4 py-3 text-right ${customer.scheduleChange >= 0 ? 'text-purple-600' : 'text-purple-600'}`}>
+                    {customer.scheduleChange !== 0 ? formatCurrency(customer.scheduleChange) : '-'}
+                  </td>
+                  <td className="px-4 py-3 text-right text-yellow-600">{customer.contraction < 0 ? formatCurrency(customer.contraction) : '-'}</td>
+                  <td className="px-4 py-3 text-right text-red-600">{customer.churn < 0 ? formatCurrency(customer.churn) : '-'}</td>
                   <td className="px-4 py-3 text-right font-medium text-secondary-900">{formatCurrency(customer.currentARR)}</td>
                   <td className={`px-4 py-3 text-right font-medium ${customer.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {customer.change >= 0 ? '+' : ''}{formatCurrency(customer.change)}
-                  </td>
-                  <td className={`px-4 py-3 text-right ${customer.changePercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatPercent(customer.changePercent)}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                       customer.movementType === 'New' ? 'bg-green-100 text-green-800' :
                       customer.movementType === 'Expansion' ? 'bg-blue-100 text-blue-800' :
+                      customer.movementType === 'ScheduleChange' ? 'bg-purple-100 text-purple-800' :
                       customer.movementType === 'Contraction' ? 'bg-yellow-100 text-yellow-800' :
                       'bg-red-100 text-red-800'
                     }`}>
-                      {customer.movementType}
+                      {customer.movementType === 'ScheduleChange' ? 'Sched. Change' : customer.movementType}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-secondary-600">{customer.movementReason || '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -2013,7 +2160,7 @@ export default function RevenuePage() {
             <h2 className="text-lg font-semibold text-secondary-900">Top Expansions</h2>
             <button
               onClick={() => exportToCSV(
-                customersWithMovement.filter(c => c.movementType === 'Expansion' || c.movementType === 'New').slice(0, 5),
+                customersWithMovement.filter(c => c.movementType === 'Expansion' || c.movementType === 'New').slice(0, 10),
                 'top_expansions'
               )}
               className="px-2 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
@@ -2024,19 +2171,25 @@ export default function RevenuePage() {
           <div className="space-y-3">
             {customersWithMovement
               .filter(c => c.movementType === 'Expansion' || c.movementType === 'New')
+              .sort((a, b) => b.change - a.change)
               .slice(0, 5)
               .map((customer) => (
                 <div key={customer.id} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                   <div>
                     <p className="font-medium text-secondary-900">{customer.name}</p>
-                    <p className="text-xs text-secondary-500">{customer.movementReason}</p>
+                    <p className="text-xs text-secondary-500">{customer.movementType === 'New' ? 'New Business' : 'Expansion'}</p>
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-green-600">+{formatCurrency(customer.change)}</p>
-                    <p className="text-xs text-green-500">{formatPercent(customer.changePercent)}</p>
+                    <p className="text-xs text-green-500">
+                      {customer.previousARR > 0 ? formatPercent(customer.changePercent) : 'New'}
+                    </p>
                   </div>
                 </div>
               ))}
+            {customersWithMovement.filter(c => c.movementType === 'Expansion' || c.movementType === 'New').length === 0 && (
+              <p className="text-sm text-secondary-400 text-center py-4">No expansions in this period</p>
+            )}
           </div>
         </div>
 
@@ -2046,7 +2199,7 @@ export default function RevenuePage() {
             <h2 className="text-lg font-semibold text-secondary-900">Top Contractions & Churns</h2>
             <button
               onClick={() => exportToCSV(
-                customersWithMovement.filter(c => c.movementType === 'Contraction' || c.movementType === 'Churn').slice(0, 5),
+                customersWithMovement.filter(c => c.movementType === 'Contraction' || c.movementType === 'Churn').slice(0, 10),
                 'top_contractions'
               )}
               className="px-2 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
@@ -2057,12 +2210,13 @@ export default function RevenuePage() {
           <div className="space-y-3">
             {customersWithMovement
               .filter(c => c.movementType === 'Contraction' || c.movementType === 'Churn')
+              .sort((a, b) => a.change - b.change)
               .slice(0, 5)
               .map((customer) => (
                 <div key={customer.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
                   <div>
                     <p className="font-medium text-secondary-900">{customer.name}</p>
-                    <p className="text-xs text-secondary-500">{customer.movementReason}</p>
+                    <p className="text-xs text-secondary-500">{customer.movementType}</p>
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-red-600">{formatCurrency(customer.change)}</p>
@@ -2070,31 +2224,41 @@ export default function RevenuePage() {
                   </div>
                 </div>
               ))}
+            {customersWithMovement.filter(c => c.movementType === 'Contraction' || c.movementType === 'Churn').length === 0 && (
+              <p className="text-sm text-secondary-400 text-center py-4">No contractions or churns in this period</p>
+            )}
           </div>
         </div>
       </div>
 
       {/* Movement Trend */}
       <ChartWrapper
-        title="Monthly Movement Trend"
-        data={arrMovementHistory.slice(-12)}
+        title="Monthly Movement Trend (Jan 2024 to Prior Month)"
+        data={filteredMovementTrend}
         filename="movement_trend"
       >
-        <div className="h-64">
+        <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={arrMovementHistory.slice(-12)} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <BarChart data={filteredMovementTrend} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 11, fill: '#64748b' }}
-                tickFormatter={(v) => new Date(v).toLocaleDateString('en-US', { month: 'short' })}
+                tick={{ fontSize: 10, fill: '#64748b' }}
+                tickFormatter={(v) => {
+                  const d = new Date(v);
+                  return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                }}
               />
-              <YAxis tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(v) => formatCurrency(v)} />
+              <YAxis tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={(v) => formatCurrency(v)} />
               <Tooltip formatter={(value: number) => formatCurrency(value)} />
               <Legend />
-              <Area type="monotone" dataKey="newBusiness" name="New Business" stackId="1" stroke={COLORS.success} fill={COLORS.success} fillOpacity={0.6} />
-              <Area type="monotone" dataKey="expansion" name="Expansion" stackId="1" stroke={COLORS.primary} fill={COLORS.primary} fillOpacity={0.6} />
-            </AreaChart>
+              <ReferenceLine y={0} stroke="#94a3b8" />
+              <Bar dataKey="newBusiness" name="New Business" stackId="gains" fill={COLORS.success} />
+              <Bar dataKey="expansion" name="Expansion" stackId="gains" fill={COLORS.primary} />
+              <Bar dataKey="scheduleChange" name="Schedule Change" stackId="gains" fill={COLORS.warning} />
+              <Bar dataKey="contraction" name="Contraction" stackId="losses" fill={COLORS.pink} />
+              <Bar dataKey="churn" name="Churn" stackId="losses" fill={COLORS.danger} />
+            </BarChart>
           </ResponsiveContainer>
         </div>
       </ChartWrapper>
@@ -2209,7 +2373,7 @@ export default function RevenuePage() {
                 <tr>
                   <SortableHeader label="Customer" sortKey="name" currentSort={sortConfig} onSort={handleSort} />
                   <SortableHeader label="Current ARR" sortKey="currentARR" currentSort={sortConfig} onSort={handleSort} />
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Products</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Sub-Categories</th>
                   <SortableHeader label="Region" sortKey="region" currentSort={sortConfig} onSort={handleSort} filterOptions={REGIONS} />
                   <SortableHeader label="Vertical" sortKey="vertical" currentSort={sortConfig} onSort={handleSort} filterOptions={VERTICALS} />
                   <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Contract Start</th>
@@ -2394,9 +2558,9 @@ export default function RevenuePage() {
 
     // Cross-sell analysis - uses filteredCustomersForProducts for Revenue Type filter
     const crossSellData = [
-      { name: '1 Product', count: filteredCustomersForProducts.filter(c => c.products.length === 1 && c.currentARR > 0).length },
-      { name: '2 Products', count: filteredCustomersForProducts.filter(c => c.products.length === 2 && c.currentARR > 0).length },
-      { name: '3+ Products', count: filteredCustomersForProducts.filter(c => c.products.length >= 3 && c.currentARR > 0).length },
+      { name: '1 Sub-Category', count: filteredCustomersForProducts.filter(c => c.products.length === 1 && c.currentARR > 0).length },
+      { name: '2 Sub-Categories', count: filteredCustomersForProducts.filter(c => c.products.length === 2 && c.currentARR > 0).length },
+      { name: '3+ Sub-Categories', count: filteredCustomersForProducts.filter(c => c.products.length >= 3 && c.currentARR > 0).length },
     ];
 
     const allProductNames = [...new Set(products.map(p => p.name))];
@@ -2414,7 +2578,7 @@ export default function RevenuePage() {
                   productViewMode === 'product' ? 'bg-primary-500 text-white' : 'bg-white text-secondary-600'
                 }`}
               >
-                By Product
+                By Sub-Category
               </button>
               <button
                 onClick={() => setProductViewMode('customer')}
@@ -2458,11 +2622,11 @@ export default function RevenuePage() {
             {/* Product Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="card p-5">
-                <p className="text-xs font-semibold text-secondary-500 uppercase mb-2">Total Products</p>
+                <p className="text-xs font-semibold text-secondary-500 uppercase mb-2">Total Sub-Categories</p>
                 <p className="text-3xl font-bold text-secondary-900">{filteredProducts.length}</p>
               </div>
               <div className="card p-5">
-                <p className="text-xs font-semibold text-secondary-500 uppercase mb-2">Top Product</p>
+                <p className="text-xs font-semibold text-secondary-500 uppercase mb-2">Top Sub-Category</p>
                 <p className="text-xl font-bold text-secondary-900">{filteredProducts[0]?.name || '-'}</p>
                 <p className="text-sm text-secondary-500">{formatCurrency(filteredProducts[0]?.totalARR || 0)}</p>
               </div>
@@ -2476,7 +2640,7 @@ export default function RevenuePage() {
                 </p>
               </div>
               <div className="card p-5">
-                <p className="text-xs font-semibold text-secondary-500 uppercase mb-2">Most Customers</p>
+                <p className="text-xs font-semibold text-secondary-500 uppercase mb-2">Most Adopted</p>
                 <p className="text-xl font-bold text-secondary-900">
                   {filteredProducts.sort((a, b) => b.customerCount - a.customerCount)[0]?.name || '-'}
                 </p>
@@ -2486,10 +2650,10 @@ export default function RevenuePage() {
               </div>
             </div>
 
-            {/* Product Table */}
+            {/* Sub-Category Table */}
             <div className="card overflow-hidden">
               <div className="p-5 border-b border-secondary-200 flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-secondary-900">Product Performance</h2>
+                <h2 className="text-lg font-semibold text-secondary-900">Sub-Category Performance</h2>
                 <button
                   onClick={() => exportToCSV(filteredProducts, 'product_performance')}
                   className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
@@ -2501,7 +2665,7 @@ export default function RevenuePage() {
                 <table className="w-full">
                   <thead className="bg-secondary-50">
                     <tr>
-                      <SortableHeader label="Product" sortKey="name" currentSort={sortConfig} onSort={handleSort} />
+                      <SortableHeader label="Sub-Category" sortKey="name" currentSort={sortConfig} onSort={handleSort} />
                       <SortableHeader label="Category" sortKey="category" currentSort={sortConfig} onSort={handleSort} filterOptions={PRODUCT_CATEGORIES} />
                       <SortableHeader label="Total ARR" sortKey="totalARR" currentSort={sortConfig} onSort={handleSort} />
                       <SortableHeader label="# Customers" sortKey="customerCount" currentSort={sortConfig} onSort={handleSort} />
@@ -2529,9 +2693,9 @@ export default function RevenuePage() {
 
             {/* Product Trend */}
             <ChartWrapper
-              title="Product ARR Comparison"
+              title="Sub-Category ARR Comparison"
               data={filteredProducts.slice(0, 10)}
-              filename="product_arr_comparison"
+              filename="subcategory_arr_comparison"
             >
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
@@ -2554,7 +2718,7 @@ export default function RevenuePage() {
             {/* Customer-Product Matrix */}
             <div className="card overflow-hidden">
               <div className="p-5 border-b border-secondary-200 flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-secondary-900">Customer-Product Matrix</h2>
+                <h2 className="text-lg font-semibold text-secondary-900">Customer Sub-Category Matrix</h2>
                 <button
                   onClick={() => exportToCSV(customerProductMatrix, 'customer_product_matrix')}
                   className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
@@ -2624,9 +2788,9 @@ export default function RevenuePage() {
               </ChartWrapper>
 
               <ChartWrapper
-                title="Product Performance Matrix"
+                title="Sub-Category Performance Matrix"
                 data={filteredProducts}
-                filename="product_performance_matrix"
+                filename="subcategory_performance_matrix"
               >
                 <div className="h-48">
                   <ResponsiveContainer width="100%" height="100%">
@@ -2653,7 +2817,7 @@ export default function RevenuePage() {
                           name
                         ]}
                       />
-                      <Scatter name="Products" data={filteredProducts} fill={COLORS.primary} />
+                      <Scatter name="Sub-Categories" data={filteredProducts} fill={COLORS.primary} />
                     </ScatterChart>
                   </ResponsiveContainer>
                 </div>
@@ -2762,7 +2926,7 @@ export default function RevenuePage() {
             </select>
           </div>
 
-          {/* Revenue Type Filter - Only for ARR by Products tab */}
+          {/* Revenue Type Filter - Only for ARR by Sub-Category tab */}
           {activeTab === 'products' && (
             <div className="flex items-center gap-2">
               <label className="text-sm text-secondary-600">Revenue Type:</label>
@@ -2806,7 +2970,7 @@ export default function RevenuePage() {
             { id: 'overview', label: 'Overview' },
             { id: 'movement', label: 'ARR Movement' },
             { id: 'customers', label: 'Customers' },
-            { id: 'products', label: 'ARR by Products' },
+            { id: 'products', label: 'ARR by Sub-Category' },
           ].map((tab) => (
             <button
               key={tab.id}
