@@ -139,11 +139,11 @@ const templateCSVData: Record<string, { headers: string[]; sampleRows: string[][
     notes: 'Contribution_Pct is a decimal 0-1. Total per deal per month must equal 1.0. Maps pipeline deals to product sub-categories.'
   },
   'sow_mapping': {
-    headers: ['SOW_ID', 'Vertical', 'Region', 'Fees_Type', 'Revenue_Type', 'Segment_Type', 'Start_Date'],
+    headers: ['SOW_ID', 'SOW Name', 'Vertical', 'Region', 'Fees_Type', 'Revenue_Type', 'Segment_Type', 'Start_Date'],
     sampleRows: [
-      ['SOW-001', 'Life Sciences', 'North America', 'Fees', 'License', 'Enterprise', '2024-01-15'],
-      ['SOW-002', 'BFSI', 'APAC', 'Fees', 'License', 'Enterprise', '2024-03-01'],
-      ['SOW-003', 'CPG & Retail', 'Europe', 'Travel', 'Implementation', 'SMB', '2024-02-10'],
+      ['SOW-001', 'Acme - S2P License Fees', 'Life Sciences', 'North America', 'Fees', 'License', 'Enterprise', '2024-01-15'],
+      ['SOW-002', 'Beta Corp - Analytics License', 'BFSI', 'APAC', 'Fees', 'License', 'Enterprise', '2024-03-01'],
+      ['SOW-003', 'Gamma Inc - Implementation', 'CPG & Retail', 'Europe', 'Travel', 'Implementation', 'SMB', '2024-02-10'],
       ['SOW-004', 'Telecom/Media/Tech', 'LATAM', 'Fees', 'License', 'Enterprise', '2024-04-20'],
       ['SOW-005', 'Energy & Utilities', 'Middle East', 'Travel', 'Implementation', 'SMB', '2024-05-01'],
     ],
@@ -570,6 +570,7 @@ export default function SettingsPage() {
 
           records.push({
             SOW_ID: sowId,
+            SOW_Name: colIndex['SOW Name'] !== undefined ? (fields[colIndex['SOW Name']] || '') : '',
             Vertical: fields[colIndex['Vertical']] || '',
             Region: fields[colIndex['Region']] || '',
             Fees_Type: fields[colIndex['Fees_Type']] || '',

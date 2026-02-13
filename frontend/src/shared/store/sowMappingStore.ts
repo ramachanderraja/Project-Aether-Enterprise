@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 
 export interface SOWMappingRecord {
   SOW_ID: string;
+  SOW_Name: string;
   Vertical: string;
   Region: string;
   Fees_Type: string;

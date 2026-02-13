@@ -1,841 +1,841 @@
-SOW_ID,Vertical,Region,Fees_Type,Revenue_Type,Segment_Type,Start_Date
-3445,Other Services,North America,Travel,Implementation,SMB,1/1/2025
-3678,CPG & Retail,North America,Fees,License,Enterprise,9/1/2025
-3679,CPG & Retail,North America,Fees,Implementation,Enterprise,8/1/2025
-2365,Chemicals/Oil/Gas/Resources,Middle East,Fees,License,Enterprise,12/1/2022
-4,Other Services,North America,Fees,License,Enterprise,1/1/2017
-7,Other Services,North America,Fees,Services,Enterprise,9/1/2018
-1637,Other Services,North America,Fees,License,Enterprise,4/1/2021
-3532,Other Services,Europe,Fees,License,Enterprise,5/1/2025
-3005,Automotive and Industrial,North America,Fees,License,SMB,6/1/2024
-3006,Automotive and Industrial,North America,Fees,Implementation,SMB,7/1/2024
-3715,Automotive and Industrial,North America,Fees,Implementation,SMB,8/1/2025
-3705,Automotive and Industrial,North America,Fees,Implementation,SMB,9/1/2025
-3761,Automotive and Industrial,North America,Travel,Implementation,SMB,10/1/2025
-2501,BFSI,Europe,Fees,License,SMB,4/1/2023
-2502,BFSI,Europe,Fees,Implementation,SMB,6/1/2023
-3431,Telecom/Media/Tech,North America,Fees,License,Enterprise,3/1/2025
-3432,Telecom/Media/Tech,North America,Fees,Implementation,Enterprise,3/1/2025
-3644,Telecom/Media/Tech,North America,Travel,Implementation,Enterprise,7/1/2025
-3353,Other Services,North America,Fees,License,SMB,3/1/2025
-3354,Other Services,North America,Fees,Implementation,SMB,3/1/2025
-13,Automotive and Industrial,Europe,Fees,License,Enterprise,1/1/2017
-2737,Automotive and Industrial,Europe,Fees,License,Enterprise,10/1/2023
-14,Automotive and Industrial,Europe,Fees,Implementation,Enterprise,1/1/2018
-1123,Chemicals/Oil/Gas/Resources,Europe,Fees,License,Enterprise,10/1/2019
-2492,Life Sciences,North America,Fees,License,SMB,4/1/2023
-2508,Other Services,North America,Fees,License,SMB,7/1/2023
-1719,BFSI,North America,Fees,License,SMB,7/1/2021
-1641,CPG & Retail,APAC,Fees,License,Enterprise,6/1/2021
-1047,Public Sector,North America,Fees,License,SMB,7/1/2019
-1294,Energy & Utilities,North America,Fees,License,Enterprise,4/1/2020
-3347,Automotive and Industrial,APAC,Fees,License,SMB,2/1/2025
-3348,Automotive and Industrial,APAC,Fees,Implementation,SMB,3/1/2025
-1269,Automotive and Industrial,Europe,Fees,License,Enterprise,2/1/2020
-40,Automotive and Industrial,North America,Fees,License,SMB,3/1/2017
-1694,Other Services,North America,Fees,License,Enterprise,6/1/2021
-1695,Other Services,North America,Fees,Implementation,Enterprise,6/1/2021
-3280,Other Services,North America,Fees,Implementation,Enterprise,11/1/2024
-3308,Other Services,North America,Fees,License,Enterprise,11/1/2024
-3370,Other Services,North America,Fees,Implementation,Enterprise,1/1/2025
-3685,Other Services,North America,Fees,Implementation,Enterprise,5/1/2025
-3760,Other Services,North America,Travel,Implementation,Enterprise,10/1/2025
-3754,Other Services,North America,Fees,License,Enterprise,10/1/2025
-3752,Other Services,North America,Fees,Implementation,Enterprise,10/1/2025
-3753,Other Services,North America,Fees,Implementation,Enterprise,11/1/2025
-3513,Other Services,Europe,Fees,License,Enterprise,7/1/2025
-3514,Other Services,Europe,Fees,Implementation,Enterprise,7/1/2025
-1982,Life Sciences,North America,Fees,License,Enterprise,1/1/2022
-3462,CPG & Retail,Europe,Fees,License,Enterprise,5/1/2025
-3463,CPG & Retail,Europe,Fees,Implementation,Enterprise,5/1/2025
-1197,CPG & Retail,Europe,Fees,License,Enterprise,1/1/2020
-1873,Chemicals/Oil/Gas/Resources,North America,Fees,License,SMB,11/1/2021
-3895,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,3/1/2026
-1084,Public Sector,North America,Fees,License,SMB,9/1/2019
-82,BFSI,North America,Fees,License,Enterprise,1/1/2017
-89,Life Sciences,North America,Fees,License,Enterprise,1/1/2017
-92,Life Sciences,Europe,Fees,License,Enterprise,1/1/2017
-3144,Energy & Utilities,Europe,Fees,License,Enterprise,10/1/2024
-3145,Energy & Utilities,Europe,Fees,Implementation,Enterprise,7/1/2024
-95,Telecom/Media/Tech,North America,Fees,License,Enterprise,12/1/2017
-98,Telecom/Media/Tech,North America,Fees,License,Enterprise,7/1/2018
-99,Telecom/Media/Tech,North America,Fees,Implementation,Enterprise,7/1/2018
-2904,Telecom/Media/Tech,LATAM,Fees,License,SMB,2/1/2024
-2905,Telecom/Media/Tech,LATAM,Fees,Implementation,SMB,3/1/2024
-2999,Life Sciences,North America,Fees,License,SMB,4/1/2024
-3000,Life Sciences,North America,Fees,Implementation,SMB,4/1/2024
-1783,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,8/1/2021
-1840,Other Services,APAC,Fees,License,SMB,10/1/2021
-3721,Other Services,APAC,Fees,License,Enterprise,9/1/2025
-3722,Other Services,APAC,Fees,Implementation,Enterprise,10/1/2025
-2782,Other Services,Middle East,Fees,License,SMB,10/1/2023
-2783,Other Services,Middle East,Fees,Implementation,SMB,11/1/2023
-2852,Other Services,Middle East,Travel,Implementation,SMB,11/1/2023
-110,Automotive and Industrial,North America,Fees,License,SMB,12/1/2018
-2037,Automotive and Industrial,North America,Fees,License,SMB,2/1/2022
-1862,BFSI,Middle East,Fees,License,Enterprise,10/1/2021
-3670,Other Services,APAC,Fees,License,SMB,9/1/2025
-3671,Other Services,APAC,Fees,Implementation,SMB,10/1/2025
-1568,Automotive and Industrial,Europe,Fees,License,Enterprise,2/1/2021
-1569,Automotive and Industrial,Europe,Fees,Implementation,Enterprise,2/1/2021
-119,BFSI,North America,Fees,License,Enterprise,1/1/2017
-1488,BFSI,North America,Fees,License,Enterprise,12/1/2020
-1489,BFSI,North America,Fees,Implementation,Enterprise,11/1/2020
-3507,BFSI,North America,Fees,Implementation,Enterprise,4/1/2025
-2195,BFSI,North America,Fees,Implementation,Enterprise,7/1/2022
-2483,BFSI,North America,Fees,License,Enterprise,3/1/2023
-2550,BFSI,North America,Fees,License,SMB,5/1/2023
-2555,Life Sciences,Europe,Fees,License,Enterprise,5/1/2023
-3132,Life Sciences,Europe,Fees,License,Enterprise,12/1/2023
-1986,CPG & Retail,APAC,Fees,License,Enterprise,2/1/2022
-2668,CPG & Retail,APAC,Travel,Implementation,Enterprise,7/1/2023
-2384,CPG & Retail,APAC,Fees,Services,Enterprise,12/1/2022
-1052,Automotive and Industrial,North America,Fees,License,Enterprise,7/1/2019
-2996,Chemicals/Oil/Gas/Resources,North America,Fees,License,SMB,4/1/2024
-2997,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,SMB,5/1/2024
-3609,Telecom/Media/Tech,APAC,Fees,License,Enterprise,7/1/2025
-3610,Telecom/Media/Tech,APAC,Fees,Implementation,Enterprise,8/1/2025
-149,Life Sciences,North America,Fees,License,Enterprise,1/1/2017
-155,Life Sciences,North America,Fees,License,Enterprise,1/1/2017
-156,Life Sciences,North America,Fees,License,SMB,5/1/2018
-2427,Other Services,North America,Fees,License,SMB,2/1/2023
-160,Other Services,North America,Fees,License,SMB,1/1/2017
-1697,Life Sciences,North America,Fees,License,SMB,8/1/2021
-2418,Automotive and Industrial,North America,Fees,License,SMB,1/1/2023
-3841,CPG & Retail,LATAM,Fees,License,SMB,12/1/2025
-3842,CPG & Retail,LATAM,Fees,Implementation,SMB,12/1/2025
-1212,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,1/1/2020
-1213,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,1/1/2020
-169,CPG & Retail,Europe,Fees,License,Enterprise,1/1/2017
-3850,Automotive and Industrial,APAC,Fees,License,SMB,12/1/2025
-3851,Automotive and Industrial,APAC,Fees,Implementation,SMB,1/1/2026
-3694,Other Services,North America,Fees,Implementation,Enterprise,9/1/2025
-3181,Other Services,APAC,Fees,License,Enterprise,8/1/2024
-171,Other Services,North America,Fees,License,Enterprise,1/1/2017
-3017,Other Services,North America,Fees,Implementation,Enterprise,4/1/2024
-3446,Other Services,North America,Fees,License,Enterprise,3/1/2025
-3447,Other Services,North America,Fees,Implementation,Enterprise,5/1/2025
-2125,BFSI,North America,Fees,License,SMB,5/1/2022
-2587,BFSI,North America,Fees,License,SMB,6/1/2023
-2816,BFSI,North America,Fees,License,SMB,11/1/2023
-3869,BFSI,North America,Fees,Implementation,SMB,1/1/2026
-3232,Other Services,Europe,Fees,License,Enterprise,12/1/2024
-3313,Other Services,Europe,Fees,Implementation,Enterprise,11/1/2024
-1748,Other Services,Europe,Fees,License,Enterprise,8/1/2021
-3215,Other Services,Europe,Fees,License,Enterprise,11/1/2024
-3052,Other Services,Europe,Fees,License,Enterprise,6/1/2024
-3053,Other Services,Europe,Fees,Implementation,Enterprise,6/1/2024
-1522,Automotive and Industrial,APAC,Fees,License,Enterprise,1/1/2021
-1980,Automotive and Industrial,APAC,Fees,License,Enterprise,1/1/2022
-176,BFSI,North America,Fees,License,Enterprise,6/1/2017
-2139,Other Services,Europe,Fees,License,SMB,6/1/2022
-1746,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,8/1/2021
-2438,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,2/1/2023
-2740,Other Services,North America,Fees,License,Enterprise,11/1/2023
-2741,Other Services,Europe,Fees,Implementation,Enterprise,12/1/2023
-3349,Other Services,North America,Fees,License,Enterprise,1/1/2025
-3350,Other Services,Europe,Fees,Implementation,Enterprise,2/1/2025
-3263,Telecom/Media/Tech,North America,Fees,License,SMB,10/1/2024
-1405,CPG & Retail,North America,Fees,License,Enterprise,8/1/2020
-1563,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,3/1/2021
-3010,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,4/1/2024
-3011,Chemicals/Oil/Gas/Resources,APAC,Travel,Implementation,Enterprise,4/1/2024
-2309,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,11/1/2022
-1298,Automotive and Industrial,North America,Fees,License,Enterprise,4/1/2020
-2463,CPG & Retail,LATAM,Fees,License,SMB,5/1/2023
-2464,CPG & Retail,LATAM,Fees,Implementation,SMB,7/1/2023
-1411,Automotive and Industrial,North America,Fees,License,Enterprise,1/1/2021
-1412,Automotive and Industrial,North America,Fees,Implementation,Enterprise,7/1/2020
-2631,Automotive and Industrial,North America,Fees,Services,Enterprise,7/1/2023
-3139,Automotive and Industrial,North America,Fees,License,Enterprise,7/1/2024
-2283,Automotive and Industrial,North America,Fees,Implementation,Enterprise,10/1/2022
-1664,Automotive and Industrial,North America,Fees,License,Enterprise,5/1/2021
-1665,Automotive and Industrial,North America,Fees,Implementation,Enterprise,5/1/2021
-2800,Automotive and Industrial,North America,Fees,Implementation,Enterprise,10/1/2023
-3154,Automotive and Industrial,North America,Fees,Implementation,Enterprise,8/1/2024
-3570,Automotive and Industrial,North America,Fees,Implementation,Enterprise,4/1/2025
-2278,Automotive and Industrial,North America,Fees,Implementation,Enterprise,1/1/2023
-2859,Automotive and Industrial,North America,Fees,Implementation,Enterprise,12/1/2023
-3253,Automotive and Industrial,North America,Fees,Implementation,Enterprise,10/1/2024
-3143,Automotive and Industrial,North America,Fees,Implementation,Enterprise,7/1/2024
-3043,Automotive and Industrial,North America,Fees,Implementation,Enterprise,5/1/2024
-2391,CPG & Retail,APAC,Fees,License,Enterprise,5/1/2023
-197,CPG & Retail,North America,Fees,License,Enterprise,1/1/2017
-2620,Telecom/Media/Tech,Europe,Fees,License,SMB,9/1/2023
-2638,Telecom/Media/Tech,Europe,Fees,Implementation,SMB,9/1/2023
-3725,BFSI,North America,Fees,License,SMB,10/1/2025
-1990,Chemicals/Oil/Gas/Resources,North America,Fees,License,SMB,3/1/2022
-1991,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,SMB,5/1/2022
-2317,Chemicals/Oil/Gas/Resources,North America,Travel,Implementation,SMB,11/1/2022
-1838,Automotive and Industrial,North America,Fees,License,SMB,10/1/2021
-1205,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,1/1/2020
-1957,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,3/1/2022
-1556,CPG & Retail,North America,Fees,License,SMB,2/1/2021
-217,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,5/1/2018
-219,Chemicals/Oil/Gas/Resources,North America,Travel,Implementation,Enterprise,6/1/2018
-941,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,2/1/2019
-942,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,2/1/2019
-1240,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,1/1/2020
-1565,Chemicals/Oil/Gas/Resources,North America,Travel,Implementation,Enterprise,1/1/2020
-1327,Chemicals/Oil/Gas/Resources,North America,Fees,Services,Enterprise,5/1/2020
-2946,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,2/1/2024
-1341,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,1/1/2021
-1361,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,1/1/2021
-1362,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,6/1/2020
-1570,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,2/1/2021
-225,CPG & Retail,North America,Fees,License,Enterprise,1/1/2017
-1091,CPG & Retail,Europe,Fees,License,SMB,11/1/2019
-1659,CPG & Retail,Europe,Fees,License,SMB,5/1/2021
-1941,CPG & Retail,Europe,Fees,License,SMB,12/1/2021
-2174,CPG & Retail,Europe,Fees,License,SMB,7/1/2022
-2374,CPG & Retail,Europe,Fees,License,SMB,1/1/2023
-1459,CPG & Retail,North America,Fees,License,Enterprise,10/1/2020
-1615,CPG & Retail,North America,Fees,License,Enterprise,4/1/2021
-1932,CPG & Retail,North America,Fees,License,Enterprise,11/1/2021
-234,Telecom/Media/Tech,North America,Fees,License,SMB,1/1/2017
-235,Telecom/Media/Tech,North America,Fees,License,SMB,1/1/2017
-238,Telecom/Media/Tech,North America,Fees,License,SMB,8/1/2017
-1243,BFSI,North America,Fees,License,Enterprise,2/1/2020
-2513,BFSI,North America,Fees,License,Enterprise,1/1/2021
-1244,BFSI,North America,Fees,Implementation,Enterprise,2/1/2020
-3785,BFSI,North America,Fees,Implementation,Enterprise,11/1/2025
-1189,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,1/1/2020
-1609,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,7/1/2021
-2956,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,2/1/2024
-2957,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,3/1/2024
-2920,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,1/1/2024
-1611,CPG & Retail,APAC,Fees,License,SMB,4/1/2021
-2687,CPG & Retail,APAC,Fees,License,SMB,8/1/2023
-2688,CPG & Retail,APAC,Fees,Implementation,SMB,9/1/2023
-2732,CPG & Retail,APAC,Fees,License,Enterprise,9/1/2023
-2733,CPG & Retail,APAC,Fees,Implementation,Enterprise,10/1/2023
-3892,Other Services,APAC,Fees,License,SMB,2/1/2026
-3209,Life Sciences,North America,Fees,Services,SMB,9/1/2024
-1613,Other Services,Europe,Fees,License,SMB,4/1/2021
-919,Chemicals/Oil/Gas/Resources,North America,Travel,Implementation,Enterprise,2/1/2019
-947,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,3/1/2019
-948,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,5/1/2019
-3762,Chemicals/Oil/Gas/Resources,North America,Travel,Implementation,Enterprise,10/1/2025
-1931,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,11/1/2021
-2064,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,3/1/2022
-2412,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,1/1/2023
-2810,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,12/1/2023
-3223,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,10/1/2024
-2473,CPG & Retail,Europe,Fees,License,SMB,3/1/2023
-1897,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,11/1/2021
-3421,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,2/1/2025
-2417,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,1/1/2023
-3652,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,5/1/2025
-3558,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,5/1/2025
-2702,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,8/1/2023
-2573,Chemicals/Oil/Gas/Resources,North America,Travel,Implementation,Enterprise,5/1/2023
-2919,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,11/1/2023
-3616,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,5/1/2025
-2514,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,6/1/2023
-2156,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,6/1/2022
-3617,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,9/1/2025
-2621,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,9/1/2022
-2192,Automotive and Industrial,North America,Fees,License,Enterprise,6/1/2019
-1535,CPG & Retail,LATAM,Fees,License,Enterprise,1/1/2021
-3865,CPG & Retail,LATAM,Fees,License,Enterprise,1/1/2026
-2307,Other Services,North America,Fees,License,SMB,11/1/2022
-2674,CPG & Retail,North America,Fees,License,SMB,8/1/2023
-2675,CPG & Retail,North America,Fees,Implementation,SMB,11/1/2023
-2311,Automotive and Industrial,LATAM,Fees,License,Enterprise,11/1/2022
-1445,Energy & Utilities,North America,Fees,License,SMB,10/1/2020
-1447,Energy & Utilities,North America,Travel,Implementation,SMB,3/1/2024
-1514,Energy & Utilities,North America,Fees,License,SMB,12/1/2020
-259,Telecom/Media/Tech,North America,Fees,License,Enterprise,1/1/2017
-261,Other Services,North America,Fees,License,SMB,1/1/2017
-2738,Other Services,North America,Fees,License,Enterprise,11/1/2023
-2739,Other Services,North America,Fees,Implementation,Enterprise,1/1/2024
-1421,CPG & Retail,North America,Fees,License,SMB,8/1/2020
-3703,Automotive and Industrial,Europe,Fees,License,Enterprise,9/1/2025
-3704,Automotive and Industrial,Europe,Fees,Implementation,Enterprise,10/1/2025
-1876,Life Sciences,North America,Fees,License,SMB,11/1/2021
-2779,Other Services,North America,Fees,License,SMB,11/1/2023
-2780,Other Services,North America,Fees,Implementation,SMB,12/1/2023
-1886,Other Services,APAC,Fees,License,SMB,10/1/2021
-1442,Telecom/Media/Tech,North America,Fees,License,SMB,10/1/2020
-266,Life Sciences,North America,Fees,License,Enterprise,1/1/2017
-1138,Life Sciences,North America,Fees,License,Enterprise,1/1/2017
-3766,CPG & Retail,North America,Fees,License,SMB,10/1/2025
-3767,CPG & Retail,North America,Fees,Implementation,SMB,1/1/2026
-2027,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,2/1/2022
-2028,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,2/1/2022
-3525,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,5/1/2025
-3526,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,6/1/2025
-1235,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,1/1/2020
-2049,Telecom/Media/Tech,APAC,Fees,License,Enterprise,3/1/2022
-2141,Telecom/Media/Tech,APAC,Fees,Implementation,Enterprise,5/1/2022
-2351,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,12/1/2022
-2361,Public Sector,North America,Fees,License,SMB,12/1/2022
-286,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,3/1/2018
-287,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,3/1/2018
-3368,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,1/1/2025
-2730,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,9/1/2023
-2801,Other Services,Middle East,Fees,License,SMB,12/1/2023
-2802,Other Services,Middle East,Fees,Implementation,SMB,12/1/2023
-1915,BFSI,North America,Fees,License,Enterprise,8/1/2022
-1999,BFSI,LATAM,Fees,License,SMB,4/1/2022
-2583,Automotive and Industrial,North America,Fees,License,SMB,6/1/2023
-3845,Chemicals/Oil/Gas/Resources,Europe,Fees,License,SMB,12/1/2025
-3846,Chemicals/Oil/Gas/Resources,Europe,Fees,Implementation,SMB,1/1/2026
-1583,Other Services,North America,Fees,License,SMB,3/1/2021
-1274,BFSI,Europe,Fees,License,Enterprise,3/1/2020
-294,CPG & Retail,North America,Fees,License,Enterprise,12/1/2017
-1135,BFSI,Europe,Fees,License,SMB,11/1/2019
-2582,BFSI,Europe,Fees,Implementation,SMB,6/1/2023
-296,Other Services,North America,Fees,License,Enterprise,1/1/2017
-3335,Other Services,North America,Fees,License,Enterprise,1/1/2025
-3453,Other Services,North America,Fees,Implementation,Enterprise,3/1/2025
-3499,Other Services,North America,Fees,License,Enterprise,4/1/2025
-2135,Other Services,North America,Fees,License,Enterprise,5/1/2022
-2134,Other Services,North America,Fees,Implementation,Enterprise,5/1/2022
-312,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,1/1/2019
-3495,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,4/1/2025
-316,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,11/1/2018
-2246,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,11/1/2024
-2247,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,11/1/2022
-2336,Other Services,Europe,Fees,License,SMB,12/1/2022
-2337,Other Services,Europe,Fees,Implementation,SMB,12/1/2022
-3001,Public Sector,Europe,Fees,License,SMB,4/1/2024
-3049,Public Sector,Europe,Fees,Implementation,SMB,4/1/2024
-3201,Public Sector,Europe,Travel,Implementation,SMB,8/1/2024
-3879,Public Sector,Europe,Fees,License,SMB,3/1/2026
-1182,Life Sciences,Europe,Fees,License,Enterprise,1/1/2020
-2499,Life Sciences,Europe,Fees,License,Enterprise,1/1/2022
-2500,Life Sciences,Europe,Fees,Implementation,Enterprise,7/1/2023
-2696,Life Sciences,Europe,Fees,Implementation,Enterprise,9/1/2023
-2691,Life Sciences,Europe,Fees,Implementation,Enterprise,1/1/2024
-3629,Life Sciences,Europe,Fees,Implementation,Enterprise,8/1/2025
-2807,Life Sciences,Europe,Fees,Implementation,Enterprise,11/1/2023
-1900,Life Sciences,Europe,Fees,Implementation,Enterprise,11/1/2021
-2608,Life Sciences,Europe,Fees,Implementation,Enterprise,1/1/2024
-2607,Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2023
-2812,Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2023
-2975,Life Sciences,Europe,Fees,Implementation,Enterprise,5/1/2024
-2954,Life Sciences,Europe,Fees,Implementation,Enterprise,3/1/2024
-3106,Life Sciences,Europe,Fees,Implementation,Enterprise,8/1/2024
-3252,Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2024
-3015,Life Sciences,Europe,Fees,Implementation,Enterprise,7/1/2024
-3254,Life Sciences,Europe,Fees,Implementation,Enterprise,11/1/2024
-3551,Life Sciences,Europe,Fees,Implementation,Enterprise,5/1/2025
-3751,Life Sciences,Europe,Fees,Implementation,Enterprise,11/1/2025
-3594,Life Sciences,Europe,Fees,Implementation,Enterprise,7/1/2025
-3700,Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2025
-3661,Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2025
-3681,Life Sciences,Europe,Fees,Implementation,Enterprise,11/1/2025
-3593,Life Sciences,Europe,Fees,Implementation,Enterprise,6/1/2025
-3815,Life Sciences,Europe,Fees,Implementation,Enterprise,1/1/2026
-3816,Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2025
-3817,Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2025
-3818,Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2025
-3833,Life Sciences,Europe,Fees,Implementation,Enterprise,1/1/2026
-2811,Life Sciences,Europe,Fees,Implementation,Enterprise,11/1/2023
-1185,Life Sciences,Europe,Travel,Implementation,Enterprise,4/1/2020
-2759,Life Sciences,Europe,Fees,Implementation,Enterprise,11/1/2023
-2067,Life Sciences,Europe,Fees,Implementation,Enterprise,3/1/2022
-3630,Life Sciences,Europe,Fees,Implementation,Enterprise,8/1/2025
-1322,Life Sciences,Europe,Fees,License,Enterprise,4/1/2020
-1377,Life Sciences,Europe,Fees,License,SMB,10/1/2020
-1971,Life Sciences,Europe,Fees,License,SMB,2/1/2022
-2511,Life Sciences,Europe,Fees,Implementation,SMB,4/1/2023
-2476,Life Sciences,Europe,Fees,Implementation,Enterprise,4/1/2023
-2565,Life Sciences,Europe,Fees,Implementation,Enterprise,9/1/2023
-2350,Life Sciences,Europe,Fees,Implementation,Enterprise,4/1/2024
-3413,Life Sciences,Europe,Fees,Implementation,Enterprise,6/1/2025
-1558,Life Sciences,Europe,Fees,License,Enterprise,1/1/2021
-1559,Life Sciences,Europe,Fees,Implementation,Enterprise,1/1/2021
-3497,Life Sciences,Europe,Fees,Implementation,Enterprise,4/1/2025
-3768,Life Sciences,Europe,Fees,Implementation,Enterprise,10/1/2025
-3485,Life Sciences,Europe,Fees,License,Enterprise,4/1/2025
-3840,Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2025
-2073,Life Sciences,Europe,Fees,Implementation,Enterprise,3/1/2022
-2512,Life Sciences,Europe,Fees,Implementation,Enterprise,9/1/2023
-2552,Life Sciences,Europe,Fees,License,Enterprise,5/1/2023
-2548,Life Sciences,Europe,Fees,Implementation,Enterprise,8/1/2023
-3281,Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2024
-3278,Other Services,Europe,Fees,License,Enterprise,11/1/2024
-2743,BFSI,North America,Fees,License,SMB,10/1/2023
-2744,BFSI,North America,Fees,License,SMB,10/1/2023
-2745,BFSI,North America,Fees,Implementation,SMB,10/1/2023
-2084,Automotive and Industrial,North America,Fees,License,SMB,4/1/2022
-3425,Automotive and Industrial,APAC,Fees,License,Enterprise,3/1/2025
-3426,Automotive and Industrial,APAC,Fees,Implementation,Enterprise,3/1/2025
-3427,Automotive and Industrial,APAC,Fees,Implementation,Enterprise,3/1/2025
-3242,Energy & Utilities,North America,Fees,License,Enterprise,11/1/2024
-3326,Energy & Utilities,North America,Fees,License,Enterprise,12/1/2024
-3327,Energy & Utilities,North America,Fees,License,Enterprise,12/1/2024
-3243,Other Services,North America,Fees,Implementation,Enterprise,12/1/2024
-3382,Other Services,North America,Travel,Implementation,Enterprise,12/1/2024
-3508,Energy & Utilities,North America,Fees,Implementation,Enterprise,6/1/2025
-2363,Automotive and Industrial,North America,Fees,License,SMB,1/1/2023
-2364,Automotive and Industrial,North America,Fees,Implementation,SMB,1/1/2023
-1843,Other Services,Middle East,Fees,License,Enterprise,10/1/2021
-1844,Other Services,Middle East,Fees,Implementation,Enterprise,10/1/2021
-2653,Other Services,Middle East,Travel,Implementation,Enterprise,7/1/2023
-2330,Other Services,Middle East,Fees,License,Enterprise,12/1/2022
-2331,Other Services,Middle East,Fees,Implementation,Enterprise,12/1/2022
-2504,Other Services,North America,Fees,License,SMB,4/1/2023
-367,CPG & Retail,North America,Fees,License,Enterprise,1/1/2018
-3723,BFSI,APAC,Fees,License,SMB,10/1/2025
-3724,BFSI,APAC,Fees,Implementation,SMB,10/1/2025
-2239,Chemicals/Oil/Gas/Resources,North America,Fees,License,SMB,8/1/2022
-3190,BFSI,North America,Fees,License,Enterprise,9/1/2024
-3191,BFSI,North America,Fees,Implementation,Enterprise,9/1/2024
-2895,Automotive and Industrial,Europe,Fees,License,SMB,12/1/2023
-2896,Automotive and Industrial,Europe,Fees,Implementation,SMB,2/1/2024
-1169,CPG & Retail,Europe,Fees,License,SMB,12/1/2019
-1170,CPG & Retail,Europe,Fees,Implementation,SMB,1/1/2020
-2916,Other Services,North America,Fees,License,SMB,2/1/2024
-2937,Other Services,North America,Fees,Implementation,SMB,2/1/2024
-398,CPG & Retail,North America,Fees,License,Enterprise,7/1/2017
-2708,CPG & Retail,Europe,Fees,License,Enterprise,10/1/2023
-2714,CPG & Retail,Europe,Fees,Implementation,Enterprise,9/1/2023
-2520,BFSI,Europe,Fees,License,SMB,7/1/2023
-2993,Life Sciences,North America,Fees,License,Enterprise,5/1/2024
-2994,Life Sciences,North America,Fees,Implementation,Enterprise,4/1/2024
-3627,Other Services,APAC,Fees,License,Enterprise,8/1/2025
-3628,Other Services,APAC,Fees,Implementation,Enterprise,8/1/2025
-2442,BFSI,Europe,Fees,License,SMB,2/1/2023
-2443,BFSI,Europe,Fees,Implementation,SMB,3/1/2023
-2575,BFSI,Europe,Travel,Implementation,SMB,5/1/2023
-3123,Automotive and Industrial,APAC,Fees,License,Enterprise,9/1/2024
-3124,Automotive and Industrial,APAC,Fees,Implementation,Enterprise,9/1/2024
-3173,Chemicals/Oil/Gas/Resources,Europe,Fees,License,SMB,8/1/2024
-3174,Chemicals/Oil/Gas/Resources,Europe,Fees,Implementation,SMB,9/1/2024
-2488,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,4/1/2023
-3561,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,6/1/2025
-3562,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,SMB,7/1/2025
-2958,Automotive and Industrial,North America,Fees,Implementation,Enterprise,3/1/2024
-3378,Automotive and Industrial,North America,Travel,Implementation,Enterprise,12/1/2024
-2959,Automotive and Industrial,North America,Fees,License,Enterprise,3/1/2024
-3563,Automotive and Industrial,North America,Fees,License,Enterprise,6/1/2025
-3564,Automotive and Industrial,North America,Fees,Implementation,Enterprise,6/1/2025
-3632,Automotive and Industrial,North America,Fees,License,Enterprise,8/1/2025
-3633,Automotive and Industrial,North America,Fees,Implementation,Enterprise,8/1/2025
-3690,Automotive and Industrial,North America,Fees,Implementation,Enterprise,9/1/2025
-2530,Other Services,North America,Fees,Implementation,Enterprise,2/1/2023
-2603,Other Services,North America,Fees,Implementation,Enterprise,6/1/2023
-2532,Other Services,North America,Fees,Implementation,Enterprise,4/1/2023
-3484,Other Services,North America,Fees,Implementation,Enterprise,5/1/2025
-3676,Other Services,North America,Fees,Implementation,Enterprise,8/1/2025
-2805,Other Services,North America,Fees,Implementation,Enterprise,2/1/2024
-3084,Other Services,North America,Fees,Implementation,Enterprise,1/1/2025
-2839,Other Services,North America,Fees,Implementation,Enterprise,11/1/2023
-2256,Other Services,North America,Fees,License,Enterprise,2/1/2023
-3467,Other Services,North America,Fees,Implementation,Enterprise,3/1/2025
-3176,Other Services,North America,Fees,Implementation,Enterprise,8/1/2024
-3218,Other Services,North America,Fees,Implementation,Enterprise,9/1/2024
-1682,Automotive and Industrial,APAC,Fees,License,Enterprise,6/1/2021
-3064,Telecom/Media/Tech,APAC,Fees,License,Enterprise,7/1/2024
-3066,Telecom/Media/Tech,APAC,Fees,Implementation,Enterprise,6/1/2024
-408,Life Sciences,North America,Fees,License,Enterprise,1/1/2017
-3662,Life Sciences,North America,Fees,Implementation,Enterprise,8/1/2025
-3590,Life Sciences,North America,Fees,License,Enterprise,7/1/2025
-3591,Life Sciences,North America,Fees,Implementation,Enterprise,7/1/2025
-2679,BFSI,North America,Fees,License,SMB,8/1/2023
-2680,BFSI,North America,Fees,Implementation,SMB,8/1/2023
-1803,CPG & Retail,North America,Fees,License,Enterprise,9/1/2021
-2180,Automotive and Industrial,North America,Fees,License,SMB,8/1/2022
-3170,Other Services,Europe,Fees,License,Enterprise,8/1/2024
-3171,Other Services,Europe,Fees,Implementation,Enterprise,8/1/2024
-2985,Other Services,North America,Fees,License,SMB,4/1/2024
-2986,Other Services,North America,Fees,Implementation,SMB,4/1/2024
-3121,CPG & Retail,North America,Fees,License,SMB,8/1/2024
-3122,CPG & Retail,North America,Fees,Implementation,SMB,8/1/2024
-429,Life Sciences,North America,Fees,License,Enterprise,1/1/2018
-1229,Life Sciences,North America,Fees,License,Enterprise,1/1/2020
-431,Automotive and Industrial,North America,Fees,License,Enterprise,1/1/2017
-1834,CPG & Retail,Middle East,Fees,License,Enterprise,9/1/2021
-3455,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,4/1/2025
-3456,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,5/1/2025
-3697,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,9/1/2025
-3787,Chemicals/Oil/Gas/Resources,Europe,Fees,License,Enterprise,1/1/2026
-3788,Chemicals/Oil/Gas/Resources,Europe,Fees,Implementation,Enterprise,11/1/2025
-437,Telecom/Media/Tech,North America,Fees,License,Enterprise,3/1/2018
-3337,Life Sciences,North America,Fees,License,SMB,12/1/2024
-3338,Life Sciences,North America,Fees,Implementation,SMB,1/1/2025
-439,Telecom/Media/Tech,North America,Fees,License,SMB,10/1/2017
-3003,BFSI,Europe,Fees,License,Enterprise,4/1/2024
-3004,BFSI,Europe,Fees,Implementation,Enterprise,5/1/2024
-3379,BFSI,Europe,Travel,Implementation,Enterprise,1/1/2025
-3878,BFSI,Europe,Fees,License,Enterprise,12/1/2025
-3716,BFSI,Europe,Fees,Implementation,Enterprise,8/1/2025
-3088,BFSI,Europe,Fees,Services,Enterprise,6/1/2024
-3044,Other Services,North America,Fees,License,Enterprise,5/1/2024
-3045,Other Services,North America,Fees,Implementation,Enterprise,5/1/2024
-3383,Other Services,North America,Travel,Implementation,Enterprise,12/1/2024
-3269,Other Services,North America,Fees,License,Enterprise,10/1/2024
-3270,Other Services,North America,Fees,Implementation,Enterprise,11/1/2024
-444,BFSI,North America,Fees,License,SMB,1/1/2017
-2265,BFSI,North America,Fees,Services,SMB,9/1/2022
-2187,BFSI,North America,Fees,License,Enterprise,7/1/2022
-447,Telecom/Media/Tech,North America,Fees,License,Enterprise,11/1/2017
-2097,Other Services,Europe,Fees,License,Enterprise,4/1/2022
-450,Automotive and Industrial,North America,Fees,License,Enterprise,1/1/2017
-2866,Other Services,Europe,Fees,License,SMB,1/1/2024
-2867,Other Services,Europe,Fees,Implementation,SMB,1/1/2024
-3310,Other Services,North America,Fees,License,Enterprise,4/1/2025
-3311,Other Services,North America,Fees,Implementation,Enterprise,1/1/2025
-2087,Automotive and Industrial,APAC,Fees,License,SMB,5/1/2022
-2088,Automotive and Industrial,APAC,Fees,Implementation,SMB,5/1/2022
-2169,BFSI,North America,Fees,License,Enterprise,7/1/2022
-2260,BFSI,North America,Fees,Implementation,Enterprise,10/1/2022
-3874,BFSI,North America,Travel,Implementation,Enterprise,12/1/2025
-2710,Automotive and Industrial,North America,Fees,License,SMB,9/1/2023
-2711,Automotive and Industrial,North America,Fees,Implementation,SMB,9/1/2023
-3146,Automotive and Industrial,North America,Fees,License,SMB,10/1/2024
-3147,Automotive and Industrial,North America,Fees,Implementation,SMB,10/1/2024
-2761,BFSI,North America,Fees,License,Enterprise,10/1/2023
-2762,BFSI,North America,Fees,Implementation,Enterprise,10/1/2023
-2908,BFSI,North America,Travel,Implementation,Enterprise,12/1/2023
-476,Automotive and Industrial,North America,Fees,License,Enterprise,1/1/2017
-477,Automotive and Industrial,North America,Fees,Implementation,Enterprise,6/1/2017
-523,CPG & Retail,North America,Fees,License,Enterprise,1/1/2017
-524,CPG & Retail,North America,Fees,Implementation,Enterprise,1/1/2017
-3235,CPG & Retail,North America,Fees,Implementation,Enterprise,10/1/2024
-2991,CPG & Retail,North America,Fees,License,Enterprise,4/1/2024
-2992,CPG & Retail,North America,Fees,Implementation,Enterprise,4/1/2024
-3511,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,5/1/2025
-3512,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,5/1/2025
-3871,Chemicals/Oil/Gas/Resources,North America,Travel,Implementation,Enterprise,12/1/2025
-1035,Other Services,North America,Fees,License,Enterprise,6/1/2019
-3179,Other Services,North America,Fees,Implementation,Enterprise,8/1/2024
-3187,Other Services,North America,Fees,License,Enterprise,8/1/2024
-3188,Other Services,North America,Fees,Implementation,Enterprise,8/1/2024
-1222,Other Services,North America,Fees,License,Enterprise,6/1/2020
-3575,Other Services,North America,Fees,License,SMB,7/1/2025
-3266,Automotive and Industrial,Europe,Fees,License,Enterprise,10/1/2024
-3267,Automotive and Industrial,Europe,Fees,Implementation,Enterprise,10/1/2024
-2339,Life Sciences,LATAM,Fees,License,SMB,12/1/2022
-552,Chemicals/Oil/Gas/Resources,North America,Fees,License,SMB,9/1/2018
-2893,Other Services,North America,Fees,License,SMB,4/1/2024
-2894,Other Services,North America,Fees,Implementation,SMB,5/1/2024
-558,Other Services,Europe,Fees,License,Enterprise,11/1/2018
-561,Automotive and Industrial,North America,Fees,License,Enterprise,12/1/2017
-1717,CPG & Retail,APAC,Fees,License,Enterprise,7/1/2021
-1718,CPG & Retail,APAC,Fees,Implementation,Enterprise,7/1/2021
-2160,Telecom/Media/Tech,Europe,Fees,License,SMB,6/1/2022
-2161,Telecom/Media/Tech,Europe,Fees,Implementation,SMB,6/1/2022
-567,Telecom/Media/Tech,North America,Fees,License,SMB,12/1/2017
-3222,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,12/1/2024
-2223,Automotive and Industrial,Europe,Fees,License,SMB,8/1/2022
-2598,CPG & Retail,APAC,Fees,License,Enterprise,6/1/2023
-2305,Other Services,Europe,Fees,License,Enterprise,11/1/2022
-573,CPG & Retail,North America,Fees,License,Enterprise,12/1/2017
-875,CPG & Retail,North America,Fees,License,Enterprise,12/1/2018
-1021,CPG & Retail,North America,Travel,Implementation,Enterprise,5/1/2019
-580,Automotive and Industrial,North America,Fees,License,Enterprise,1/1/2017
-1901,Automotive and Industrial,North America,Fees,License,Enterprise,11/1/2021
-581,Automotive and Industrial,North America,Fees,Services,Enterprise,1/1/2017
-2058,Automotive and Industrial,North America,Fees,License,Enterprise,3/1/2022
-2059,Automotive and Industrial,North America,Fees,Implementation,Enterprise,8/1/2022
-2879,Other Services,North America,Fees,License,Enterprise,12/1/2023
-2880,Other Services,North America,Fees,Implementation,Enterprise,1/1/2024
-1846,CPG & Retail,North America,Fees,License,Enterprise,10/1/2021
-2142,CPG & Retail,North America,Fees,License,Enterprise,6/1/2022
-3291,Automotive and Industrial,APAC,Fees,License,Enterprise,11/1/2024
-3292,Automotive and Industrial,APAC,Fees,Implementation,Enterprise,12/1/2024
-1787,Other Services,North America,Fees,License,Enterprise,8/1/2021
-3604,Other Services,North America,Fees,License,Enterprise,7/1/2025
-3605,Other Services,North America,Fees,Implementation,Enterprise,7/1/2025
-601,Life Sciences,North America,Fees,License,Enterprise,1/1/2017
-604,Life Sciences,North America,Fees,License,Enterprise,4/1/2018
-2588,CPG & Retail,North America,Fees,License,Enterprise,7/1/2023
-2589,CPG & Retail,North America,Fees,Implementation,Enterprise,7/1/2023
-2784,CPG & Retail,North America,Travel,Implementation,Enterprise,10/1/2023
-2070,Life Sciences,North America,Fees,License,SMB,4/1/2022
-2663,CPG & Retail,Europe,Fees,License,Enterprise,8/1/2023
-3034,CPG & Retail,Europe,Travel,Implementation,Enterprise,4/1/2024
-2980,Life Sciences,LATAM,Fees,License,SMB,3/1/2024
-2981,Life Sciences,LATAM,Fees,Implementation,SMB,5/1/2024
-3567,Automotive and Industrial,Europe,Fees,Implementation,Enterprise,11/1/2025
-3568,Automotive and Industrial,Europe,Fees,License,Enterprise,10/1/2025
-3682,Other Services,APAC,Fees,License,Enterprise,9/1/2025
-3683,Other Services,APAC,Fees,Implementation,Enterprise,9/1/2025
-1178,Chemicals/Oil/Gas/Resources,Middle East,Fees,License,Enterprise,1/1/2020
-1175,Other Services,North America,Fees,License,Enterprise,12/1/2019
-950,Automotive and Industrial,North America,Fees,License,SMB,3/1/2019
-3321,CPG & Retail,Europe,Fees,License,SMB,12/1/2024
-2043,BFSI,North America,Fees,License,SMB,3/1/2022
-2506,Telecom/Media/Tech,North America,Fees,License,SMB,4/1/2023
-2507,Telecom/Media/Tech,North America,Fees,Implementation,SMB,4/1/2023
-633,Life Sciences,North America,Fees,License,Enterprise,1/1/2017
-634,Life Sciences,North America,Fees,Implementation,Enterprise,1/1/2017
-3111,Life Sciences,North America,Fees,License,Enterprise,6/1/2024
-3112,Life Sciences,North America,Fees,Implementation,Enterprise,7/1/2024
-3418,Other Services,Europe,Fees,License,SMB,2/1/2025
-3419,Other Services,Europe,Fees,Implementation,SMB,3/1/2025
-3903,CPG & Retail,North America,Fees,License,Enterprise,6/1/2026
-3137,Chemicals/Oil/Gas/Resources,Middle East,Fees,License,SMB,7/1/2024
-3138,Chemicals/Oil/Gas/Resources,Middle East,Fees,Implementation,SMB,8/1/2024
-3729,Chemicals/Oil/Gas/Resources,Middle East,Fees,Implementation,SMB,10/1/2025
-3863,Chemicals/Oil/Gas/Resources,Middle East,Fees,Implementation,SMB,12/1/2025
-3864,Chemicals/Oil/Gas/Resources,Middle East,Fees,Implementation,SMB,12/1/2025
-3381,Chemicals/Oil/Gas/Resources,Middle East,Travel,Implementation,SMB,1/1/2025
-3344,Telecom/Media/Tech,Europe,Fees,License,SMB,1/1/2025
-3345,Telecom/Media/Tech,Europe,Fees,Implementation,SMB,1/1/2025
-2704,Other Services,Middle East,Fees,License,Enterprise,9/1/2023
-2705,Other Services,Middle East,Fees,Implementation,Enterprise,10/1/2023
-3804,Other Services,Middle East,Fees,Implementation,Enterprise,12/1/2025
-2928,Other Services,Middle East,Travel,Implementation,Enterprise,12/1/2023
-2883,CPG & Retail,Europe,Fees,License,Enterprise,1/1/2024
-2884,CPG & Retail,Europe,Fees,Implementation,Enterprise,1/1/2024
-1750,Automotive and Industrial,Europe,Fees,License,SMB,8/1/2021
-2150,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,6/1/2022
-655,Life Sciences,North America,Fees,License,SMB,1/1/2017
-1395,Chemicals/Oil/Gas/Resources,Middle East,Fees,License,SMB,11/1/2020
-3163,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,7/1/2024
-3164,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,8/1/2024
-661,Other Services,North America,Fees,License,Enterprise,1/1/2017
-663,Other Services,North America,Fees,Implementation,Enterprise,1/1/2017
-2949,Other Services,North America,Fees,Implementation,Enterprise,2/1/2024
-877,Energy & Utilities,North America,Fees,License,Enterprise,12/1/2018
-1115,Automotive and Industrial,North America,Fees,License,Enterprise,9/1/2019
-1830,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,10/1/2021
-2077,Other Services,Middle East,Fees,License,SMB,4/1/2022
-3882,Energy & Utilities,North America,Fees,Implementation,Enterprise,12/1/2025
-3884,Energy & Utilities,North America,Fees,License,Enterprise,3/1/2026
-2376,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,4/1/2023
-2377,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,4/1/2023
-1818,Other Services,APAC,Fees,License,Enterprise,9/1/2021
-1591,CPG & Retail,North America,Fees,License,Enterprise,3/1/2021
-1495,Life Sciences,North America,Fees,License,Enterprise,3/1/2021
-3050,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,SMB,5/1/2024
-1872,CPG & Retail,APAC,Fees,Services,Enterprise,10/1/2021
-2683,Automotive and Industrial,North America,Fees,License,SMB,9/1/2023
-3351,Automotive and Industrial,North America,Fees,License,SMB,1/1/2025
-3352,Automotive and Industrial,North America,Fees,Implementation,SMB,2/1/2025
-2930,Life Sciences,Europe,Fees,License,Enterprise,7/1/2024
-2434,Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2022
-3896,Life Sciences,Europe,Fees,Implementation,Enterprise,1/1/2026
-3272,Life Sciences,Europe,Fees,License,Enterprise,10/1/2024
-3273,Life Sciences,Europe,Fees,Implementation,Enterprise,10/1/2024
-3577,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,7/1/2025
-3578,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,7/1/2025
-3639,Other Services,APAC,Fees,License,SMB,1/1/2026
-3640,Other Services,APAC,Fees,Implementation,SMB,8/1/2025
-883,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,12/1/2018
-2553,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,5/1/2023
-2557,Chemicals/Oil/Gas/Resources,APAC,Travel,Implementation,Enterprise,5/1/2023
-2082,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,3/1/2022
-3799,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,11/1/2025
-3251,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,10/1/2024
-2622,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,7/1/2023
-3265,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,10/1/2024
-3834,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,1/1/2026
-977,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,4/1/2019
-3093,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,6/1/2024
-1000,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,5/1/2019
-1307,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,4/1/2020
-2715,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,9/1/2023
-1756,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,8/1/2021
-1860,Other Services,Europe,Fees,License,SMB,10/1/2021
-2276,Other Services,Europe,Fees,License,SMB,10/1/2022
-3177,Life Sciences,APAC,Fees,License,SMB,8/1/2024
-3178,Life Sciences,APAC,Fees,Implementation,SMB,9/1/2024
-3360,Life Sciences,APAC,Travel,Implementation,SMB,12/1/2024
-3289,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,11/1/2024
-3855,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,12/1/2025
-3856,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,1/1/2026
-2940,Other Services,North America,Fees,License,SMB,2/1/2024
-2941,Other Services,North America,Fees,Services,SMB,2/1/2024
-2965,Other Services,North America,Fees,License,SMB,2/1/2024
-2966,Other Services,North America,Fees,Implementation,SMB,3/1/2024
-2479,Life Sciences,North America,Fees,License,SMB,3/1/2023
-2477,Life Sciences,North America,Fees,Implementation,SMB,4/1/2023
-2757,BFSI,North America,Fees,License,Enterprise,9/1/2023
-2736,BFSI,North America,Fees,Implementation,Enterprise,10/1/2023
-2925,BFSI,North America,Travel,Implementation,Enterprise,12/1/2023
-1158,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,1/1/2020
-1157,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,1/1/2020
-1709,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,2/1/2022
-2636,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,7/1/2023
-2637,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,7/1/2023
-3231,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,9/1/2024
-3056,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,5/1/2024
-3057,Chemicals/Oil/Gas/Resources,APAC,Travel,Implementation,Enterprise,5/1/2024
-2601,Other Services,Europe,Fees,License,SMB,9/1/2023
-2602,Other Services,Europe,Fees,Implementation,SMB,10/1/2023
-3645,Other Services,North America,Fees,License,SMB,7/1/2025
-3646,Other Services,North America,Fees,Implementation,SMB,8/1/2025
-1511,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,1/1/2021
-1869,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,3/1/2022
-2846,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,SMB,11/1/2023
-3388,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,1/1/2025
-3387,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,SMB,2/1/2025
-3756,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,SMB,9/1/2025
-2632,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,7/1/2023
-2633,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,11/1/2023
-2671,Other Services,APAC,Fees,License,SMB,8/1/2023
-2672,Other Services,APAC,Fees,Implementation,SMB,8/1/2023
-2927,Other Services,APAC,Travel,Implementation,SMB,12/1/2023
-1516,Other Services,Europe,Fees,License,Enterprise,1/1/2021
-3737,Automotive and Industrial,Europe,Fees,License,SMB,11/1/2025
-3738,Automotive and Industrial,Europe,Fees,Implementation,SMB,1/1/2026
-2268,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,10/1/2022
-2389,Other Services,North America,Fees,License,SMB,1/1/2023
-1338,Chemicals/Oil/Gas/Resources,Middle East,Fees,License,SMB,5/1/2020
-1677,Chemicals/Oil/Gas/Resources,Middle East,Fees,License,SMB,6/1/2021
-1678,Chemicals/Oil/Gas/Resources,Middle East,Fees,Implementation,SMB,6/1/2021
-2018,CPG & Retail,LATAM,Fees,License,SMB,1/1/2022
-1903,Other Services,Europe,Fees,License,Enterprise,11/1/2021
-2699,Automotive and Industrial,North America,Fees,License,SMB,10/1/2023
-2700,Automotive and Industrial,North America,Fees,Implementation,SMB,10/1/2023
-3798,CPG & Retail,North America,Fees,Services,Enterprise,12/1/2025
-3208,CPG & Retail,North America,Fees,License,Enterprise,9/1/2024
-1593,BFSI,North America,Fees,License,Enterprise,3/1/2021
-720,BFSI,Europe,Fees,License,Enterprise,10/1/2018
-721,BFSI,Europe,Fees,Implementation,Enterprise,11/1/2018
-1754,BFSI,Europe,Fees,License,Enterprise,8/1/2021
-2776,Telecom/Media/Tech,North America,Fees,License,Enterprise,2/1/2024
-2777,Telecom/Media/Tech,North America,Fees,Implementation,Enterprise,11/1/2023
-3375,Private Equity,North America,Fees,Implementation,SMB,1/1/2025
-3390,Private Equity,North America,Fees,Implementation,SMB,1/1/2025
-1402,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,8/1/2020
-2629,Other Services,LATAM,Fees,License,SMB,8/1/2023
-3385,Other Services,LATAM,Fees,License,SMB,1/1/2025
-3574,Other Services,LATAM,Fees,License,SMB,7/1/2025
-3784,Other Services,LATAM,Fees,Implementation,SMB,10/1/2025
-728,Automotive and Industrial,North America,Fees,License,SMB,1/1/2017
-729,Automotive and Industrial,North America,Fees,Implementation,SMB,1/1/2017
-3742,CPG & Retail,APAC,Fees,License,Enterprise,10/1/2025
-3743,CPG & Retail,APAC,Fees,Implementation,Enterprise,11/1/2025
-2891,Other Services,North America,Fees,License,Enterprise,5/1/2024
-2892,Other Services,North America,Fees,Implementation,Enterprise,2/1/2024
-3230,Other Services,North America,Travel,Implementation,Enterprise,9/1/2024
-743,Other Services,Europe,Fees,License,Enterprise,1/1/2019
-752,Other Services,North America,Fees,License,Enterprise,1/1/2017
-753,Other Services,North America,Fees,Implementation,Enterprise,1/1/2017
-3674,Telecom/Media/Tech,Europe,Fees,License,SMB,8/1/2025
-3675,Telecom/Media/Tech,Europe,Fees,Implementation,SMB,9/1/2025
-1688,CPG & Retail,North America,Fees,License,Enterprise,6/1/2021
-1690,CPG & Retail,North America,Fees,License,Enterprise,6/1/2021
-1924,CPG & Retail,North America,Fees,License,Enterprise,11/1/2021
-2556,Automotive and Industrial,Europe,Fees,License,Enterprise,5/1/2023
-1010,Automotive and Industrial,Europe,Fees,Implementation,Enterprise,12/1/2018
-1011,Automotive and Industrial,Europe,Fees,License,Enterprise,12/1/2018
-1975,Automotive and Industrial,Europe,Fees,License,Enterprise,1/1/2022
-760,Life Sciences,North America,Fees,License,Enterprise,1/1/2017
-761,Life Sciences,North America,Fees,Implementation,Enterprise,5/1/2019
-1028,CPG & Retail,Europe,Fees,License,Enterprise,6/1/2019
-2618,CPG & Retail,Europe,Fees,License,SMB,7/1/2023
-943,Other Services,North America,Fees,License,Enterprise,4/1/2019
-3844,Other Services,North America,Fees,License,Enterprise,1/1/2026
-944,Other Services,North America,Fees,Implementation,Enterprise,4/1/2019
-1066,Other Services,North America,Fees,License,Enterprise,7/1/2019
-3152,BFSI,North America,Fees,License,Enterprise,7/1/2024
-3153,BFSI,North America,Fees,Implementation,Enterprise,8/1/2024
-1629,Other Services,Europe,Fees,License,SMB,4/1/2021
-1832,Other Services,Europe,Fees,License,SMB,10/1/2021
-2152,Life Sciences,Europe,Fees,License,Enterprise,6/1/2022
-2068,Automotive and Industrial,North America,Fees,License,SMB,4/1/2022
-782,BFSI,North America,Fees,License,Enterprise,10/1/2018
-2888,BFSI,North America,Fees,License,Enterprise,10/1/2023
-2199,Telecom/Media/Tech,North America,Fees,License,Enterprise,7/1/2022
-2200,Telecom/Media/Tech,North America,Fees,Implementation,Enterprise,8/1/2022
-1554,Energy & Utilities,North America,Fees,License,Enterprise,2/1/2021
-3022,Energy & Utilities,North America,Fees,License,Enterprise,4/1/2024
-2596,Energy & Utilities,North America,Fees,License,Enterprise,6/1/2023
-2597,Energy & Utilities,North America,Fees,Implementation,Enterprise,7/1/2023
-2929,Energy & Utilities,North America,Travel,Implementation,Enterprise,12/1/2023
-792,CPG & Retail,Europe,Fees,License,Enterprise,1/1/2017
-1111,Automotive and Industrial,APAC,Fees,License,Enterprise,10/1/2019
-1520,Automotive and Industrial,APAC,Fees,License,Enterprise,1/1/2021
-2414,Other Services,North America,Fees,License,SMB,1/1/2023
-1454,Telecom/Media/Tech,Europe,Fees,License,Enterprise,10/1/2020
-1455,Telecom/Media/Tech,Europe,Fees,Implementation,Enterprise,11/1/2020
-3067,Other Services,Europe,Fees,License,SMB,6/1/2024
-3068,Other Services,Europe,Fees,Implementation,SMB,6/1/2024
-1187,BFSI,Europe,Fees,License,SMB,1/1/2020
-1186,BFSI,Europe,Fees,Implementation,SMB,1/1/2020
-3275,BFSI,Europe,Fees,License,SMB,10/1/2024
-1202,CPG & Retail,Europe,Fees,License,SMB,1/1/2020
-1373,CPG & Retail,Europe,Fees,License,SMB,7/1/2020
-1385,CPG & Retail,Europe,Fees,License,SMB,8/1/2020
-1425,CPG & Retail,Europe,Fees,License,SMB,9/1/2020
-1633,CPG & Retail,Europe,Fees,License,SMB,5/1/2021
-1375,Public Sector,North America,Fees,License,SMB,7/1/2020
-1723,Public Sector,North America,Fees,License,SMB,7/1/2021
-1968,Public Sector,North America,Fees,License,SMB,1/1/2022
-2938,Chemicals/Oil/Gas/Resources,North America,Fees,License,SMB,2/1/2024
-2939,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,SMB,2/1/2024
-1597,Life Sciences,North America,Fees,License,Enterprise,3/1/2021
-3032,Life Sciences,North America,Fees,License,Enterprise,10/1/2023
-2299,Life Sciences,North America,Fees,License,Enterprise,11/1/2022
-3719,CPG & Retail,North America,Fees,License,SMB,10/1/2025
-3720,CPG & Retail,North America,Fees,Implementation,SMB,10/1/2025
-3731,Public Sector,North America,Fees,License,Enterprise,10/1/2025
-3732,Public Sector,North America,Fees,Implementation,Enterprise,10/1/2025
-3733,Public Sector,North America,Fees,Implementation,Enterprise,8/1/2026
-1209,CPG & Retail,North America,Fees,License,Enterprise,1/1/2020
-2595,CPG & Retail,North America,Fees,License,Enterprise,6/1/2023
-1210,CPG & Retail,North America,Fees,Implementation,Enterprise,1/1/2020
-2592,BFSI,Europe,Fees,License,SMB,6/1/2023
-2593,BFSI,Europe,Fees,Implementation,SMB,6/1/2023
-2790,BFSI,Europe,Travel,Implementation,SMB,10/1/2023
-2749,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,11/1/2023
-2750,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,SMB,11/1/2023
-3451,BFSI,North America,Fees,License,SMB,7/1/2025
-3452,BFSI,North America,Fees,Implementation,SMB,7/1/2025
-820,Public Sector,North America,Fees,License,Enterprise,6/1/2017
-3079,BFSI,North America,Fees,License,Enterprise,6/1/2024
-3080,BFSI,North America,Fees,Implementation,Enterprise,6/1/2024
-3460,Public Sector,Europe,Fees,License,SMB,5/1/2025
-3461,Public Sector,Europe,Fees,Implementation,SMB,5/1/2025
-3763,Public Sector,Europe,Travel,Implementation,SMB,10/1/2025
-3329,Public Sector,APAC,Fees,License,SMB,12/1/2024
-3330,Public Sector,APAC,Fees,Implementation,SMB,3/1/2025
-827,Public Sector,APAC,Fees,License,Enterprise,1/1/2017
-2386,Automotive and Industrial,Europe,Fees,License,Enterprise,3/1/2023
-2471,Automotive and Industrial,Europe,Fees,Implementation,Enterprise,4/1/2023
-3284,Unilever,Europe,Fees,License,Enterprise,11/1/2024
-3193,Unilever,Europe,Fees,Implementation,Enterprise,8/1/2024
-3391,Unilever,Europe,Fees,Implementation,Enterprise,1/1/2025
-3475,Unilever,Europe,Fees,Implementation,Enterprise,1/1/2025
-3702,Unilever,Europe,Fees,License,Enterprise,1/1/2026
-3811,Unilever,Europe,Fees,License,Enterprise,1/1/2026
-3597,Unilever,Europe,Fees,License,Enterprise,1/1/2026
-3812,Unilever,Europe,Fees,License,Enterprise,1/1/2026
-2911,Other Services,Europe,Fees,License,SMB,3/1/2024
-2951,Other Services,Europe,Fees,Implementation,SMB,2/1/2024
-3113,CPG & Retail,North America,Fees,License,SMB,7/1/2024
-3114,CPG & Retail,North America,Fees,Implementation,SMB,7/1/2024
-3286,Other Services,North America,Fees,License,Enterprise,11/1/2024
-3287,Other Services,North America,Fees,Implementation,Enterprise,1/1/2025
-2625,Automotive and Industrial,Europe,Fees,License,Enterprise,7/1/2023
-2626,Automotive and Industrial,Europe,Fees,Implementation,Enterprise,7/1/2023
-1725,BFSI,North America,Fees,License,Enterprise,7/1/2021
-1481,Other Services,North America,Fees,License,Enterprise,7/1/2021
-3104,Chemicals/Oil/Gas/Resources,North America,Fees,License,SMB,7/1/2024
-3105,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,SMB,6/1/2024
-2624,CPG & Retail,North America,Fees,Services,Enterprise,7/1/2023
-3601,Automotive and Industrial,Europe,Fees,License,Enterprise,8/1/2025
-3602,Automotive and Industrial,Europe,Fees,License,Enterprise,8/1/2025
-3357,Other Services,Europe,Fees,License,SMB,12/1/2024
-3358,Other Services,Europe,Fees,Implementation,SMB,12/1/2024
-2844,Automotive and Industrial,North America,Fees,License,Enterprise,11/1/2023
-2794,Automotive and Industrial,North America,Fees,Implementation,Enterprise,10/1/2023
-3125,CPG & Retail,Europe,Fees,License,SMB,8/1/2024
-3126,CPG & Retail,Europe,Fees,Implementation,SMB,9/1/2024
-3195,CPG & Retail,North America,Fees,Services,Enterprise,9/1/2024
-3748,CPG & Retail,North America,Fees,Services,Enterprise,10/1/2025
-2899,Other Services,Europe,Fees,License,SMB,2/1/2024
-2900,Other Services,Europe,Fees,Implementation,SMB,2/1/2024
-3264,Other Services,Europe,Fees,License,SMB,10/1/2024
-3013,Telecom/Media/Tech,Europe,Fees,License,Enterprise,4/1/2024
-3014,Telecom/Media/Tech,Europe,Fees,Implementation,Enterprise,4/1/2024
-847,Other Services,North America,Fees,License,Enterprise,1/1/2017
-848,Other Services,North America,Fees,License,Enterprise,4/1/2018
-850,Automotive and Industrial,North America,Fees,License,Enterprise,1/1/2017
-851,Automotive and Industrial,North America,Fees,Implementation,Enterprise,10/1/2017
-2806,Automotive and Industrial,North America,Fees,License,Enterprise,1/1/2024
-861,Automotive and Industrial,North America,Fees,License,Enterprise,1/1/2018
-2692,Automotive and Industrial,North America,Fees,License,Enterprise,12/1/2022
-2903,Automotive and Industrial,North America,Fees,Services,Enterprise,1/1/2024
-1249,Automotive and Industrial,North America,Fees,Services,Enterprise,1/1/2020
-2545,Automotive and Industrial,LATAM,Fees,License,Enterprise,5/1/2023
-864,BFSI,Europe,Fees,License,SMB,1/1/2017
-2426,Other Services,LATAM,Fees,License,SMB,7/1/2022
+SOW_ID,SOW Name,Vertical,Region,Fees_Type,Revenue_Type,Segment_Type,Start_Date
+3445,Software Travel Accrual,Other Services,North America,Travel,Implementation,SMB,1/1/2025
+3678,3M - S2P License fees,CPG & Retail,North America,Fees,License,Enterprise,9/1/2025
+3679,3M - S2P Implementation fees,CPG & Retail,North America,Fees,Implementation,Enterprise,8/1/2025
+2365,ADNOC - Spend Analytics license,Chemicals/Oil/Gas/Resources,Middle East,Fees,License,Enterprise,12/1/2022
+4,ABM - License fee,Other Services,North America,Fees,License,Enterprise,1/1/2017
+7,ABM - Helpdesk/Premium Support,Other Services,North America,Fees,Services,Enterprise,9/1/2018
+1637,ABM - Catalog license,Other Services,North America,Fees,License,Enterprise,4/1/2021
+3532,Accor - Transaction Fees Software GEP,Other Services,Europe,Fees,License,Enterprise,5/1/2025
+3005,Acuity Brands - S2P License Fees,Automotive and Industrial,North America,Fees,License,SMB,6/1/2024
+3006,Acuity Brands - S2P Implementation Fees,Automotive and Industrial,North America,Fees,Implementation,SMB,7/1/2024
+3715,Acuity Brands - Continuous Improvement COE,Automotive and Industrial,North America,Fees,Implementation,SMB,8/1/2025
+3705,Acuity Brands - Contract Extraction,Automotive and Industrial,North America,Fees,Implementation,SMB,9/1/2025
+3761,Acuity Brands - S2P Implementation Fees Travel,Automotive and Industrial,North America,Travel,Implementation,SMB,10/1/2025
+2501,Oryx - S2P License Fees,BFSI,Europe,Fees,License,SMB,4/1/2023
+2502,Oryx - S2P Implementation Fees,BFSI,Europe,Fees,Implementation,SMB,6/1/2023
+3431,Adobe - S2P License Fees,Telecom/Media/Tech,North America,Fees,License,Enterprise,3/1/2025
+3432,Adobe - S2P Implementation Fees,Telecom/Media/Tech,North America,Fees,Implementation,Enterprise,3/1/2025
+3644,Adobe/Accenture - S2P Implementation Fees Travel,Telecom/Media/Tech,North America,Travel,Implementation,Enterprise,7/1/2025
+3353,Aeroports - S2C License Fees,Other Services,North America,Fees,License,SMB,3/1/2025
+3354,Aeroports - S2C Implementation Fees,Other Services,North America,Fees,Implementation,SMB,3/1/2025
+13,Ahlstrom - License fee,Automotive and Industrial,Europe,Fees,License,Enterprise,1/1/2017
+2737,Ahlstrom (Munksjo ) - License fee,Automotive and Industrial,Europe,Fees,License,Enterprise,10/1/2023
+14,Ahlstrom - Implementation Fees,Automotive and Industrial,Europe,Fees,Implementation,Enterprise,1/1/2018
+1123,AkzoNobel  - Spend License,Chemicals/Oil/Gas/Resources,Europe,Fees,License,Enterprise,10/1/2019
+2492,Amyris - Spend License Fees,Life Sciences,North America,Fees,License,SMB,4/1/2023
+2508,Alcority - Sourcing & Supplier License Fees,Other Services,North America,Fees,License,SMB,7/1/2023
+1719,Alliant Credit Union - Spend License,BFSI,North America,Fees,License,SMB,7/1/2021
+1641,Amcor Flexibles (SG) - Spend Analysis license,CPG & Retail,APAC,Fees,License,Enterprise,6/1/2021
+1047,American Heart Association - License,Public Sector,North America,Fees,License,SMB,7/1/2019
+1294,Ameren - License (Spend & Savings),Energy & Utilities,North America,Fees,License,Enterprise,4/1/2020
+3347,APAR - S2P License Fees,Automotive and Industrial,APAC,Fees,License,SMB,2/1/2025
+3348,APAR - S2P Implementation Fees,Automotive and Industrial,APAC,Fees,Implementation,SMB,3/1/2025
+1269,Aperam - License,Automotive and Industrial,Europe,Fees,License,Enterprise,2/1/2020
+40,Apex Tool Group - License fee,Automotive and Industrial,North America,Fees,License,SMB,3/1/2017
+1694,APi Group - Spend & Saving License,Other Services,North America,Fees,License,Enterprise,6/1/2021
+1695,APi Group - Spend & Saving Implmentation,Other Services,North America,Fees,Implementation,Enterprise,6/1/2021
+3280,API Group - Tech work stream resourcing ,Other Services,North America,Fees,Implementation,Enterprise,11/1/2024
+3308,API Group - S2P License Fees,Other Services,North America,Fees,License,Enterprise,11/1/2024
+3370,API Group - S2P Implementation Fees,Other Services,North America,Fees,Implementation,Enterprise,1/1/2025
+3685,API Group - S2P Addl. Implementation Fees,Other Services,North America,Fees,Implementation,Enterprise,5/1/2025
+3760,API Group - S2P Implementation Fees Travel,Other Services,North America,Travel,Implementation,Enterprise,10/1/2025
+3754,API Group - Data QA domain License,Other Services,North America,Fees,License,Enterprise,10/1/2025
+3752,API Group - Data QA domain implementation,Other Services,North America,Fees,Implementation,Enterprise,10/1/2025
+3753,API Group - Wave 1 Implementation Extension,Other Services,North America,Fees,Implementation,Enterprise,11/1/2025
+3513,API Group - Chubb - GEP Green Pilot license,Other Services,Europe,Fees,License,Enterprise,7/1/2025
+3514,API Group - Chubb - GEP Green Pilot implementation,Other Services,Europe,Fees,Implementation,Enterprise,7/1/2025
+1982,"Apotex, Inc. - Spend license",Life Sciences,North America,Fees,License,Enterprise,1/1/2022
+3462,Aryzta - S2C License Fees,CPG & Retail,Europe,Fees,License,Enterprise,5/1/2025
+3463,Aryzta - S2C Implementation Fees,CPG & Retail,Europe,Fees,Implementation,Enterprise,5/1/2025
+1197,Asahi - license,CPG & Retail,Europe,Fees,License,Enterprise,1/1/2020
+1873,Ascend - S2P License,Chemicals/Oil/Gas/Resources,North America,Fees,License,SMB,11/1/2021
+3895,Aster Chemical - S2C and AP License Fees,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,3/1/2026
+1084,AAMC - license,Public Sector,North America,Fees,License,SMB,9/1/2019
+82,Assurant - License Fees,BFSI,North America,Fees,License,Enterprise,1/1/2017
+89,Astellas - License fee,Life Sciences,North America,Fees,License,Enterprise,1/1/2017
+92,AstraZeneca UK - License fee,Life Sciences,Europe,Fees,License,Enterprise,1/1/2017
+3144,A2A - GEP Green Software License,Energy & Utilities,Europe,Fees,License,Enterprise,10/1/2024
+3145,A2A - GEP Green Software Implementation,Energy & Utilities,Europe,Fees,Implementation,Enterprise,7/1/2024
+95,AT&T - License Fees,Telecom/Media/Tech,North America,Fees,License,Enterprise,12/1/2017
+98,AT&T - Sourcing License Fees,Telecom/Media/Tech,North America,Fees,License,Enterprise,7/1/2018
+99,AT&T - Sourcing Implementation Fees,Telecom/Media/Tech,North America,Fees,Implementation,Enterprise,7/1/2018
+2904,AT&T - S2C License Fees,Telecom/Media/Tech,LATAM,Fees,License,SMB,2/1/2024
+2905,AT&T - S2C Implementation Fees,Telecom/Media/Tech,LATAM,Fees,Implementation,SMB,3/1/2024
+2999,Athletic Greens - Sourcing License,Life Sciences,North America,Fees,License,SMB,4/1/2024
+3000,Athletic Greens - Sourcing Implementation,Life Sciences,North America,Fees,Implementation,SMB,4/1/2024
+1783,Antero Resources - S2P License,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,8/1/2021
+1840,ALS Global - Sourcing & Supplier License,Other Services,APAC,Fees,License,SMB,10/1/2021
+3721,Melbourne Airports - S2C License,Other Services,APAC,Fees,License,Enterprise,9/1/2025
+3722,Melbourne Airports - S2C Implementation,Other Services,APAC,Fees,Implementation,Enterprise,10/1/2025
+2782,AWR - S2P License Fees,Other Services,Middle East,Fees,License,SMB,10/1/2023
+2783,AWR - S2P Implementation Fees,Other Services,Middle East,Fees,Implementation,SMB,11/1/2023
+2852,AWR - S2P Implementation Fees Travel,Other Services,Middle East,Travel,Implementation,SMB,11/1/2023
+110,AVX - License Fee,Automotive and Industrial,North America,Fees,License,SMB,12/1/2018
+2037,AVX - Supplier License Fee,Automotive and Industrial,North America,Fees,License,SMB,2/1/2022
+1862,AXA Insurance - Sourcing & Contract License,BFSI,Middle East,Fees,License,Enterprise,10/1/2021
+3670,Bangalore Airport - S2P License Fees,Other Services,APAC,Fees,License,SMB,9/1/2025
+3671,Bangalore Airport - S2P Implementation Fees,Other Services,APAC,Fees,Implementation,SMB,10/1/2025
+1568,Bekaert - License,Automotive and Industrial,Europe,Fees,License,Enterprise,2/1/2021
+1569,Bekaert - Implementation,Automotive and Industrial,Europe,Fees,Implementation,Enterprise,2/1/2021
+119,Bank of America - License fee,BFSI,North America,Fees,License,Enterprise,1/1/2017
+1488,Bank of America - S2P License,BFSI,North America,Fees,License,Enterprise,12/1/2020
+1489,Bank of America - S2P Implementation,BFSI,North America,Fees,Implementation,Enterprise,11/1/2020
+3507,Bank of America - Risk Redesign Implementation,BFSI,North America,Fees,Implementation,Enterprise,4/1/2025
+2195,Bank of America - Premium Support,BFSI,North America,Fees,Implementation,Enterprise,7/1/2022
+2483,Bank of America - In App Guided License Fees,BFSI,North America,Fees,License,Enterprise,3/1/2023
+2550,Banner Bank - Sourcing License Fees,BFSI,North America,Fees,License,SMB,5/1/2023
+2555,Bayer - BAU/Steady State - Spend portion,Life Sciences,Europe,Fees,License,Enterprise,5/1/2023
+3132,Bayer - R&D FHV - GEP - Software,Life Sciences,Europe,Fees,License,Enterprise,12/1/2023
+1986,Bega Cheese - License,CPG & Retail,APAC,Fees,License,Enterprise,2/1/2022
+2668,Bega Cheese - Implementation Travel,CPG & Retail,APAC,Travel,Implementation,Enterprise,7/1/2023
+2384,Bega Cheese - Helpdesk Support,CPG & Retail,APAC,Fees,Services,Enterprise,12/1/2022
+1052,Berry Global - License Fee,Automotive and Industrial,North America,Fees,License,Enterprise,7/1/2019
+2996,Beusa - S2P License fees,Chemicals/Oil/Gas/Resources,North America,Fees,License,SMB,4/1/2024
+2997,Beusa - S2P Implementation fees,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,SMB,5/1/2024
+3609,Bharti Airtel - S2O License Fees,Telecom/Media/Tech,APAC,Fees,License,Enterprise,7/1/2025
+3610,Bharti Airtel - S2O Implementation Fees,Telecom/Media/Tech,APAC,Fees,Implementation,Enterprise,8/1/2025
+149,Biogen Idec - License fee,Life Sciences,North America,Fees,License,Enterprise,1/1/2017
+155,Bio-Rad - License fee,Life Sciences,North America,Fees,License,Enterprise,1/1/2017
+156,BioMarin - Sales Order A-1 (License),Life Sciences,North America,Fees,License,SMB,5/1/2018
+2427,Bitsight - P2P license,Other Services,North America,Fees,License,SMB,2/1/2023
+160,Black Hills - License fee,Other Services,North America,Fees,License,SMB,1/1/2017
+1697,Bluebird (2seventy) - License,Life Sciences,North America,Fees,License,SMB,8/1/2021
+2418,Briggs & Stratton Corporation - S2C with Forecasting license,Automotive and Industrial,North America,Fees,License,SMB,1/1/2023
+3841,Brava - S2C License Fees,CPG & Retail,LATAM,Fees,License,SMB,12/1/2025
+3842,Brava - S2C Implementation Fees,CPG & Retail,LATAM,Fees,Implementation,SMB,12/1/2025
+1212,Brunei Shell - license,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,1/1/2020
+1213,Brunei Shell - implementation,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,1/1/2020
+169,Boots UK Limited - License Fees,CPG & Retail,Europe,Fees,License,Enterprise,1/1/2017
+3850,Bollhoff - Sourcing & CLM License,Automotive and Industrial,APAC,Fees,License,SMB,12/1/2025
+3851,Bollhoff - Sourcing & CLM Implementation,Automotive and Industrial,APAC,Fees,Implementation,SMB,1/1/2026
+3694,BCG - Spend Analysis & OA Software,Other Services,North America,Fees,Implementation,Enterprise,9/1/2025
+3181,BCG - Sourcing License,Other Services,APAC,Fees,License,Enterprise,8/1/2024
+171,Bonneville - License Fees,Other Services,North America,Fees,License,Enterprise,1/1/2017
+3017,Bonneville - US Based Support,Other Services,North America,Fees,Implementation,Enterprise,4/1/2024
+3446,Bonneville - License Quantum Fees,Other Services,North America,Fees,License,Enterprise,3/1/2025
+3447,Bonneville - Implementation Fees,Other Services,North America,Fees,Implementation,Enterprise,5/1/2025
+2125,BCBSA - S2C License Fees,BFSI,North America,Fees,License,SMB,5/1/2022
+2587,BCBSA - P2P License Fees,BFSI,North America,Fees,License,SMB,6/1/2023
+2816,BCBSA - P2O Additional Users,BFSI,North America,Fees,License,SMB,11/1/2023
+3869,BCBSA - S2O Design Phase,BFSI,North America,Fees,Implementation,SMB,1/1/2026
+3232,Bureau Veritas - Contract Management License,Other Services,Europe,Fees,License,Enterprise,12/1/2024
+3313,Bureau Veritas - Fluxym - CLM Implementation,Other Services,Europe,Fees,Implementation,Enterprise,11/1/2024
+1748,Bpost - S2C License Fees,Other Services,Europe,Fees,License,Enterprise,8/1/2021
+3215,Bpost - S2C addl. License Fees,Other Services,Europe,Fees,License,Enterprise,11/1/2024
+3052,Radical - Contract & Supplier Management License,Other Services,Europe,Fees,License,Enterprise,6/1/2024
+3053,Radical - Contract & Supplier Management Implementation,Other Services,Europe,Fees,Implementation,Enterprise,6/1/2024
+1522,Bridgestone - License Sourcing & eAuction,Automotive and Industrial,APAC,Fees,License,Enterprise,1/1/2021
+1980,Bridgestone - Savings/Projects License,Automotive and Industrial,APAC,Fees,License,Enterprise,1/1/2022
+176,"Brighthouse Services, LLC - License Fees",BFSI,North America,Fees,License,Enterprise,6/1/2017
+2139,Browne Jacobson - Contract & Supplier License fees,Other Services,Europe,Fees,License,SMB,6/1/2022
+1746,Bumi Armada - Supplier License,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,8/1/2021
+2438,Bumi Armada - Sourcing License,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,2/1/2023
+2740,Ivanhoe Affiliated - S2C license,Other Services,North America,Fees,License,Enterprise,11/1/2023
+2741,Ivanhoe Affiliated - S2C Implementation,Other Services,Europe,Fees,Implementation,Enterprise,12/1/2023
+3349,Ivanhoe Affiliated - Supplier license Fees,Other Services,North America,Fees,License,Enterprise,1/1/2025
+3350,Ivanhoe Affiliated - Supplier Implementation Fees,Other Services,Europe,Fees,Implementation,Enterprise,2/1/2025
+3263,C-Spire - Accelerated Sourcing Program License,Telecom/Media/Tech,North America,Fees,License,SMB,10/1/2024
+1405,Cargill - Spend License,CPG & Retail,North America,Fees,License,Enterprise,8/1/2020
+1563,Carigali Hess - License,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,3/1/2021
+3010,Carigali Hess(CHOC) - Implementation,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,4/1/2024
+3011,Carigali Hess(CHOC) - Implementation Travel,Chemicals/Oil/Gas/Resources,APAC,Travel,Implementation,Enterprise,4/1/2024
+2309,CPOC - S2C (Upstream) license,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,11/1/2022
+1298,Carlisle - License,Automotive and Industrial,North America,Fees,License,Enterprise,4/1/2020
+2463,Carvajal - S2C License Fees,CPG & Retail,LATAM,Fees,License,SMB,5/1/2023
+2464,Carvajal - S2C Implementation Fees,CPG & Retail,LATAM,Fees,Implementation,SMB,7/1/2023
+1411,Caterpillar - License,Automotive and Industrial,North America,Fees,License,Enterprise,1/1/2021
+1412,Caterpillar - Implementation,Automotive and Industrial,North America,Fees,Implementation,Enterprise,7/1/2020
+2631,Caterpillar - Product Owner Support Services ,Automotive and Industrial,North America,Fees,Services,Enterprise,7/1/2023
+3139,Caterpillar - Marketplace POC License,Automotive and Industrial,North America,Fees,License,Enterprise,7/1/2024
+2283,Caterpillar - SRM implementation,Automotive and Industrial,North America,Fees,Implementation,Enterprise,10/1/2022
+1664,Caterpillar - Direct S2C License,Automotive and Industrial,North America,Fees,License,Enterprise,5/1/2021
+1665,Caterpillar - Direct S2C Implementation,Automotive and Industrial,North America,Fees,Implementation,Enterprise,5/1/2021
+2800,Caterpillar - Direct S2C Addl. Implementation,Automotive and Industrial,North America,Fees,Implementation,Enterprise,10/1/2023
+3154,Caterpillar - Direct S2C Implementation Extension,Automotive and Industrial,North America,Fees,Implementation,Enterprise,8/1/2024
+3570,Caterpillar - Direct S2C Implementation Upsell,Automotive and Industrial,North America,Fees,Implementation,Enterprise,4/1/2025
+2278,Caterpillar - Direct Co-Innovation,Automotive and Industrial,North America,Fees,Implementation,Enterprise,1/1/2023
+2859,Caterpillar - Addl. CBR Implementation (CR3),Automotive and Industrial,North America,Fees,Implementation,Enterprise,12/1/2023
+3253,Accenture – GEP Caterpillar PROcure Subcontract Services,Automotive and Industrial,North America,Fees,Implementation,Enterprise,10/1/2024
+3143,Caterpillar - Change Management (Training),Automotive and Industrial,North America,Fees,Implementation,Enterprise,7/1/2024
+3043,Caterpillar - Change Management (Training),Automotive and Industrial,North America,Fees,Implementation,Enterprise,5/1/2024
+2391,Carrefour - Sourcing License,CPG & Retail,APAC,Fees,License,Enterprise,5/1/2023
+197,"CCBCC Operations, LLC (License Fees)",CPG & Retail,North America,Fees,License,Enterprise,1/1/2017
+2620,CEGID - S2C License Fees,Telecom/Media/Tech,Europe,Fees,License,SMB,9/1/2023
+2638,CEGID - S2C Implementation Fees (Fluxym),Telecom/Media/Tech,Europe,Fees,Implementation,SMB,9/1/2023
+3725,Central1 - S2P License Fees,BFSI,North America,Fees,License,SMB,10/1/2025
+1990,ChampionX - S2P License,Chemicals/Oil/Gas/Resources,North America,Fees,License,SMB,3/1/2022
+1991,ChampionX - S2P Implementation,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,SMB,5/1/2022
+2317,ChampionX - S2P Implementation travel,Chemicals/Oil/Gas/Resources,North America,Travel,Implementation,SMB,11/1/2022
+1838,Chargepoint - S2C License,Automotive and Industrial,North America,Fees,License,SMB,10/1/2021
+1205,Cheniere - license,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,1/1/2020
+1957,Cheniere - Spend license,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,3/1/2022
+1556,Cheesecake Factory - License,CPG & Retail,North America,Fees,License,SMB,2/1/2021
+217,Chevron Services Company - License Fee,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,5/1/2018
+219,Chevron Services Company - S2P Implementation (travel),Chemicals/Oil/Gas/Resources,North America,Travel,Implementation,Enterprise,6/1/2018
+941,Chevron Services Company - Add'l UAT Instance (license),Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,2/1/2019
+942,Chevron Services Company - Add'l UAT Instance Setup (implementation),Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,2/1/2019
+1240,Chevron Services Company - Add'l Implementation,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,1/1/2020
+1565,Chevron Services Company - Add'l Implementation - Travel,Chemicals/Oil/Gas/Resources,North America,Travel,Implementation,Enterprise,1/1/2020
+1327,Chevron - Additional Customer Premium Support,Chemicals/Oil/Gas/Resources,North America,Fees,Services,Enterprise,5/1/2020
+2946,Chevron - PDC Energy Deployment Support,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,2/1/2024
+1341,Chevron - Nexxe License,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,1/1/2021
+1361,Chevron - Nexxe License (Field Services),Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,1/1/2021
+1362,Chevron - Click License,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,6/1/2020
+1570,Chevron - Digital Core Support,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,2/1/2021
+225,"Chick-fil-A, Inc. - License Fees",CPG & Retail,North America,Fees,License,Enterprise,1/1/2017
+1091,Chivas - License,CPG & Retail,Europe,Fees,License,SMB,11/1/2019
+1659,Chivas - Sourcing & Spend License (Pernod Ricard),CPG & Retail,Europe,Fees,License,SMB,5/1/2021
+1941,The Absolut - S2C License (Pernod),CPG & Retail,Europe,Fees,License,SMB,12/1/2021
+2174,Pernod - Spend Indirect License,CPG & Retail,Europe,Fees,License,SMB,7/1/2022
+2374,Pernod - Spend Wet Good license,CPG & Retail,Europe,Fees,License,SMB,1/1/2023
+1459,Church & Dwight - Spend & Sourcing License,CPG & Retail,North America,Fees,License,Enterprise,10/1/2020
+1615,Church & Dwight - P2P License,CPG & Retail,North America,Fees,License,Enterprise,4/1/2021
+1932,Church & Dwight - Addl. P2P License,CPG & Retail,North America,Fees,License,Enterprise,11/1/2021
+234,Cincinnati Bell Telephone - License,Telecom/Media/Tech,North America,Fees,License,SMB,1/1/2017
+235,Cincinnati Bell Telephone - P2P License,Telecom/Media/Tech,North America,Fees,License,SMB,1/1/2017
+238,Cincinnati Bell/ExpensePath Agreement,Telecom/Media/Tech,North America,Fees,License,SMB,8/1/2017
+1243,Citigroup - S2C (less Spend) License,BFSI,North America,Fees,License,Enterprise,2/1/2020
+2513,Citigroup - S2C UAT License,BFSI,North America,Fees,License,Enterprise,1/1/2021
+1244,Citigroup - S2C (less Spend) Implementation,BFSI,North America,Fees,Implementation,Enterprise,2/1/2020
+3785,Citigroup - Supplier Cleanup for Banamex,BFSI,North America,Fees,Implementation,Enterprise,11/1/2025
+1189,Citgo - license,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,1/1/2020
+1609,Citgo - Savings/Projects license,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,7/1/2021
+2956,Citgo - Spend license,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,2/1/2024
+2957,Citgo -  Spend Implementation,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,3/1/2024
+2920,Citgo - Quantum Upgrade Implementation Fees,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,1/1/2024
+1611,Coca-Cola India - License,CPG & Retail,APAC,Fees,License,SMB,4/1/2021
+2687,Coca-Cola Srilanka - License Fees,CPG & Retail,APAC,Fees,License,SMB,8/1/2023
+2688,Coca-Cola Srilanka - Implementation Fees,CPG & Retail,APAC,Fees,Implementation,SMB,9/1/2023
+2732,Swire Coca-Cola - License Fees,CPG & Retail,APAC,Fees,License,Enterprise,9/1/2023
+2733,Swire Coca-Cola - Implementation Fees,CPG & Retail,APAC,Fees,Implementation,Enterprise,10/1/2023
+3892,Swire Shipping - Contract License fees,Other Services,APAC,Fees,License,SMB,2/1/2026
+3209,CWE - Baxter Spend Analysis,Life Sciences,North America,Fees,Services,SMB,9/1/2024
+1613,Comdata - License,Other Services,Europe,Fees,License,SMB,4/1/2021
+919,ConocoPhillips - Business Design for SMART (Travel),Chemicals/Oil/Gas/Resources,North America,Travel,Implementation,Enterprise,2/1/2019
+947,ConocoPhillips - License,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,3/1/2019
+948,ConocoPhillips - Implementation,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,5/1/2019
+3762,ConocoPhillips - Implementation Travel,Chemicals/Oil/Gas/Resources,North America,Travel,Implementation,Enterprise,10/1/2025
+1931,ConocoPhillips - S2P License,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,11/1/2021
+2064,ConocoPhillips - S2P Additional Instance License #3,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,3/1/2022
+2412,ConocoPhillips - S2P Additional Instance License #4,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,1/1/2023
+2810,ConocoPhillips - S2P Additional Instance License #5,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,12/1/2023
+3223,ConocoPhillips - PEPPOL Implementation,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,10/1/2024
+2473,Costa - License S2C Fees,CPG & Retail,Europe,Fees,License,SMB,3/1/2023
+1897,PWC - ConocoPhillips nxtGen ERP Supply Chain Workstream Implementation,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,11/1/2021
+3421,PWC - ConocoPhillips Marathon (MINT),Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,2/1/2025
+2417,PWC - ConocoPhillips nxtGen ERP Supply Chain EDW Implementation support,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,1/1/2023
+3652,ConocoPhilips - Enhancements,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,5/1/2025
+3558,PWC - ConocoPhilips Click TSM Intregration,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,5/1/2025
+2702,PWC - ConocoPhilips Implementation SFS Module,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,8/1/2023
+2573,PWC - ConocoPhillips nxtGen ERP Supply Chain Workstream Implementation Travel,Chemicals/Oil/Gas/Resources,North America,Travel,Implementation,Enterprise,5/1/2023
+2919,ConocoPhillips - S2P Additional Instance License #6,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,11/1/2023
+3616,PWC Conocophilips - Stabilization Support,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,5/1/2025
+2514,ConocoPhilips - Premium Support,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,6/1/2023
+2156,ConocoPhillips - Projects Savings License,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,6/1/2022
+3617,PWC Conocophilips - KPOC,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,9/1/2025
+2621,ConocoPhillips - Projects Savings Implementation Fees,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,9/1/2022
+2192,Cooper Tire & Rubber Company - CLM License,Automotive and Industrial,North America,Fees,License,Enterprise,6/1/2019
+1535,Grupo Bimbo - Sourcing License,CPG & Retail,LATAM,Fees,License,Enterprise,1/1/2021
+3865,Grupo Bimbo - P2P & Click License,CPG & Retail,LATAM,Fees,License,Enterprise,1/1/2026
+2307,CORE Electric Cooperative- CLM License,Other Services,North America,Fees,License,SMB,11/1/2022
+2674,7-Eleven - S2P License Fees,CPG & Retail,North America,Fees,License,SMB,8/1/2023
+2675,7-Eleven - S2P Implementation Fees,CPG & Retail,North America,Fees,Implementation,SMB,11/1/2023
+2311,CBA Brazil_Spend Analysis + Costdrivers License,Automotive and Industrial,LATAM,Fees,License,Enterprise,11/1/2022
+1445,Colorado Springs Utilities - License,Energy & Utilities,North America,Fees,License,SMB,10/1/2020
+1447,Colorado Springs Utilities - Implementation (travel),Energy & Utilities,North America,Travel,Implementation,SMB,3/1/2024
+1514,Colorado Springs Utilities - Projects License,Energy & Utilities,North America,Fees,License,SMB,12/1/2020
+259,Cox Communications - License Fees,Telecom/Media/Tech,North America,Fees,License,Enterprise,1/1/2017
+261,Crescent Point Energy - License Fees,Other Services,North America,Fees,License,SMB,1/1/2017
+2738,Cupertino EIectric - Supplier Mgmt license,Other Services,North America,Fees,License,Enterprise,11/1/2023
+2739,Cupertino Electric - Supplier Mgmt implementation,Other Services,North America,Fees,Implementation,Enterprise,1/1/2024
+1421,Danone - TSO,CPG & Retail,North America,Fees,License,SMB,8/1/2020
+3703,Daikin - Sourcing License,Automotive and Industrial,Europe,Fees,License,Enterprise,9/1/2025
+3704,Daikin - Sourcing Implementation,Automotive and Industrial,Europe,Fees,Implementation,Enterprise,10/1/2025
+1876,Deciphera - Sourcing License,Life Sciences,North America,Fees,License,SMB,11/1/2021
+2779,Ballard (D.A. Collins) - P2P License Fees,Other Services,North America,Fees,License,SMB,11/1/2023
+2780,Ballard (D.A. Collins) - P2P Implementation Fees,Other Services,North America,Fees,Implementation,SMB,12/1/2023
+1886,Dilligent Power - eAuctions License,Other Services,APAC,Fees,License,SMB,10/1/2021
+1442,Deltek - License,Telecom/Media/Tech,North America,Fees,License,SMB,10/1/2020
+266,Dentsply - License Fees,Life Sciences,North America,Fees,License,Enterprise,1/1/2017
+1138,Dentsply - Project Management License Fees,Life Sciences,North America,Fees,License,Enterprise,1/1/2017
+3766,Dick's - S2P License Fees,CPG & Retail,North America,Fees,License,SMB,10/1/2025
+3767,Dick's - S2P Implementation Fees,CPG & Retail,North America,Fees,Implementation,SMB,1/1/2026
+2027,DuPont - S2C License,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,2/1/2022
+2028,DuPont - S2C Implementation,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,2/1/2022
+3525,DuPont - Spend License,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,5/1/2025
+3526,DuPont - Implementaton Fees,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,6/1/2025
+1235,Dupont - S2P License,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,1/1/2020
+2049,Dairy Farm - S2P License,Telecom/Media/Tech,APAC,Fees,License,Enterprise,3/1/2022
+2141,Dairy Farm - P2P Implementation,Telecom/Media/Tech,APAC,Fees,Implementation,Enterprise,5/1/2022
+2351,IFF - Spend License,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,12/1/2022
+2361,E&I - Spend Enrichment_UCAL_Spend Upsell_2022 (license),Public Sector,North America,Fees,License,SMB,12/1/2022
+286,"EcoLab, Inc. - License Fees",Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,3/1/2018
+287,"EcoLab, Inc. - Implementation Fees",Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,3/1/2018
+3368,"EcoLab, Inc. - Quantum Upgrade Implementation",Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,1/1/2025
+2730,Ecolab - OCR License Fees,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,9/1/2023
+2801,EFS Facilities - S2C License Fees,Other Services,Middle East,Fees,License,SMB,12/1/2023
+2802,EFS Facilities - S2C Implementation Fees,Other Services,Middle East,Fees,Implementation,SMB,12/1/2023
+1915,Eliant - Avnet Buy-Sell Software License,BFSI,North America,Fees,License,Enterprise,8/1/2022
+1999,ELO - License Fees,BFSI,LATAM,Fees,License,SMB,4/1/2022
+2583,Energy Vault - Sourcing & Contract License Fees,Automotive and Industrial,North America,Fees,License,SMB,6/1/2023
+3845,ENI - Sourcing & Contract License,Chemicals/Oil/Gas/Resources,Europe,Fees,License,SMB,12/1/2025
+3846,ENI - Sourcing & Contract Implementation,Chemicals/Oil/Gas/Resources,Europe,Fees,Implementation,SMB,1/1/2026
+1583,ENMAX Corporation - Sourcing License,Other Services,North America,Fees,License,SMB,3/1/2021
+1274,Erste Bank - License,BFSI,Europe,Fees,License,Enterprise,3/1/2020
+294,Estee Lauder - License Fees,CPG & Retail,North America,Fees,License,Enterprise,12/1/2017
+1135,Euro Bank for Recon & Dev (EBRD) - License,BFSI,Europe,Fees,License,SMB,11/1/2019
+2582,Euro Bank for Recon & Dev (EBRD) - Addl. Support,BFSI,Europe,Fees,Implementation,SMB,6/1/2023
+296,"Exelon Business Services Co., LLC - License",Other Services,North America,Fees,License,Enterprise,1/1/2017
+3335,"Exelon Business Services Co., LLC - S2P License",Other Services,North America,Fees,License,Enterprise,1/1/2025
+3453,"Exelon Business Services Co., LLC - S2P Implementation",Other Services,North America,Fees,Implementation,Enterprise,3/1/2025
+3499,"Exelon Business Services Co., LLC - UAT License",Other Services,North America,Fees,License,Enterprise,4/1/2025
+2135,"Exelon Business Services Co., LLC - UAT License Fees",Other Services,North America,Fees,License,Enterprise,5/1/2022
+2134,"Exelon Business Services Co., LLC - UAT Implementation Fees",Other Services,North America,Fees,Implementation,Enterprise,5/1/2022
+312,ExxonMobil - Steady State License Fees,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,1/1/2019
+3495,ExxonMobil - Data Extraction,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,4/1/2025
+316,ExxonMobil - Supplier Intelligence License,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,11/1/2018
+2246,ExxonMobil - Pendo License,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,11/1/2024
+2247,ExxonMobil - Pendo Implementation,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,11/1/2022
+2336,Eversheds - S2C License,Other Services,Europe,Fees,License,SMB,12/1/2022
+2337,Eversheds - S2C Implementation,Other Services,Europe,Fees,Implementation,SMB,12/1/2022
+3001,Fluxym (Ecosystem)  - Sourcing License,Public Sector,Europe,Fees,License,SMB,4/1/2024
+3049,Fluxym (Ecosystem)  - Sourcing Implementation,Public Sector,Europe,Fees,Implementation,SMB,4/1/2024
+3201,Fluxym (Ecosystem)  - Sourcing Implementation Travel,Public Sector,Europe,Travel,Implementation,SMB,8/1/2024
+3879,Fluxym (Exotec) - Sourcing License,Public Sector,Europe,Fees,License,SMB,3/1/2026
+1182,Roche - S2P License,Life Sciences,Europe,Fees,License,Enterprise,1/1/2020
+2499,Roche - S2P UAT License,Life Sciences,Europe,Fees,License,Enterprise,1/1/2022
+2500,Roche - S2P UAT Implementation,Life Sciences,Europe,Fees,Implementation,Enterprise,7/1/2023
+2696,Roche - Extension for configuration changes for Deployments (post go-live),Life Sciences,Europe,Fees,Implementation,Enterprise,9/1/2023
+2691,Roche - Core Template,Life Sciences,Europe,Fees,Implementation,Enterprise,1/1/2024
+3629,Roche - Core Template Extension,Life Sciences,Europe,Fees,Implementation,Enterprise,8/1/2025
+2807,Roche - CR# 02 to MyBuy implementation  - HICIX,Life Sciences,Europe,Fees,Implementation,Enterprise,11/1/2023
+1900,Roche - Aspire Implementation,Life Sciences,Europe,Fees,Implementation,Enterprise,11/1/2021
+2608,Roche - Aspire Joint deployments,Life Sciences,Europe,Fees,Implementation,Enterprise,1/1/2024
+2607,Roche - Retrofit SOW,Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2023
+2812,Roche - Retrofit of ASPIRE Wave 1 RDG (Mannheim/ Penzberg),Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2023
+2975,Roche - Retrofit of ASPIRE Wave 1 Spark,Life Sciences,Europe,Fees,Implementation,Enterprise,5/1/2024
+2954,Roche - Retrofit of ASPIRE Wave 2 NALA GNE,Life Sciences,Europe,Fees,Implementation,Enterprise,3/1/2024
+3106,Roche - Retrofit of ASPIRE Wave 3 EMEA,Life Sciences,Europe,Fees,Implementation,Enterprise,8/1/2024
+3252,Roche - Retrofit of ASPIRE Wave 3 Glycart,Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2024
+3015,Roche - Wave B - Aspire EMEA Joint Deployment,Life Sciences,Europe,Fees,Implementation,Enterprise,7/1/2024
+3254,Roche - Wave C - Retrofit of ASPIRE EMEA and APAC,Life Sciences,Europe,Fees,Implementation,Enterprise,11/1/2024
+3551,Roche - Wave D,Life Sciences,Europe,Fees,Implementation,Enterprise,5/1/2025
+3751,Roche - Wave D Aspire EMEA and NALA,Life Sciences,Europe,Fees,Implementation,Enterprise,11/1/2025
+3594,Roche - Wave E,Life Sciences,Europe,Fees,Implementation,Enterprise,7/1/2025
+3700,Roche - Wave E APAC,Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2025
+3661,Roche - Wave 11 China Pharma Retrofits,Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2025
+3681,Roche - Retrofit ASPIRE APAC Wave 10 Chugai,Life Sciences,Europe,Fees,Implementation,Enterprise,11/1/2025
+3593,Roche - NEXXE Aspire Rollout & Retrofits iCollab,Life Sciences,Europe,Fees,Implementation,Enterprise,6/1/2025
+3815,Roche - Poseida integration  GNE,Life Sciences,Europe,Fees,Implementation,Enterprise,1/1/2026
+3816,Roche - Wave 6 (Dia Ops Rotkreuz & Ludwigsburg),Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2025
+3817,Roche - 5a US Dia Ops,Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2025
+3818,Roche - CR2 Wave D,Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2025
+3833,Roche - SPARK Integration,Life Sciences,Europe,Fees,Implementation,Enterprise,1/1/2026
+2811,Roche - APAC RSS & Core China Implementation,Life Sciences,Europe,Fees,Implementation,Enterprise,11/1/2023
+1185,Roche - S2P  Implementation (travel),Life Sciences,Europe,Travel,Implementation,Enterprise,4/1/2020
+2759,Roche - EMEA RDI and APAC RSS India Implementation,Life Sciences,Europe,Fees,Implementation,Enterprise,11/1/2023
+2067,Roche - Premium Support,Life Sciences,Europe,Fees,Implementation,Enterprise,3/1/2022
+3630,Roche - Premium Support Extension,Life Sciences,Europe,Fees,Implementation,Enterprise,8/1/2025
+1322,Roche - Pendo License,Life Sciences,Europe,Fees,License,Enterprise,4/1/2020
+1377,Roche Diabetes - S2C license,Life Sciences,Europe,Fees,License,SMB,10/1/2020
+1971,Roche Diabetes - Catalog license,Life Sciences,Europe,Fees,License,SMB,2/1/2022
+2511,Roche Diabetes - Affiliates Implementation,Life Sciences,Europe,Fees,Implementation,SMB,4/1/2023
+2476,Roche - S2P Accelerated My Buy DESIGN WP7,Life Sciences,Europe,Fees,Implementation,Enterprise,4/1/2023
+2565,Roche - S2P Accelerated My Buy DESIGN WP8,Life Sciences,Europe,Fees,Implementation,Enterprise,9/1/2023
+2350,Roche -Supply Chain Supplier Collaboration ,Life Sciences,Europe,Fees,Implementation,Enterprise,4/1/2024
+3413,Roche - LumiraDx,Life Sciences,Europe,Fees,Implementation,Enterprise,6/1/2025
+1558,Roche - NEXXE license,Life Sciences,Europe,Fees,License,Enterprise,1/1/2021
+1559,Roche - NEXXE implementation,Life Sciences,Europe,Fees,Implementation,Enterprise,1/1/2021
+3497,Roche - NEXXE implementation 2025,Life Sciences,Europe,Fees,Implementation,Enterprise,4/1/2025
+3768,Roche - NEXXE implementation 2025/26,Life Sciences,Europe,Fees,Implementation,Enterprise,10/1/2025
+3485,Roche - NEXXE UAT license,Life Sciences,Europe,Fees,License,Enterprise,4/1/2025
+3840,Roche - NEXXE Aspire Rollout & Retrofits,Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2025
+2073,Roche - Supplier Enablement,Life Sciences,Europe,Fees,Implementation,Enterprise,3/1/2022
+2512,Roche - iCollab,Life Sciences,Europe,Fees,Implementation,Enterprise,9/1/2023
+2552,Roche - Chugai License Fees,Life Sciences,Europe,Fees,License,Enterprise,5/1/2023
+2548,Roche - Chugai deployment,Life Sciences,Europe,Fees,Implementation,Enterprise,8/1/2023
+3281,Roche Nexxe -Rollouts,Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2024
+3278,Franke - GEP Assist license,Other Services,Europe,Fees,License,Enterprise,11/1/2024
+2743,"F&G Annuities & Life - Sourcing, Supplier license",BFSI,North America,Fees,License,SMB,10/1/2023
+2744,F&G Annuities & Life - Tealbook,BFSI,North America,Fees,License,SMB,10/1/2023
+2745,"F&G Annuities & Life - Sourcing, Supplier & TealBook implementation",BFSI,North America,Fees,Implementation,SMB,10/1/2023
+2084,Filtration - Spend & CWB License Fees,Automotive and Industrial,North America,Fees,License,SMB,4/1/2022
+3425,Fisher & Paykel - S2P License Fees,Automotive and Industrial,APAC,Fees,License,Enterprise,3/1/2025
+3426,Fisher & Paykel - S2P Implementation Fees,Automotive and Industrial,APAC,Fees,Implementation,Enterprise,3/1/2025
+3427,Fisher & Paykel - Change Management Implementation,Automotive and Industrial,APAC,Fees,Implementation,Enterprise,3/1/2025
+3242,FPL - S2P License,Energy & Utilities,North America,Fees,License,Enterprise,11/1/2024
+3326,FPL - S2P License UAT 1,Energy & Utilities,North America,Fees,License,Enterprise,12/1/2024
+3327,FPL - S2P License UAT 2,Energy & Utilities,North America,Fees,License,Enterprise,12/1/2024
+3243,FPL - S2P Implementation,Other Services,North America,Fees,Implementation,Enterprise,12/1/2024
+3382,FPL - S2P Implementation Travel,Other Services,North America,Travel,Implementation,Enterprise,12/1/2024
+3508,FPL - Enhancement ,Energy & Utilities,North America,Fees,Implementation,Enterprise,6/1/2025
+2363,Fluidra - Spend license,Automotive and Industrial,North America,Fees,License,SMB,1/1/2023
+2364,Fluidra - Spend implementation,Automotive and Industrial,North America,Fees,Implementation,SMB,1/1/2023
+1843,Fly Dubai - S2P License,Other Services,Middle East,Fees,License,Enterprise,10/1/2021
+1844,Fly Dubai - S2P Implementation,Other Services,Middle East,Fees,Implementation,Enterprise,10/1/2021
+2653,Fly Dubai - S2P Implementation Travel,Other Services,Middle East,Travel,Implementation,Enterprise,7/1/2023
+2330,Dubai South - S2C license,Other Services,Middle East,Fees,License,Enterprise,12/1/2022
+2331,Dubai South - S2C implementation,Other Services,Middle East,Fees,Implementation,Enterprise,12/1/2022
+2504,Ubiquity - Contract License Fees,Other Services,North America,Fees,License,SMB,4/1/2023
+367,General Mills - COE - License Fees,CPG & Retail,North America,Fees,License,Enterprise,1/1/2018
+3723,Gentari - S2P License Fees,BFSI,APAC,Fees,License,SMB,10/1/2025
+3724,Gentari - S2P Implmentation Fees,BFSI,APAC,Fees,Implementation,SMB,10/1/2025
+2239,GEON Performance - Sourcing license,Chemicals/Oil/Gas/Resources,North America,Fees,License,SMB,8/1/2022
+3190,GEICO - S2C License Fees,BFSI,North America,Fees,License,Enterprise,9/1/2024
+3191,GEICO - S2C Implementation Fees,BFSI,North America,Fees,Implementation,Enterprise,9/1/2024
+2895,GrafTech  - S2C License Fees,Automotive and Industrial,Europe,Fees,License,SMB,12/1/2023
+2896,GrafTech  - S2C Implementation Fees,Automotive and Industrial,Europe,Fees,Implementation,SMB,2/1/2024
+1169,Group SEB - License,CPG & Retail,Europe,Fees,License,SMB,12/1/2019
+1170,Group SEB - Implementation,CPG & Retail,Europe,Fees,Implementation,SMB,1/1/2020
+2916,Hamilton - Contract License Fees,Other Services,North America,Fees,License,SMB,2/1/2024
+2937,Hamilton - Contract Implementation Fees,Other Services,North America,Fees,Implementation,SMB,2/1/2024
+398,"Hanesbrands, Inc.  - License Fees",CPG & Retail,North America,Fees,License,Enterprise,7/1/2017
+2708,Harrods - S2C License Fees,CPG & Retail,Europe,Fees,License,Enterprise,10/1/2023
+2714,Harrods - S2C Implementation Fees,CPG & Retail,Europe,Fees,Implementation,Enterprise,9/1/2023
+2520,Hastings Insurance - Supplier Management License Fees,BFSI,Europe,Fees,License,SMB,7/1/2023
+2993,HCSC - License Fees,Life Sciences,North America,Fees,License,Enterprise,5/1/2024
+2994,HCSC - Implementation Fees,Life Sciences,North America,Fees,Implementation,Enterprise,4/1/2024
+3627,Hindalco - S2P License Fees,Other Services,APAC,Fees,License,Enterprise,8/1/2025
+3628,Hindalco - S2P Implementation Fees,Other Services,APAC,Fees,Implementation,Enterprise,8/1/2025
+2442,Hellenic - S2P License Fees,BFSI,Europe,Fees,License,SMB,2/1/2023
+2443,Hellenic - S2P Implementation Fees,BFSI,Europe,Fees,Implementation,SMB,3/1/2023
+2575,Hellenic - S2P Implementation Fees Travel,BFSI,Europe,Travel,Implementation,SMB,5/1/2023
+3123,Hero - S2C License Fees,Automotive and Industrial,APAC,Fees,License,Enterprise,9/1/2024
+3124,Hero - S2C Implementation Fees,Automotive and Industrial,APAC,Fees,Implementation,Enterprise,9/1/2024
+3173,Heidelbercement - Sourcing License Fees,Chemicals/Oil/Gas/Resources,Europe,Fees,License,SMB,8/1/2024
+3174,Heidelbercement - Sourcing Implementation Fees,Chemicals/Oil/Gas/Resources,Europe,Fees,Implementation,SMB,9/1/2024
+2488,Hibiscus - Sourcing License Fees,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,4/1/2023
+3561,Hibiscus - S2C License Fees,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,6/1/2025
+3562,Hibiscus - S2C Implementation Fees,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,SMB,7/1/2025
+2958,Indorama Ventures Global Services Limited - Implementation Fees,Automotive and Industrial,North America,Fees,Implementation,Enterprise,3/1/2024
+3378,Indorama Ventures Global Services Limited - Implementation Fees Travel,Automotive and Industrial,North America,Travel,Implementation,Enterprise,12/1/2024
+2959,Indorama Ventures Global Services Limited - License Fees,Automotive and Industrial,North America,Fees,License,Enterprise,3/1/2024
+3563,Indorama Ventures Global Services Limited - GEP Adapter License,Automotive and Industrial,North America,Fees,License,Enterprise,6/1/2025
+3564,Indorama Ventures Global Services Limited - S/4 Instance,Automotive and Industrial,North America,Fees,Implementation,Enterprise,6/1/2025
+3632,Indorama Ventures Global Services Limited - License P2P,Automotive and Industrial,North America,Fees,License,Enterprise,8/1/2025
+3633,Indorama Ventures Global Services Limited - Implementation P2P,Automotive and Industrial,North America,Fees,Implementation,Enterprise,8/1/2025
+3690,Indorama Ventures Global Services Limited - Premium Support,Automotive and Industrial,North America,Fees,Implementation,Enterprise,9/1/2025
+2530,HPE - CR 3 Software,Other Services,North America,Fees,Implementation,Enterprise,2/1/2023
+2603,HPE - One Network Implementation,Other Services,North America,Fees,Implementation,Enterprise,6/1/2023
+2532,HPE - Buy Plan Supplier ID Ingestion Software,Other Services,North America,Fees,Implementation,Enterprise,4/1/2023
+3484,HPE - RSP Visibility Expanding Fair Software,Other Services,North America,Fees,Implementation,Enterprise,5/1/2025
+3676,HPE - Samsung Meta scope Software,Other Services,North America,Fees,Implementation,Enterprise,8/1/2025
+2805,HPE - CR 7 Software,Other Services,North America,Fees,Implementation,Enterprise,2/1/2024
+3084,HPE - Make In India Software,Other Services,North America,Fees,Implementation,Enterprise,1/1/2025
+2839,HPE - 1N + Inv Mapping + RSP Bounding Effect Software,Other Services,North America,Fees,Implementation,Enterprise,11/1/2023
+2256,HPE - License (Transaction) Fees,Other Services,North America,Fees,License,Enterprise,2/1/2023
+3467,HPE - Inventory Aggregated QTY Software,Other Services,North America,Fees,Implementation,Enterprise,3/1/2025
+3176,HPE - Automation PO Changes Software,Other Services,North America,Fees,Implementation,Enterprise,8/1/2024
+3218,HPE - Order Promise Workbench Enhancement Software,Other Services,North America,Fees,Implementation,Enterprise,9/1/2024
+1682,Hicom - Spend License,Automotive and Industrial,APAC,Fees,License,Enterprise,6/1/2021
+3064,Hitachi - e auction license fee,Telecom/Media/Tech,APAC,Fees,License,Enterprise,7/1/2024
+3066,Hitachi - e auction implementation fee TSO,Telecom/Media/Tech,APAC,Fees,Implementation,Enterprise,6/1/2024
+408,"Hologic, Inc. - license fee",Life Sciences,North America,Fees,License,Enterprise,1/1/2017
+3662,Hologic - Supplier Implementation,Life Sciences,North America,Fees,Implementation,Enterprise,8/1/2025
+3590,Hologic - Sourcing Management with Automonous Sourcing License,Life Sciences,North America,Fees,License,Enterprise,7/1/2025
+3591,Hologic - Sourcing Management with Automonous Sourcing Implementation,Life Sciences,North America,Fees,Implementation,Enterprise,7/1/2025
+2679,Hunter Point Capital - Spend License,BFSI,North America,Fees,License,SMB,8/1/2023
+2680,Hunter Point Capital - Spend Implementation,BFSI,North America,Fees,Implementation,SMB,8/1/2023
+1803,Husqvarna - Sourcing License,CPG & Retail,North America,Fees,License,Enterprise,9/1/2021
+2180,H2GS - S2C License Fees,Automotive and Industrial,North America,Fees,License,SMB,8/1/2022
+3170,Heinz - Cost Drivers & Should Cost License Fees,Other Services,Europe,Fees,License,Enterprise,8/1/2024
+3171,Heinz - Cost Drivers & Should Cost Implementation Fees,Other Services,Europe,Fees,Implementation,Enterprise,8/1/2024
+2985,IAP World Services Inc License Fees,Other Services,North America,Fees,License,SMB,4/1/2024
+2986,IAP World Services Inc Implementation Fees,Other Services,North America,Fees,Implementation,SMB,4/1/2024
+3121,Idahoan Foods - S2P License Fees,CPG & Retail,North America,Fees,License,SMB,8/1/2024
+3122,Idahoan Foods - S2P Implementation Fees,CPG & Retail,North America,Fees,Implementation,SMB,8/1/2024
+429,IDEXX Laboratories - License Fees,Life Sciences,North America,Fees,License,Enterprise,1/1/2018
+1229,IDEXX Laboratories - Sourcing License ,Life Sciences,North America,Fees,License,Enterprise,1/1/2020
+431,II-VI - License Fees,Automotive and Industrial,North America,Fees,License,Enterprise,1/1/2017
+1834,IFFCO - Spend License,CPG & Retail,Middle East,Fees,License,Enterprise,9/1/2021
+3455,Incitec - S2C License Fees,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,4/1/2025
+3456,Incitec - S2C Implementation Fees,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,5/1/2025
+3697,Incitec (Southern) - S2C License Fees,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,9/1/2025
+3787,INEOS - S2P License Fees,Chemicals/Oil/Gas/Resources,Europe,Fees,License,Enterprise,1/1/2026
+3788,INEOS - S2P Implementation Fees,Chemicals/Oil/Gas/Resources,Europe,Fees,Implementation,Enterprise,11/1/2025
+437,Ingram - License Fee,Telecom/Media/Tech,North America,Fees,License,Enterprise,3/1/2018
+3337,Insulet - Spend & Sourcing License Fees,Life Sciences,North America,Fees,License,SMB,12/1/2024
+3338,Insulet - Spend & Sourcing Implementation Fees,Life Sciences,North America,Fees,Implementation,SMB,1/1/2025
+439,"Integrated Micro Electronics, Inc. - License Fees",Telecom/Media/Tech,North America,Fees,License,SMB,10/1/2017
+3003,ING - S2C License Fees,BFSI,Europe,Fees,License,Enterprise,4/1/2024
+3004,ING - S2C Implementation Fees,BFSI,Europe,Fees,Implementation,Enterprise,5/1/2024
+3379,ING - S2C Implementation Fees Travel,BFSI,Europe,Travel,Implementation,Enterprise,1/1/2025
+3878,ING - P2P License Fees,BFSI,Europe,Fees,License,Enterprise,12/1/2025
+3716,ING - P2P Implementation Fees,BFSI,Europe,Fees,Implementation,Enterprise,8/1/2025
+3088,ING - Premium Support,BFSI,Europe,Fees,Services,Enterprise,6/1/2024
+3044,IHG - S2C License Fees,Other Services,North America,Fees,License,Enterprise,5/1/2024
+3045,IHG - S2C Implementation Fees,Other Services,North America,Fees,Implementation,Enterprise,5/1/2024
+3383,IHG - S2C Implementation Fees Travel,Other Services,North America,Travel,Implementation,Enterprise,12/1/2024
+3269,IHG - Whatfix License & Maintenance,Other Services,North America,Fees,License,Enterprise,10/1/2024
+3270,IHG - Whatfix Implementation,Other Services,North America,Fees,Implementation,Enterprise,11/1/2024
+444,International Monetary Fund (IMF) - License Fees,BFSI,North America,Fees,License,SMB,1/1/2017
+2265,International Monetary Fund (IMF) - customer support upsell,BFSI,North America,Fees,Services,SMB,9/1/2022
+2187,Interactive Brokers (IBG) - S2P License,BFSI,North America,Fees,License,Enterprise,7/1/2022
+447,"Intuit, Inc. - License Fees",Telecom/Media/Tech,North America,Fees,License,Enterprise,11/1/2017
+2097,ITA - S2C License fee,Other Services,Europe,Fees,License,Enterprise,4/1/2022
+450,ITW - License Fees,Automotive and Industrial,North America,Fees,License,Enterprise,1/1/2017
+2866,Irwin Mitchell - S2P License Fees,Other Services,Europe,Fees,License,SMB,1/1/2024
+2867,Irwin Mitchell - S2P Impl. Fees,Other Services,Europe,Fees,Implementation,SMB,1/1/2024
+3310,JetBlue Airways - Spend License,Other Services,North America,Fees,License,Enterprise,4/1/2025
+3311,JetBlue Airways - Spend Implementation,Other Services,North America,Fees,Implementation,Enterprise,1/1/2025
+2087,JK Tyre - License Fees,Automotive and Industrial,APAC,Fees,License,SMB,5/1/2022
+2088,JK Tyre - Implementation Fees,Automotive and Industrial,APAC,Fees,Implementation,SMB,5/1/2022
+2169,Jefferies -  S2P License,BFSI,North America,Fees,License,Enterprise,7/1/2022
+2260,Jefferies -  S2P Implementation,BFSI,North America,Fees,Implementation,Enterprise,10/1/2022
+3874,Jefferies -  S2P Implementation Travel,BFSI,North America,Travel,Implementation,Enterprise,12/1/2025
+2710,Jeld-Wen - S2C License Fees,Automotive and Industrial,North America,Fees,License,SMB,9/1/2023
+2711,Jeld-Wen - S2C Implementation Fees,Automotive and Industrial,North America,Fees,Implementation,SMB,9/1/2023
+3146,Jeld-Wen UK - S2C License Fees,Automotive and Industrial,North America,Fees,License,SMB,10/1/2024
+3147,Jeld-Wen UK - S2C Implementation Fees,Automotive and Industrial,North America,Fees,Implementation,SMB,10/1/2024
+2761,JPMorgan Chase - TPRM License (Design Phase),BFSI,North America,Fees,License,Enterprise,10/1/2023
+2762,JPMorgan Chase - TPRM Implementation (Design Phase),BFSI,North America,Fees,Implementation,Enterprise,10/1/2023
+2908,JPMorgan Chase - TPRM Implementation (Design Phase) Travel,BFSI,North America,Travel,Implementation,Enterprise,12/1/2023
+476,"Johnson Controls, Inc. - License Fees",Automotive and Industrial,North America,Fees,License,Enterprise,1/1/2017
+477,"Johnson Controls, Inc. - Implementation",Automotive and Industrial,North America,Fees,Implementation,Enterprise,6/1/2017
+523,Kellogg Technology - License,CPG & Retail,North America,Fees,License,Enterprise,1/1/2017
+524,Kellogg Technology - Implementation,CPG & Retail,North America,Fees,Implementation,Enterprise,1/1/2017
+3235,Kellogg Technology - S4HANA Implementation,CPG & Retail,North America,Fees,Implementation,Enterprise,10/1/2024
+2991,WK Kellogg Technology - License,CPG & Retail,North America,Fees,License,Enterprise,4/1/2024
+2992,WK Kellogg Technology - Implementation,CPG & Retail,North America,Fees,Implementation,Enterprise,4/1/2024
+3511,Keyera - S2P license,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,5/1/2025
+3512,Keyera - S2P implemenation,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,5/1/2025
+3871,Keyera - S2P implemenation Travel,Chemicals/Oil/Gas/Resources,North America,Travel,Implementation,Enterprise,12/1/2025
+1035,Kiewit  - License Fee,Other Services,North America,Fees,License,Enterprise,6/1/2019
+3179,Kiewit  - UAT Instance Projects & Sourcing Implementation,Other Services,North America,Fees,Implementation,Enterprise,8/1/2024
+3187,Kiewit - S4Hana UAT License,Other Services,North America,Fees,License,Enterprise,8/1/2024
+3188,Kiewit - S4Hana Implementation,Other Services,North America,Fees,Implementation,Enterprise,8/1/2024
+1222,Kiewit  - Contracts License Fee,Other Services,North America,Fees,License,Enterprise,6/1/2020
+3575,Kingston - P2O license fees,Other Services,North America,Fees,License,SMB,7/1/2025
+3266,Kuka - Strategic Cost Management Program Software License,Automotive and Industrial,Europe,Fees,License,Enterprise,10/1/2024
+3267,Kuka - Strategic Cost Management Program Software Implementation,Automotive and Industrial,Europe,Fees,Implementation,Enterprise,10/1/2024
+2339,PISA - License Fees,Life Sciences,LATAM,Fees,License,SMB,12/1/2022
+552,Laredo Petroleum - License Fee,Chemicals/Oil/Gas/Resources,North America,Fees,License,SMB,9/1/2018
+2893,LCEC - S2C License Fees,Other Services,North America,Fees,License,SMB,4/1/2024
+2894,LCEC - S2C Implementation Fees,Other Services,North America,Fees,Implementation,SMB,5/1/2024
+558,Legal & General - License fee,Other Services,Europe,Fees,License,Enterprise,11/1/2018
+561,Lennox International  - License Fees,Automotive and Industrial,North America,Fees,License,Enterprise,12/1/2017
+1717,Lenovo - License S2C Fees,CPG & Retail,APAC,Fees,License,Enterprise,7/1/2021
+1718,Lenovo - Implementation Fees,CPG & Retail,APAC,Fees,Implementation,Enterprise,7/1/2021
+2160,Liberty Global - S2C & Click License,Telecom/Media/Tech,Europe,Fees,License,SMB,6/1/2022
+2161,Liberty Global - S2C & Click Implementation,Telecom/Media/Tech,Europe,Fees,Implementation,SMB,6/1/2022
+567,"Lions Gate Entertainment, Inc. - License Fees",Telecom/Media/Tech,North America,Fees,License,SMB,12/1/2017
+3222,Linde India - Sourcing License Fees,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,12/1/2024
+2223,LKQ - S2C License Fee,Automotive and Industrial,Europe,Fees,License,SMB,8/1/2022
+2598,Lotuss Stores - Sourcing License Fees,CPG & Retail,APAC,Fees,License,Enterprise,6/1/2023
+2305,LSG GROUP - Sourcing/Projects/Contracts license,Other Services,Europe,Fees,License,Enterprise,11/1/2022
+573,Macy's Corporate Services - License Fees,CPG & Retail,North America,Fees,License,Enterprise,12/1/2017
+875,Macy's Corporate Services - License Fees (S2C less Spend),CPG & Retail,North America,Fees,License,Enterprise,12/1/2018
+1021,Macy's Corporate Services - Implementation Fees (S2C less Spend) - Travel,CPG & Retail,North America,Travel,Implementation,Enterprise,5/1/2019
+580,Masco - License Fees,Automotive and Industrial,North America,Fees,License,Enterprise,1/1/2017
+1901,Masco - Supplier License,Automotive and Industrial,North America,Fees,License,Enterprise,11/1/2021
+581,Masco - Supply Chain Analyst,Automotive and Industrial,North America,Fees,Services,Enterprise,1/1/2017
+2058,Delta Faucet - Sourcing & Supplier License,Automotive and Industrial,North America,Fees,License,Enterprise,3/1/2022
+2059,Delta Faucet - Sourcing & Supplier Implementation,Automotive and Industrial,North America,Fees,Implementation,Enterprise,8/1/2022
+2879,Marriot - CLM License Fees,Other Services,North America,Fees,License,Enterprise,12/1/2023
+2880,Marriot - CLM Implementation Fees,Other Services,North America,Fees,Implementation,Enterprise,1/1/2024
+1846,Mattress Firm - Spend & Contract License,CPG & Retail,North America,Fees,License,Enterprise,10/1/2021
+2142,Mattress Firm - Sourcing & Projects License,CPG & Retail,North America,Fees,License,Enterprise,6/1/2022
+3291,Mahindra & Mahindra - S2P License,Automotive and Industrial,APAC,Fees,License,Enterprise,11/1/2024
+3292,Mahindra & Mahindra - S2P Implementation,Automotive and Industrial,APAC,Fees,Implementation,Enterprise,12/1/2024
+1787,McCarthy - License S2P Fees,Other Services,North America,Fees,License,Enterprise,8/1/2021
+3604,McDermott - P2P License,Other Services,North America,Fees,License,Enterprise,7/1/2025
+3605,McDermott - P2P Implementation,Other Services,North America,Fees,Implementation,Enterprise,7/1/2025
+601,McKesson - License Fees,Life Sciences,North America,Fees,License,Enterprise,1/1/2017
+604,McKesson - Data Enrichment license fee,Life Sciences,North America,Fees,License,Enterprise,4/1/2018
+2588,McLane - S2P License Fees,CPG & Retail,North America,Fees,License,Enterprise,7/1/2023
+2589,McLane - S2P Implementation Fees,CPG & Retail,North America,Fees,Implementation,Enterprise,7/1/2023
+2784,McLane - S2P Implementation Travel,CPG & Retail,North America,Travel,Implementation,Enterprise,10/1/2023
+2070,Medexus Pharma - Contracts License,Life Sciences,North America,Fees,License,SMB,4/1/2022
+2663,Mediq - S2C License,CPG & Retail,Europe,Fees,License,Enterprise,8/1/2023
+3034,Mediq - S2C Implementation Travel,CPG & Retail,Europe,Travel,Implementation,Enterprise,4/1/2024
+2980,Mega Labs - S2C License Fees,Life Sciences,LATAM,Fees,License,SMB,3/1/2024
+2981,Mega Labs - S2C Implementation Fees,Life Sciences,LATAM,Fees,Implementation,SMB,5/1/2024
+3567,Mercedes - Implementation Fees,Automotive and Industrial,Europe,Fees,Implementation,Enterprise,11/1/2025
+3568,Mercedes - License Fees,Automotive and Industrial,Europe,Fees,License,Enterprise,10/1/2025
+3682,Mirvac - Sourcing & Contract License Fees,Other Services,APAC,Fees,License,Enterprise,9/1/2025
+3683,Mirvac - Sourcing & Contract Implementation Fees,Other Services,APAC,Fees,Implementation,Enterprise,9/1/2025
+1178,Mubadala - License,Chemicals/Oil/Gas/Resources,Middle East,Fees,License,Enterprise,1/1/2020
+1175,MGM - License,Other Services,North America,Fees,License,Enterprise,12/1/2019
+950,MKS Instruments - License,Automotive and Industrial,North America,Fees,License,SMB,3/1/2019
+3321,Mondelez - FHV Transaction Fees - Software GEP,CPG & Retail,Europe,Fees,License,SMB,12/1/2024
+2043,MoneyMart - Contract & Supplier License,BFSI,North America,Fees,License,SMB,3/1/2022
+2506,MSCI - Supplier License Fees,Telecom/Media/Tech,North America,Fees,License,SMB,4/1/2023
+2507,MSCI - Supplier Implementation Fees,Telecom/Media/Tech,North America,Fees,Implementation,SMB,4/1/2023
+633,Mylan Technology-License Fees,Life Sciences,North America,Fees,License,Enterprise,1/1/2017
+634,Mylan Technology-Implementation Fees,Life Sciences,North America,Fees,Implementation,Enterprise,1/1/2017
+3111,Mylan - Whatfix License Fees,Life Sciences,North America,Fees,License,Enterprise,6/1/2024
+3112,Mylan - Whatfix Implementation Fees,Life Sciences,North America,Fees,Implementation,Enterprise,7/1/2024
+3418,NEPI - S2C License Fees,Other Services,Europe,Fees,License,SMB,2/1/2025
+3419,NEPI - S2C Implementation Fees,Other Services,Europe,Fees,Implementation,SMB,3/1/2025
+3903,NIKE - License & Digital Fees,CPG & Retail,North America,Fees,License,Enterprise,6/1/2026
+3137,NCOC - License Fees,Chemicals/Oil/Gas/Resources,Middle East,Fees,License,SMB,7/1/2024
+3138,NCOC - Implementation Fees,Chemicals/Oil/Gas/Resources,Middle East,Fees,Implementation,SMB,8/1/2024
+3729,NCOC - Enhancement Fees CO1,Chemicals/Oil/Gas/Resources,Middle East,Fees,Implementation,SMB,10/1/2025
+3863,NCOC - Enhancement Fees CO2,Chemicals/Oil/Gas/Resources,Middle East,Fees,Implementation,SMB,12/1/2025
+3864,NCOC - Additional Interface,Chemicals/Oil/Gas/Resources,Middle East,Fees,Implementation,SMB,12/1/2025
+3381,NCOC - Implementation Fees Travel,Chemicals/Oil/Gas/Resources,Middle East,Travel,Implementation,SMB,1/1/2025
+3344,Northern Data - P2P License Fees,Telecom/Media/Tech,Europe,Fees,License,SMB,1/1/2025
+3345,Northern Data - P2P Implementation Fees,Telecom/Media/Tech,Europe,Fees,Implementation,SMB,1/1/2025
+2704,NEOM S2P License,Other Services,Middle East,Fees,License,Enterprise,9/1/2023
+2705,NEOM S2P Implementation,Other Services,Middle East,Fees,Implementation,Enterprise,10/1/2023
+3804,NEOM S2P Implementation Training,Other Services,Middle East,Fees,Implementation,Enterprise,12/1/2025
+2928,NEOM S2P Implementation Travel,Other Services,Middle East,Travel,Implementation,Enterprise,12/1/2023
+2883,Nestle - Should Cost License Fees,CPG & Retail,Europe,Fees,License,Enterprise,1/1/2024
+2884,Nestle - Should Cost Impl. Fees,CPG & Retail,Europe,Fees,Implementation,Enterprise,1/1/2024
+1750,Netzsch - Spend License,Automotive and Industrial,Europe,Fees,License,SMB,8/1/2021
+2150,Newmount - Spend & Projects Savings License,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,6/1/2022
+655,Nipro - License Fees,Life Sciences,North America,Fees,License,SMB,1/1/2017
+1395,North Oil - License,Chemicals/Oil/Gas/Resources,Middle East,Fees,License,SMB,11/1/2020
+3163,OCI Global - Sourcing License Fees,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,7/1/2024
+3164,OCI Global - Sourcing Implementation Fees,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,8/1/2024
+661,OGE Energy Corp. - License Fees,Other Services,North America,Fees,License,Enterprise,1/1/2017
+663,OGE Energy Corp. - Implementation (P2P),Other Services,North America,Fees,Implementation,Enterprise,1/1/2017
+2949,OGE Energy Corp. - ASN CR,Other Services,North America,Fees,Implementation,Enterprise,2/1/2024
+877,Oncor - License Fee,Energy & Utilities,North America,Fees,License,Enterprise,12/1/2018
+1115,Otis - License,Automotive and Industrial,North America,Fees,License,Enterprise,9/1/2019
+1830,Oceaneering - S2P License,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,10/1/2021
+2077,Oilserv - S2C License,Other Services,Middle East,Fees,License,SMB,4/1/2022
+3882,PG&E Corporation - Buydesk Implementation,Energy & Utilities,North America,Fees,Implementation,Enterprise,12/1/2025
+3884,PG&E Corporation - Buydesk/Tailspend License,Energy & Utilities,North America,Fees,License,Enterprise,3/1/2026
+2376,PBF Energy - CLM & Sourcing license,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,4/1/2023
+2377,PBF Energy - CLM & Sourcing implementation,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,4/1/2023
+1818,JM Baxi - Sourcing & Contract License,Other Services,APAC,Fees,License,Enterprise,9/1/2021
+1591,Party City - Spend License,CPG & Retail,North America,Fees,License,Enterprise,3/1/2021
+1495,Patterson - License,Life Sciences,North America,Fees,License,Enterprise,3/1/2021
+3050,Perfchem - Procurement Support Software,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,SMB,5/1/2024
+1872,Perfettti Van Melle - eAuction,CPG & Retail,APAC,Fees,Services,Enterprise,10/1/2021
+2683,Performance Health - Sourcing License Fees,Automotive and Industrial,North America,Fees,License,SMB,9/1/2023
+3351,Phibro Animal - S2P License Fees,Automotive and Industrial,North America,Fees,License,SMB,1/1/2025
+3352,Phibro Animal - S2P Implementation Fees,Automotive and Industrial,North America,Fees,Implementation,SMB,2/1/2025
+2930,Philips - S2C Software License,Life Sciences,Europe,Fees,License,Enterprise,7/1/2024
+2434,Philips - S2C Software Implementation,Life Sciences,Europe,Fees,Implementation,Enterprise,12/1/2022
+3896,Philips - S2C Software Implementation Bonus,Life Sciences,Europe,Fees,Implementation,Enterprise,1/1/2026
+3272,Philips - UAT License,Life Sciences,Europe,Fees,License,Enterprise,10/1/2024
+3273,Philips - UAT Implementation,Life Sciences,Europe,Fees,Implementation,Enterprise,10/1/2024
+3577,Phillips 66 - Sourcing License,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,7/1/2025
+3578,Phillips 66 - Sourcing Implementation ,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,7/1/2025
+3639,Port of Tanjung - CLM License Fees,Other Services,APAC,Fees,License,SMB,1/1/2026
+3640,Port of Tanjung - CLM Implementation Fees,Other Services,APAC,Fees,Implementation,SMB,8/1/2025
+883,Petronas - license fee,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,12/1/2018
+2553,Petronas - KLCC +9 PJ implementation fees,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,5/1/2023
+2557,Petronas - KLCC +9 PJ implementation fees - Travel,Chemicals/Oil/Gas/Resources,APAC,Travel,Implementation,Enterprise,5/1/2023
+2082,Petronas - Stabilization Support,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,3/1/2022
+3799,Petronas - L2 Support,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,11/1/2025
+3251,Petronas - Data Migration,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,10/1/2024
+2622,Petronas - Enhancement Delivery,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,7/1/2023
+3265,Petronas - Timewrite mass PO Load,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,10/1/2024
+3834,Petronas - Automation Program,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,1/1/2026
+977,"Petronas - license (category workbench, bid optimizer, chatbot)",Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,4/1/2019
+3093,Petronas - S4 Implementation,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,6/1/2024
+1000,Petronas - MI License,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,5/1/2019
+1307,Petronas - SRM & CLM Implementation,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,4/1/2020
+2715,Petronas KLCC - Add'l Instance (License),Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,9/1/2023
+1756,Petronas  Canada - S2O License,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,8/1/2021
+1860,PGS - S2C & Click License,Other Services,Europe,Fees,License,SMB,10/1/2021
+2276,PGS - Incident Management License,Other Services,Europe,Fees,License,SMB,10/1/2022
+3177,Piramal Pharma - S2P License Fees,Life Sciences,APAC,Fees,License,SMB,8/1/2024
+3178,Piramal Pharma - S2P Implementation Fees,Life Sciences,APAC,Fees,Implementation,SMB,9/1/2024
+3360,Piramal Pharma - S2P Implementation Fees Travel,Life Sciences,APAC,Travel,Implementation,SMB,12/1/2024
+3289,PPG - Spend Pilot,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,11/1/2024
+3855,PPG - Spend License Fees,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,12/1/2025
+3856,PPG - Spend Implementation Fees,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,Enterprise,1/1/2026
+2940,Protiviti - Spend License Fees,Other Services,North America,Fees,License,SMB,2/1/2024
+2941,Protiviti - Spend Analysis Fees,Other Services,North America,Fees,Services,SMB,2/1/2024
+2965,Protiviti - Sourcing License Fees,Other Services,North America,Fees,License,SMB,2/1/2024
+2966,Protiviti - Sourcing Implementation,Other Services,North America,Fees,Implementation,SMB,3/1/2024
+2479,Provimi - US - License S2C Fees,Life Sciences,North America,Fees,License,SMB,3/1/2023
+2477,Provimi - US - Implementation Fees,Life Sciences,North America,Fees,Implementation,SMB,4/1/2023
+2757,PSP - S2P License Fees,BFSI,North America,Fees,License,Enterprise,9/1/2023
+2736,PSP - S2P Implmentation Fees,BFSI,North America,Fees,Implementation,Enterprise,10/1/2023
+2925,PSP - S2P Implmentation Fees Travel,BFSI,North America,Travel,Implementation,Enterprise,12/1/2023
+1158,Pertamina - License,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,1/1/2020
+1157,BCG (Pertamina) - Implementation,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,1/1/2020
+1709,Pertamina 3 Subsidiaries Scope Expansion - License,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,2/1/2022
+2636,Pertamina - Phase 3a License Fees,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,7/1/2023
+2637,Pertamina - Phase 3b License Fees,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,7/1/2023
+3231,Pertamina - Phase 4 License Fees,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,9/1/2024
+3056,Pertamina - Phase 4 Implementation,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,Enterprise,5/1/2024
+3057,Pertamina - Phase 4 Implementation Travel,Chemicals/Oil/Gas/Resources,APAC,Travel,Implementation,Enterprise,5/1/2024
+2601,Pinnacle - S2C License Fees,Other Services,Europe,Fees,License,SMB,9/1/2023
+2602,Pinnacle - S2C Implementation Fees,Other Services,Europe,Fees,Implementation,SMB,10/1/2023
+3645,Ports America - Spend License Fees,Other Services,North America,Fees,License,SMB,7/1/2025
+3646,Ports America - Spend Implementation Fees,Other Services,North America,Fees,Implementation,SMB,8/1/2025
+1511,PTTEP - License,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,1/1/2021
+1869,PTTEP - Click License,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,3/1/2022
+2846,PTTEP - Thailand LCX Migration,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,SMB,11/1/2023
+3388,PTTEP - Malaysia Sourcing License,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,1/1/2025
+3387,PTTEP - Malaysia Sourcing Implementation,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,SMB,2/1/2025
+3756,PTTEP - S/4 Transition,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,SMB,9/1/2025
+2632,PTTEP - Sourcing & Supplier License Fees,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,7/1/2023
+2633,PTTEP - Project & Contract License Fees,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,11/1/2023
+2671,Japfa - Accounts Payable & Supplier License,Other Services,APAC,Fees,License,SMB,8/1/2023
+2672,Japfa - Accounts Payable & Supplier Implementation,Other Services,APAC,Fees,Implementation,SMB,8/1/2023
+2927,Japfa - Accounts Payable & Supplier Implementation Travel,Other Services,APAC,Travel,Implementation,SMB,12/1/2023
+1516,Puma Energy - License Fees,Other Services,Europe,Fees,License,Enterprise,1/1/2021
+3737,Purflux - Contract & Supplier License Fees,Automotive and Industrial,Europe,Fees,License,SMB,11/1/2025
+3738,Purflux - Contract & Supplier Implementation Fees,Automotive and Industrial,Europe,Fees,Implementation,SMB,1/1/2026
+2268,PTTGC - Spend Analysis_Supplier Management_Category Workbench license,Chemicals/Oil/Gas/Resources,APAC,Fees,License,Enterprise,10/1/2022
+2389,Qualfon - S2P License,Other Services,North America,Fees,License,SMB,1/1/2023
+1338,Qatar Gas - E-Bids License,Chemicals/Oil/Gas/Resources,Middle East,Fees,License,SMB,5/1/2020
+1677,Qatar Gas - S2C + Catalogs License,Chemicals/Oil/Gas/Resources,Middle East,Fees,License,SMB,6/1/2021
+1678,Qatar Gas - S2C + Catalogs Implementation,Chemicals/Oil/Gas/Resources,Middle East,Fees,Implementation,SMB,6/1/2021
+2018,Ragasa - S2C License,CPG & Retail,LATAM,Fees,License,SMB,1/1/2022
+1903,Randstad - Spend License,Other Services,Europe,Fees,License,Enterprise,11/1/2021
+2699,RB Distribution (Dorman) - S2C License Fees,Automotive and Industrial,North America,Fees,License,SMB,10/1/2023
+2700,RB Distribution (Dorman) - S2C Implementation Fees,Automotive and Industrial,North America,Fees,Implementation,SMB,10/1/2023
+3798,Rich Products - Spend Pilot,CPG & Retail,North America,Fees,Services,Enterprise,12/1/2025
+3208,Rite Aid Hdqtrs. Corp. - Sourcing License,CPG & Retail,North America,Fees,License,Enterprise,9/1/2024
+1593,Rock Central (Quicken Loans) - License,BFSI,North America,Fees,License,Enterprise,3/1/2021
+720,Royal London - S2C License Fee,BFSI,Europe,Fees,License,Enterprise,10/1/2018
+721,Royal London - S2C Implementation,BFSI,Europe,Fees,Implementation,Enterprise,11/1/2018
+1754,Royal London - TPRM License,BFSI,Europe,Fees,License,Enterprise,8/1/2021
+2776,Riot Games - S2C License Fees,Telecom/Media/Tech,North America,Fees,License,Enterprise,2/1/2024
+2777,Riot Games - S2C Implementation Fees,Telecom/Media/Tech,North America,Fees,Implementation,Enterprise,11/1/2023
+3375,Rovensa - Spend Analystics and Opportunity Assessment TSO,Private Equity,North America,Fees,Implementation,SMB,1/1/2025
+3390,Confluent Health - Spend Analystics and Opportunity Assessment TSO,Private Equity,North America,Fees,Implementation,SMB,1/1/2025
+1402,RPM - License,Chemicals/Oil/Gas/Resources,North America,Fees,License,Enterprise,8/1/2020
+2629,SAAM - Sourcing & Contract License Fees,Other Services,LATAM,Fees,License,SMB,8/1/2023
+3385,SAAM SA - Sourcing & Contract License Fees,Other Services,LATAM,Fees,License,SMB,1/1/2025
+3574,Servicios Corporativous Ideal - S2P License Fees,Other Services,LATAM,Fees,License,SMB,7/1/2025
+3784,Servicios Corporativous Ideal (Syad) - S2P Implementation ,Other Services,LATAM,Fees,Implementation,SMB,10/1/2025
+728,"Schlage Lock Company, LLC - License Fees",Automotive and Industrial,North America,Fees,License,SMB,1/1/2017
+729,"Schlage Lock Company, LLC - Implementation Fees",Automotive and Industrial,North America,Fees,Implementation,SMB,1/1/2017
+3742,Roy Hills - S2C License Fees,CPG & Retail,APAC,Fees,License,Enterprise,10/1/2025
+3743,Roy Hills - S2C Implementation Fees,CPG & Retail,APAC,Fees,Implementation,Enterprise,11/1/2025
+2891,Sembcorp - S2C License Fees,Other Services,North America,Fees,License,Enterprise,5/1/2024
+2892,Sembcorp - S2C Implementation Fees,Other Services,North America,Fees,Implementation,Enterprise,2/1/2024
+3230,Sembcorp - S2C Implementation Fees Travel,Other Services,North America,Travel,Implementation,Enterprise,9/1/2024
+743,Serco - License fee,Other Services,Europe,Fees,License,Enterprise,1/1/2019
+752,"Sidley Austin, LLP - License Fees",Other Services,North America,Fees,License,Enterprise,1/1/2017
+753,"Sidley Austin, LLP - Implementation Fees",Other Services,North America,Fees,Implementation,Enterprise,1/1/2017
+3674,SIBS - S2C License Fees,Telecom/Media/Tech,Europe,Fees,License,SMB,8/1/2025
+3675,SIBS - S2C Implementation Fees,Telecom/Media/Tech,Europe,Fees,Implementation,SMB,9/1/2025
+1688,Signet - Contract License,CPG & Retail,North America,Fees,License,Enterprise,6/1/2021
+1690,Signet - Spend License,CPG & Retail,North America,Fees,License,Enterprise,6/1/2021
+1924,Signet - Workday Integration License,CPG & Retail,North America,Fees,License,Enterprise,11/1/2021
+2556,Signify - preparatory services SCT Support ,Automotive and Industrial,Europe,Fees,License,Enterprise,5/1/2023
+1010,Signify - TSO Implementation,Automotive and Industrial,Europe,Fees,Implementation,Enterprise,12/1/2018
+1011,Signify - TSO License,Automotive and Industrial,Europe,Fees,License,Enterprise,12/1/2018
+1975,Signify MDM License,Automotive and Industrial,Europe,Fees,License,Enterprise,1/1/2022
+760,Spectrum Health System (License Fees),Life Sciences,North America,Fees,License,Enterprise,1/1/2017
+761,Spectrum Health System (Implementation Fees),Life Sciences,North America,Fees,Implementation,Enterprise,5/1/2019
+1028,Specsavers- License,CPG & Retail,Europe,Fees,License,Enterprise,6/1/2019
+2618,Speedy Asset - S2C License Fees,CPG & Retail,Europe,Fees,License,SMB,7/1/2023
+943,Southern Co - License,Other Services,North America,Fees,License,Enterprise,4/1/2019
+3844,Southern Co - CLM License & Click,Other Services,North America,Fees,License,Enterprise,1/1/2026
+944,Southern Co - Implementation,Other Services,North America,Fees,Implementation,Enterprise,4/1/2019
+1066,Southern Co - Saving Project & Category Workbench - License,Other Services,North America,Fees,License,Enterprise,7/1/2019
+3152,State Street  Spend Analysis License,BFSI,North America,Fees,License,Enterprise,7/1/2024
+3153,State Street  Spend Analysis Implementation,BFSI,North America,Fees,Implementation,Enterprise,8/1/2024
+1629,Stockholm - License,Other Services,Europe,Fees,License,SMB,4/1/2021
+1832,Stockholm - Sourcing License,Other Services,Europe,Fees,License,SMB,10/1/2021
+2152,Straumann - S2C License Fee,Life Sciences,Europe,Fees,License,Enterprise,6/1/2022
+2068,Summit Materials - Spend/Cat/Savings Licenses,Automotive and Industrial,North America,Fees,License,SMB,4/1/2022
+782,Symetra Life Insurance Company - License Fee,BFSI,North America,Fees,License,Enterprise,10/1/2018
+2888,Symetra Life Insurance Company - Spend License Fee,BFSI,North America,Fees,License,Enterprise,10/1/2023
+2199,Synopsys - S2C License,Telecom/Media/Tech,North America,Fees,License,Enterprise,7/1/2022
+2200,Synopsys - S2C Implementation,Telecom/Media/Tech,North America,Fees,Implementation,Enterprise,8/1/2022
+1554,Tampa Electric - Sourcing & Contract License,Energy & Utilities,North America,Fees,License,Enterprise,2/1/2021
+3022,Tampa Electric - Whatfix License Fees,Energy & Utilities,North America,Fees,License,Enterprise,4/1/2024
+2596,Tampa Electric - S2C License Fees,Energy & Utilities,North America,Fees,License,Enterprise,6/1/2023
+2597,Tampa Electric - S2C Implementation Fees,Energy & Utilities,North America,Fees,Implementation,Enterprise,7/1/2023
+2929,Tampa Electric - S2C Implementation Fees Travel,Energy & Utilities,North America,Travel,Implementation,Enterprise,12/1/2023
+792,Tata Global Beverages Limited - License Fees,CPG & Retail,Europe,Fees,License,Enterprise,1/1/2017
+1111,Tata Steel - License Fees,Automotive and Industrial,APAC,Fees,License,Enterprise,10/1/2019
+1520,Tata Steel - License Fees (eRFx & Auction),Automotive and Industrial,APAC,Fees,License,Enterprise,1/1/2021
+2414,Team Industrial - Sourcing License,Other Services,North America,Fees,License,SMB,1/1/2023
+1454,Telefonica - License,Telecom/Media/Tech,Europe,Fees,License,Enterprise,10/1/2020
+1455,Telefonica - Implementation,Telecom/Media/Tech,Europe,Fees,Implementation,Enterprise,11/1/2020
+3067,Techem - S2C License,Other Services,Europe,Fees,License,SMB,6/1/2024
+3068,Techem - S2C Implementation,Other Services,Europe,Fees,Implementation,SMB,6/1/2024
+1187,Tesco - License,BFSI,Europe,Fees,License,SMB,1/1/2020
+1186,Tesco - Implementation,BFSI,Europe,Fees,Implementation,SMB,1/1/2020
+3275,Tesco Money - License Fees,BFSI,Europe,Fees,License,SMB,10/1/2024
+1202,Tesco Stores - License,CPG & Retail,Europe,Fees,License,SMB,1/1/2020
+1373,Tesco Stores - Savings Projects License,CPG & Retail,Europe,Fees,License,SMB,7/1/2020
+1385,Tesco Stores - P2P & Click License,CPG & Retail,Europe,Fees,License,SMB,8/1/2020
+1425,Tesco Stores - Bid Optimization License,CPG & Retail,Europe,Fees,License,SMB,9/1/2020
+1633,Tesco Stores - CR#3 - License,CPG & Retail,Europe,Fees,License,SMB,5/1/2021
+1375,The Church - CLM License,Public Sector,North America,Fees,License,SMB,7/1/2020
+1723,The Church - Sourcing License,Public Sector,North America,Fees,License,SMB,7/1/2021
+1968,The Church - Catalog license,Public Sector,North America,Fees,License,SMB,1/1/2022
+2938,3A - S2P License Fees,Chemicals/Oil/Gas/Resources,North America,Fees,License,SMB,2/1/2024
+2939,3A - S2P Implementation Fees,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,SMB,2/1/2024
+1597,Thermo Fisher Scientific - Sourcing License,Life Sciences,North America,Fees,License,Enterprise,3/1/2021
+3032,Thermo Fisher Scientific - Sourcing License Addl. License,Life Sciences,North America,Fees,License,Enterprise,10/1/2023
+2299,Thermo Fisher. - CCG Sourcing License,Life Sciences,North America,Fees,License,Enterprise,11/1/2022
+3719,The Children's Place - Sourcing License,CPG & Retail,North America,Fees,License,SMB,10/1/2025
+3720,The Children's Place - Sourcing Implementation,CPG & Retail,North America,Fees,Implementation,SMB,10/1/2025
+3731,University of Arizona - License Fees,Public Sector,North America,Fees,License,Enterprise,10/1/2025
+3732,University of Arizona - Implementation Fees Phase 1,Public Sector,North America,Fees,Implementation,Enterprise,10/1/2025
+3733,University of Arizona - Implementation Fees Phase 2,Public Sector,North America,Fees,Implementation,Enterprise,8/1/2026
+1209,TJX - license,CPG & Retail,North America,Fees,License,Enterprise,1/1/2020
+2595,TJX - Supplier license,CPG & Retail,North America,Fees,License,Enterprise,6/1/2023
+1210,TJX - implementation,CPG & Retail,North America,Fees,Implementation,Enterprise,1/1/2020
+2592,Topsoe - S2C License Fees,BFSI,Europe,Fees,License,SMB,6/1/2023
+2593,Topsoe - S2C Implementation Fees,BFSI,Europe,Fees,Implementation,SMB,6/1/2023
+2790,Topsoe - S2C Implementation Fees Travel,BFSI,Europe,Travel,Implementation,SMB,10/1/2023
+2749,TORAY China - e-Auction license,Chemicals/Oil/Gas/Resources,APAC,Fees,License,SMB,11/1/2023
+2750,TORAY China - e-Auction implemenation,Chemicals/Oil/Gas/Resources,APAC,Fees,Implementation,SMB,11/1/2023
+3451,Tower Hill - S2P License Fees,BFSI,North America,Fees,License,SMB,7/1/2025
+3452,Tower Hill - S2P Implementation Fees,BFSI,North America,Fees,Implementation,SMB,7/1/2025
+820,University of California - License Fees,Public Sector,North America,Fees,License,Enterprise,6/1/2017
+3079,"UAW - Sourcing, Supplier & Contract License Fees",BFSI,North America,Fees,License,Enterprise,6/1/2024
+3080,"UAW - Sourcing, Supplier & Contract Implementation Fees",BFSI,North America,Fees,Implementation,Enterprise,6/1/2024
+3460,University of Oxford - S2C License Fees,Public Sector,Europe,Fees,License,SMB,5/1/2025
+3461,University of Oxford - S2C Implementation Fees,Public Sector,Europe,Fees,Implementation,SMB,5/1/2025
+3763,University of Oxford - S2C Implementation Fees Travel,Public Sector,Europe,Travel,Implementation,SMB,10/1/2025
+3329,University of Newcastle - CLM license,Public Sector,APAC,Fees,License,SMB,12/1/2024
+3330,University of Newcastle - CLM implementation ,Public Sector,APAC,Fees,Implementation,SMB,3/1/2025
+827,University of Sydney - License Fees,Public Sector,APAC,Fees,License,Enterprise,1/1/2017
+2386,Trivium Packaging B.V. - S2C License Fees,Automotive and Industrial,Europe,Fees,License,Enterprise,3/1/2023
+2471,Trivium Packaging B.V. - S2C Implementation Fees,Automotive and Industrial,Europe,Fees,Implementation,Enterprise,4/1/2023
+3284,Unilever - Digital License Fees,Unilever,Europe,Fees,License,Enterprise,11/1/2024
+3193,Unilever - SSA Implementation,Unilever,Europe,Fees,Implementation,Enterprise,8/1/2024
+3391,Unilever - Procurement Services (PAAS) FHV Pilot Impl,Unilever,Europe,Fees,Implementation,Enterprise,1/1/2025
+3475,Unilever - Procurement Services (PAAS) FHV Pilot Impl - FHV Portion,Unilever,Europe,Fees,Implementation,Enterprise,1/1/2025
+3702,Unilever - Steady State Fees - FHV Maint Cost Software,Unilever,Europe,Fees,License,Enterprise,1/1/2026
+3811,Unilever - Steady State Fees - FHV Maint Cost Software - FHV,Unilever,Europe,Fees,License,Enterprise,1/1/2026
+3597,Unilever - Steady State Fees - FHV Txn Cost,Unilever,Europe,Fees,License,Enterprise,1/1/2026
+3812,Unilever - Steady State Fees - FHV Txn Cost - FHV,Unilever,Europe,Fees,License,Enterprise,1/1/2026
+2911,United Group - S2C License fees,Other Services,Europe,Fees,License,SMB,3/1/2024
+2951,United Group - S2C Implementation fees,Other Services,Europe,Fees,Implementation,SMB,2/1/2024
+3113,United States Bakery - S2C License Fees,CPG & Retail,North America,Fees,License,SMB,7/1/2024
+3114,United States Bakery - S2C Implementation Fees,CPG & Retail,North America,Fees,Implementation,SMB,7/1/2024
+3286,United States Steel - S2C License Fees,Other Services,North America,Fees,License,Enterprise,11/1/2024
+3287,United States Steel - S2C Implementation Fees,Other Services,North America,Fees,Implementation,Enterprise,1/1/2025
+2625,Valeo - S2C License Fees,Automotive and Industrial,Europe,Fees,License,Enterprise,7/1/2023
+2626,Valeo - S2C Implementation Fees,Automotive and Industrial,Europe,Fees,Implementation,Enterprise,7/1/2023
+1725,Vision Services - RFx & Supplier License,BFSI,North America,Fees,License,Enterprise,7/1/2021
+1481,Vistra Energy - MDM License,Other Services,North America,Fees,License,Enterprise,7/1/2021
+3104,W&T Offshore - P2P License,Chemicals/Oil/Gas/Resources,North America,Fees,License,SMB,7/1/2024
+3105,W&T Offshore - P2P Implementation,Chemicals/Oil/Gas/Resources,North America,Fees,Implementation,SMB,6/1/2024
+2624,Walmart - E-Auction App Development,CPG & Retail,North America,Fees,Services,Enterprise,7/1/2023
+3601,Wartsila - GEP Assist License,Automotive and Industrial,Europe,Fees,License,Enterprise,8/1/2025
+3602,Wartsila - Digital Category Card License,Automotive and Industrial,Europe,Fees,License,Enterprise,8/1/2025
+3357,Wieland - MI License Fees,Other Services,Europe,Fees,License,SMB,12/1/2024
+3358,Wieland - MI Implementation Fees,Other Services,Europe,Fees,Implementation,SMB,12/1/2024
+2844,Westrock - MSP License Fees,Automotive and Industrial,North America,Fees,License,Enterprise,11/1/2023
+2794,Westrock - MSP Implementation,Automotive and Industrial,North America,Fees,Implementation,Enterprise,10/1/2023
+3125,Weperform - P2P License Fees,CPG & Retail,Europe,Fees,License,SMB,8/1/2024
+3126,Weperform - P2P Implementation Fees,CPG & Retail,Europe,Fees,Implementation,SMB,9/1/2024
+3195,Whole Foods - Spend Analystics Implementation,CPG & Retail,North America,Fees,Services,Enterprise,9/1/2024
+3748,Whole Foods - Data Enrichment Processing Services,CPG & Retail,North America,Fees,Services,Enterprise,10/1/2025
+2899,World Economic Forum - S2P License Fees,Other Services,Europe,Fees,License,SMB,2/1/2024
+2900,World Economic Forum - S2P Implementation Fees,Other Services,Europe,Fees,Implementation,SMB,2/1/2024
+3264,World Economic Forum - Whatfix License,Other Services,Europe,Fees,License,SMB,10/1/2024
+3013,WPP - S2C License Fees,Telecom/Media/Tech,Europe,Fees,License,Enterprise,4/1/2024
+3014,WPP - S2C Implementation Fees,Telecom/Media/Tech,Europe,Fees,Implementation,Enterprise,4/1/2024
+847,Wyndham (WWO - spend/sourcing) - License Fees,Other Services,North America,Fees,License,Enterprise,1/1/2017
+848,Wyndham (WHG - spend/sourcing) - License Fees,Other Services,North America,Fees,License,Enterprise,4/1/2018
+850,Xylem Technology - License Fees,Automotive and Industrial,North America,Fees,License,Enterprise,1/1/2017
+851,"Xylem, Inc. - Implementation Fees",Automotive and Industrial,North America,Fees,Implementation,Enterprise,10/1/2017
+2806,Xylem Technology - Spend License + Evoqua,Automotive and Industrial,North America,Fees,License,Enterprise,1/1/2024
+861,Xylem Technology - P2P Tool & Buyer Portal - License Fees,Automotive and Industrial,North America,Fees,License,Enterprise,1/1/2018
+2692,Xylem Technology - Chatbot License,Automotive and Industrial,North America,Fees,License,Enterprise,12/1/2022
+2903,Xylem - Digital Guide,Automotive and Industrial,North America,Fees,Services,Enterprise,1/1/2024
+1249,Xylem - Spend Analysis,Automotive and Industrial,North America,Fees,Services,Enterprise,1/1/2020
+2545,Xinergy - Sourcing License Fees & Cost Drivers,Automotive and Industrial,LATAM,Fees,License,Enterprise,5/1/2023
+864,YBS (Yorkshire Building Society) - Technology - Annex 1 - License Fees,BFSI,Europe,Fees,License,SMB,1/1/2017
+2426,CostDrivers/Datamark - license,Other Services,LATAM,Fees,License,SMB,7/1/2022

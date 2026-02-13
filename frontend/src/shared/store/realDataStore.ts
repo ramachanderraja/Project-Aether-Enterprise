@@ -179,6 +179,7 @@ export interface RawCustomerNameMapping {
 
 export interface RawSOWMapping {
   SOW_ID: string;
+  SOW_Name: string;
   Vertical: string;
   Region: string;
   Fees_Type: string;
@@ -361,6 +362,7 @@ export const useRealDataStore = create<RealDataState>((set, get) => ({
       // Parse SOW Mapping
       const sowMappings: RawSOWMapping[] = parseCSV(sowMappingText).map(row => ({
         SOW_ID: row['SOW_ID'] || '',
+        SOW_Name: (row['SOW Name'] || row['SOW_Name'] || '').trim(),
         Vertical: (row['Vertical'] || '').trim(),
         Region: (row['Region'] || '').trim(),
         Fees_Type: (row['Fees_Type'] || '').trim(),

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -1103,6 +1103,27 @@ export default function RevenuePage() {
 
   // Customers
   const [show2026RenewalsOnly, setShow2026RenewalsOnly] = useState(false);
+  const [expandedCustomers, setExpandedCustomers] = useState<Set<string>>(new Set());
+  const [show2026RenewalRiskOnly, setShow2026RenewalRiskOnly] = useState(false);
+  const [selectedRiskFilter, setSelectedRiskFilter] = useState<string | null>(null);
+  const [selectedRenewalMonth, setSelectedRenewalMonth] = useState<number | null>(null);
+
+  const toggleCustomerExpand = (customerName: string) => {
+    setExpandedCustomers(prev => {
+      const next = new Set(prev);
+      if (next.has(customerName)) next.delete(customerName);
+      else next.add(customerName);
+      return next;
+    });
+  };
+
+  // Overview tab cross-interaction filters
+  const [overviewCategoryFilter, setOverviewCategoryFilter] = useState<string | null>(null);
+  const [overviewRegionFilter, setOverviewRegionFilter] = useState<string | null>(null);
+  const [overviewVerticalFilter, setOverviewVerticalFilter] = useState<string | null>(null);
+
+  // Movement tab cross-interaction filter
+  const [movementTypeFilter, setMovementTypeFilter] = useState<string | null>(null);
 
   // Sorting
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
@@ -1713,19 +1734,326 @@ export default function RevenuePage() {
     return Object.entries(distribution).map(([name, value]) => ({ name, value }));
   }, [renewals2026]);
 
+  // Customer summary with SOW-level breakdown from real ARR snapshot data
+  interface SOWDetail {
+    sowId: string;
+    sowName: string;
+    endingARR: number;
+    contractEndDate: string;
+    renewalRisk: string;
+    contractStartDate: string;
+    quantumSmart: string;
+    region: string;
+    vertical: string;
+    segment: string;
+  }
+
+  interface CustomerSummary {
+    customerName: string;
+    totalARR: number;
+    region: string;
+    vertical: string;
+    segment: string;
+    sowCount: number;
+    sows: SOWDetail[];
+    earliestRenewalDate: string;
+    hasRenewalRisk: boolean;
+    highestRisk: string;
+  }
+
+  const customerSummaryWithSOWs = useMemo(() => {
+    if (!realData.isLoaded || realData.arrSnapshots.length === 0) return [];
+
+    // Use selectedARRMonth to get the right snapshot
+    const targetMonth = selectedARRMonth;
+
+    // Group ARR snapshot rows for the target month by customer
+    const customerMap = new Map<string, { totalARR: number; region: string; vertical: string; segment: string; sows: SOWDetail[] }>();
+
+    realData.arrSnapshots.forEach(row => {
+      const rowMonth = row.Snapshot_Month.slice(0, 7);
+      if (rowMonth !== targetMonth) return;
+      if (!arrRowPassesFilters(row)) return;
+      if (row.Ending_ARR === 0 && row.Starting_ARR === 0) return; // Skip zero-ARR rows
+
+      const sowMapping = realData.sowMappingIndex[row.SOW_ID];
+      const sowName = sowMapping?.SOW_Name || `SOW ${row.SOW_ID}`;
+
+      const sowDetail: SOWDetail = {
+        sowId: row.SOW_ID,
+        sowName,
+        endingARR: row.Ending_ARR,
+        contractEndDate: row.Contract_End_Date || '',
+        renewalRisk: row.Renewal_Risk || '',
+        contractStartDate: row.Contract_Start_Date || (sowMapping?.Start_Date || ''),
+        quantumSmart: row.Quantum_SMART || '',
+        region: row.Region || (sowMapping ? normalizeRegion(sowMapping.Region) : ''),
+        vertical: row.Vertical || (sowMapping?.Vertical || ''),
+        segment: row.Segment || (sowMapping?.Segment_Type || ''),
+      };
+
+      const existing = customerMap.get(row.Customer_Name);
+      if (existing) {
+        existing.totalARR += row.Ending_ARR;
+        existing.sows.push(sowDetail);
+        // Use most common region/vertical/segment
+        if (!existing.region && sowDetail.region) existing.region = sowDetail.region;
+        if (!existing.vertical && sowDetail.vertical) existing.vertical = sowDetail.vertical;
+        if (!existing.segment && sowDetail.segment) existing.segment = sowDetail.segment;
+      } else {
+        customerMap.set(row.Customer_Name, {
+          totalARR: row.Ending_ARR,
+          region: sowDetail.region,
+          vertical: sowDetail.vertical,
+          segment: sowDetail.segment,
+          sows: [sowDetail],
+        });
+      }
+    });
+
+    // Build customer summaries
+    const riskOrder: Record<string, number> = { 'Lost': 5, 'High Risk': 4, 'Mgmt Approval': 3, 'In Process': 2, 'Win/PO': 1 };
+    const summaries: CustomerSummary[] = [];
+    customerMap.forEach((data, customerName) => {
+      // Sort SOWs by ARR descending
+      data.sows.sort((a, b) => b.endingARR - a.endingARR);
+
+      // Determine earliest renewal date and highest risk across SOWs
+      let earliestDate = '';
+      let highestRisk = '';
+      let highestRiskOrder = 0;
+      let hasRisk = false;
+
+      data.sows.forEach(sow => {
+        if (sow.contractEndDate) {
+          if (!earliestDate || sow.contractEndDate < earliestDate) {
+            earliestDate = sow.contractEndDate;
+          }
+        }
+        if (sow.renewalRisk) {
+          hasRisk = true;
+          const order = riskOrder[sow.renewalRisk] || 0;
+          if (order > highestRiskOrder) {
+            highestRiskOrder = order;
+            highestRisk = sow.renewalRisk;
+          }
+        }
+      });
+
+      summaries.push({
+        customerName,
+        totalARR: Math.round(data.totalARR),
+        region: data.region,
+        vertical: data.vertical,
+        segment: data.segment,
+        sowCount: data.sows.length,
+        sows: data.sows,
+        earliestRenewalDate: earliestDate,
+        hasRenewalRisk: hasRisk,
+        highestRisk,
+      });
+    });
+
+    // Sort by total ARR descending
+    summaries.sort((a, b) => b.totalARR - a.totalARR);
+    return summaries;
+  }, [realData.isLoaded, realData.arrSnapshots, realData.sowMappingIndex, selectedARRMonth, arrRowPassesFilters]);
+
+  // Filtered customer summaries for 2026 renewals
+  const customerSummary2026Renewals = useMemo(() => {
+    return customerSummaryWithSOWs.filter(c =>
+      c.sows.some(sow => sow.contractEndDate && sow.contractEndDate.startsWith('2026'))
+    );
+  }, [customerSummaryWithSOWs]);
+
+  // Filtered for renewal risk only (High Risk and Lost)
+  const RISK_ONLY_CATEGORIES = ['High Risk', 'Lost'];
+  const customerSummaryRiskOnly = useMemo(() => {
+    return customerSummary2026Renewals.filter(c =>
+      c.sows.some(sow =>
+        sow.contractEndDate?.startsWith('2026') && RISK_ONLY_CATEGORIES.includes(sow.renewalRisk)
+      )
+    );
+  }, [customerSummary2026Renewals]);
+
+  // Risk color mapping for all categories
+  const RISK_COLORS: Record<string, string> = {
+    'Win/PO': COLORS.success,
+    'In Process': COLORS.primary,
+    'Mgmt Approval': COLORS.warning,
+    'High Risk': '#f97316',
+    'Lost': COLORS.danger,
+  };
+
+  // Renewal risk distribution from real data - dynamic, all categories
+  const realRenewalRiskDistribution = useMemo(() => {
+    const distribution: Record<string, number> = {};
+    customerSummary2026Renewals.forEach(c => {
+      c.sows.forEach(sow => {
+        if (sow.contractEndDate?.startsWith('2026') && sow.renewalRisk) {
+          // Skip bad data (CSV parse artifacts like names starting with quotes, #N/A)
+          const risk = sow.renewalRisk.trim();
+          if (!risk || risk.startsWith('"') || risk === '#N/A') return;
+          distribution[risk] = (distribution[risk] || 0) + 1;
+        }
+      });
+    });
+    // Order: High Risk, Lost, Mgmt Approval, In Process, Win/PO, then anything else
+    const order = ['High Risk', 'Lost', 'Mgmt Approval', 'In Process', 'Win/PO'];
+    const entries = Object.entries(distribution);
+    entries.sort((a, b) => {
+      const ai = order.indexOf(a[0]);
+      const bi = order.indexOf(b[0]);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+    return entries.map(([name, value]) => ({ name, value }));
+  }, [customerSummary2026Renewals]);
+
+  // Sorted customer summary list
+  const sortedCustomerSummary = useMemo(() => {
+    const source = show2026RenewalsOnly
+      ? (show2026RenewalRiskOnly ? customerSummaryRiskOnly : customerSummary2026Renewals)
+      : customerSummaryWithSOWs;
+
+    if (!sortConfig) return source;
+
+    return [...source].sort((a: any, b: any) => {
+      const keyMap: Record<string, string> = { name: 'customerName', currentARR: 'totalARR' };
+      const sortKey = keyMap[sortConfig.key] || sortConfig.key;
+      let aVal = a[sortKey];
+      let bVal = b[sortKey];
+
+      if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = bVal?.toLowerCase() || '';
+      }
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [customerSummaryWithSOWs, customerSummary2026Renewals, customerSummaryRiskOnly, show2026RenewalsOnly, show2026RenewalRiskOnly, sortConfig]);
+
+  // Auto-expand all customer rows when 2026 Renewals or Risk filter toggles on
+  useEffect(() => {
+    if (show2026RenewalsOnly) {
+      const source = show2026RenewalRiskOnly ? customerSummaryRiskOnly : customerSummary2026Renewals;
+      setExpandedCustomers(new Set(source.map(c => c.customerName)));
+    }
+  }, [show2026RenewalsOnly, show2026RenewalRiskOnly, customerSummary2026Renewals, customerSummaryRiskOnly]);
+
+  // Reset cross-interaction filters when switching tabs
+  useEffect(() => {
+    setOverviewCategoryFilter(null);
+    setOverviewRegionFilter(null);
+    setOverviewVerticalFilter(null);
+    setMovementTypeFilter(null);
+    setSelectedRiskFilter(null);
+    setSelectedRenewalMonth(null);
+  }, [activeTab]);
+
+  // Overview cross-filtered data
+  const overviewFilteredCustomers = useMemo(() => {
+    if (!overviewCategoryFilter && !overviewRegionFilter && !overviewVerticalFilter) return filteredCustomers;
+    return filteredCustomers.filter(c => {
+      if (overviewRegionFilter && c.region !== overviewRegionFilter) return false;
+      if (overviewVerticalFilter && c.vertical !== overviewVerticalFilter) return false;
+      if (overviewCategoryFilter) {
+        const hasCategory = Object.entries(c.productARR).some(([subCat]) => {
+          const cat = realData.productCategoryIndex[subCat] || 'Other';
+          return cat === overviewCategoryFilter;
+        });
+        if (!hasCategory) return false;
+      }
+      return true;
+    });
+  }, [filteredCustomers, overviewCategoryFilter, overviewRegionFilter, overviewVerticalFilter, realData.productCategoryIndex]);
+
+  // Cross-filtered Overview charts
+  const crossFilteredByCategory = useMemo(() => {
+    const data: Record<string, number> = {};
+    overviewFilteredCustomers.forEach(c => {
+      Object.entries(c.productARR).forEach(([sub, arr]) => {
+        const cat = realData.productCategoryIndex[sub] || 'Other';
+        data[cat] = (data[cat] || 0) + arr;
+      });
+    });
+    return Object.entries(data).map(([name, arr]) => ({ name, arr })).sort((a, b) => b.arr - a.arr);
+  }, [overviewFilteredCustomers, realData.productCategoryIndex]);
+
+  const crossFilteredByRegion = useMemo(() => {
+    const data: Record<string, number> = {};
+    overviewFilteredCustomers.forEach(c => { data[c.region] = (data[c.region] || 0) + c.currentARR; });
+    return Object.entries(data).map(([region, arr]) => ({ region, arr })).sort((a, b) => b.arr - a.arr);
+  }, [overviewFilteredCustomers]);
+
+  const crossFilteredByVertical = useMemo(() => {
+    const data: Record<string, number> = {};
+    overviewFilteredCustomers.forEach(c => { data[c.vertical] = (data[c.vertical] || 0) + c.currentARR; });
+    return Object.entries(data).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [overviewFilteredCustomers]);
+
+  const crossFilteredCurrentARR = useMemo(() => {
+    return overviewFilteredCustomers.filter(c => c.currentARR > 0).reduce((sum, c) => sum + c.currentARR, 0);
+  }, [overviewFilteredCustomers]);
+
+  // Movement tab cross-filtered customers
+  const movementFilteredCustomers = useMemo(() => {
+    if (!movementTypeFilter) return customersWithMovement;
+    return customersWithMovement.filter(c => {
+      if (movementTypeFilter === 'New Business') return c.movementType === 'New';
+      if (movementTypeFilter === 'Expansion') return c.movementType === 'Expansion';
+      if (movementTypeFilter === 'Schedule Change') return c.movementType === 'ScheduleChange';
+      if (movementTypeFilter === 'Contraction') return c.movementType === 'Contraction';
+      if (movementTypeFilter === 'Churn') return c.movementType === 'Churn';
+      return true;
+    });
+  }, [customersWithMovement, movementTypeFilter]);
+
   // Render Overview Tab
+  const hasOverviewFilter = overviewCategoryFilter || overviewRegionFilter || overviewVerticalFilter;
   const renderOverviewTab = () => (
     <div className="space-y-6">
+      {/* Active Cross-Filter Indicator */}
+      {hasOverviewFilter && (
+        <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <span className="text-sm text-blue-700 font-medium">Active filters:</span>
+          {overviewCategoryFilter && (
+            <button onClick={() => setOverviewCategoryFilter(null)} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200">
+              Category: {overviewCategoryFilter} <span className="ml-1">&times;</span>
+            </button>
+          )}
+          {overviewRegionFilter && (
+            <button onClick={() => setOverviewRegionFilter(null)} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800 hover:bg-teal-200">
+              Region: {overviewRegionFilter} <span className="ml-1">&times;</span>
+            </button>
+          )}
+          {overviewVerticalFilter && (
+            <button onClick={() => setOverviewVerticalFilter(null)} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200">
+              Vertical: {overviewVerticalFilter} <span className="ml-1">&times;</span>
+            </button>
+          )}
+          <button onClick={() => { setOverviewCategoryFilter(null); setOverviewRegionFilter(null); setOverviewVerticalFilter(null); }}
+            className="ml-auto text-xs text-blue-600 hover:text-blue-800 underline">Clear all</button>
+        </div>
+      )}
+
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="card p-5">
           <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">
             Current ARR{currentARRMonthLabel ? ` (${currentARRMonthLabel})` : ''}
           </p>
-          <p className="text-3xl font-bold text-secondary-900">{formatCurrency(metrics.currentARR)}</p>
-          <p className={`text-sm mt-1 ${metrics.ytdGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {formatPercent(metrics.ytdGrowth)} YTD Growth
-          </p>
+          <p className="text-3xl font-bold text-secondary-900">{formatCurrency(hasOverviewFilter ? crossFilteredCurrentARR : metrics.currentARR)}</p>
+          {hasOverviewFilter ? (
+            <p className="text-sm mt-1 text-blue-600">Filtered from {formatCurrency(metrics.currentARR)}</p>
+          ) : (
+            <p className={`text-sm mt-1 ${metrics.ytdGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {formatPercent(metrics.ytdGrowth)} YTD Growth
+            </p>
+          )}
         </div>
         <div className="card p-5">
           <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">
@@ -1821,63 +2149,87 @@ export default function RevenuePage() {
       </ChartWrapper>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* ARR by Category */}
+        {/* ARR by Category - clickable bars */}
         <ChartWrapper
-          title="ARR by Category"
-          data={arrByCategory}
+          title={`ARR by Category${overviewCategoryFilter ? ` (${overviewCategoryFilter})` : ''}`}
+          data={hasOverviewFilter ? crossFilteredByCategory : arrByCategory}
           filename="arr_by_category"
         >
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 layout="vertical"
-                data={arrByCategory.slice(0, 10)}
+                data={(hasOverviewFilter ? crossFilteredByCategory : arrByCategory).slice(0, 10)}
                 margin={{ top: 0, right: 30, left: 100, bottom: 0 }}
+                onClick={(data) => {
+                  if (data?.activePayload?.[0]?.payload?.name) {
+                    const clicked = data.activePayload[0].payload.name;
+                    setOverviewCategoryFilter(prev => prev === clicked ? null : clicked);
+                  }
+                }}
+                style={{ cursor: 'pointer' }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(v) => formatCurrency(v)} />
                 <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#64748b' }} width={95} />
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                <Bar dataKey="arr" fill={COLORS.primary} radius={[0, 4, 4, 0]} />
+                <Bar dataKey="arr" radius={[0, 4, 4, 0]}>
+                  {(hasOverviewFilter ? crossFilteredByCategory : arrByCategory).slice(0, 10).map((entry, i) => (
+                    <Cell key={i} fill={overviewCategoryFilter === entry.name ? '#1e40af' : COLORS.primary} opacity={overviewCategoryFilter && overviewCategoryFilter !== entry.name ? 0.4 : 1} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
+          <p className="text-[10px] text-secondary-400 text-center mt-1">Click a bar to filter</p>
         </ChartWrapper>
 
-        {/* ARR by Region */}
+        {/* ARR by Region - clickable bars */}
         <ChartWrapper
-          title="ARR by Region"
-          data={arrByRegion}
+          title={`ARR by Region${overviewRegionFilter ? ` (${overviewRegionFilter})` : ''}`}
+          data={hasOverviewFilter ? crossFilteredByRegion : arrByRegion}
           filename="arr_by_region"
         >
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 layout="vertical"
-                data={arrByRegion}
+                data={hasOverviewFilter ? crossFilteredByRegion : arrByRegion}
                 margin={{ top: 0, right: 30, left: 100, bottom: 0 }}
+                onClick={(data) => {
+                  if (data?.activePayload?.[0]?.payload?.region) {
+                    const clicked = data.activePayload[0].payload.region;
+                    setOverviewRegionFilter(prev => prev === clicked ? null : clicked);
+                  }
+                }}
+                style={{ cursor: 'pointer' }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(v) => formatCurrency(v)} />
                 <YAxis dataKey="region" type="category" tick={{ fontSize: 11, fill: '#64748b' }} width={95} />
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                <Bar dataKey="arr" fill={COLORS.teal} radius={[0, 4, 4, 0]} />
+                <Bar dataKey="arr" radius={[0, 4, 4, 0]}>
+                  {(hasOverviewFilter ? crossFilteredByRegion : arrByRegion).map((entry, i) => (
+                    <Cell key={i} fill={overviewRegionFilter === entry.region ? '#0f766e' : COLORS.teal} opacity={overviewRegionFilter && overviewRegionFilter !== entry.region ? 0.4 : 1} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
+          <p className="text-[10px] text-secondary-400 text-center mt-1">Click a bar to filter</p>
         </ChartWrapper>
 
-        {/* ARR by Vertical */}
+        {/* ARR by Vertical - clickable pie */}
         <ChartWrapper
-          title="ARR by Vertical"
-          data={arrByVertical}
+          title={`ARR by Vertical${overviewVerticalFilter ? ` (${overviewVerticalFilter})` : ''}`}
+          data={hasOverviewFilter ? crossFilteredByVertical : arrByVertical}
           filename="arr_by_vertical"
         >
           <div className="h-64 lg:col-span-2">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={arrByVertical}
+                  data={hasOverviewFilter ? crossFilteredByVertical : arrByVertical}
                   cx="50%"
                   cy="50%"
                   labelLine={true}
@@ -1885,15 +2237,28 @@ export default function RevenuePage() {
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
+                  onClick={(_, index) => {
+                    const vertData = hasOverviewFilter ? crossFilteredByVertical : arrByVertical;
+                    const clicked = vertData[index]?.name;
+                    if (clicked) setOverviewVerticalFilter(prev => prev === clicked ? null : clicked);
+                  }}
+                  style={{ cursor: 'pointer' }}
                 >
-                  {arrByVertical.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                  {(hasOverviewFilter ? crossFilteredByVertical : arrByVertical).map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={PIE_COLORS[index % PIE_COLORS.length]}
+                      opacity={overviewVerticalFilter && overviewVerticalFilter !== entry.name ? 0.3 : 1}
+                      stroke={overviewVerticalFilter === entry.name ? '#1e293b' : 'none'}
+                      strokeWidth={overviewVerticalFilter === entry.name ? 2 : 0}
+                    />
                   ))}
                 </Pie>
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
               </PieChart>
             </ResponsiveContainer>
           </div>
+          <p className="text-[10px] text-secondary-400 text-center mt-1">Click a segment to filter</p>
         </ChartWrapper>
       </div>
     </div>
@@ -1922,36 +2287,41 @@ export default function RevenuePage() {
         </div>
       </div>
 
-      {/* Movement Summary Cards */}
+      {/* Movement Summary Cards - clickable to filter tables */}
+      {movementTypeFilter && (
+        <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <span className="text-sm text-blue-700 font-medium">Filtered by:</span>
+          <button onClick={() => setMovementTypeFilter(null)} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200">
+            {movementTypeFilter} <span className="ml-1">&times;</span>
+          </button>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-        <div className="card p-5">
+        <div className={`card p-5 cursor-pointer transition-all ${movementTypeFilter === null ? '' : 'opacity-50'}`}
+          onClick={() => setMovementTypeFilter(null)}>
           <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Net ARR Change</p>
           <p className={`text-2xl font-bold ${arrMovementData.netChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
             {arrMovementData.netChange >= 0 ? '+' : ''}{formatCurrency(arrMovementData.netChange)}
           </p>
         </div>
-        <div className="card p-5 border-l-4 border-green-500">
-          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">New Business</p>
-          <p className="text-2xl font-bold text-green-600">+{formatCurrency(arrMovementData.newBusiness)}</p>
-        </div>
-        <div className="card p-5 border-l-4 border-blue-500">
-          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Expansion</p>
-          <p className="text-2xl font-bold text-blue-600">+{formatCurrency(arrMovementData.expansion)}</p>
-        </div>
-        <div className="card p-5 border-l-4 border-purple-500">
-          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Schedule Change</p>
-          <p className={`text-2xl font-bold ${arrMovementData.scheduleChange >= 0 ? 'text-purple-600' : 'text-purple-600'}`}>
-            {arrMovementData.scheduleChange >= 0 ? '+' : ''}{formatCurrency(arrMovementData.scheduleChange)}
-          </p>
-        </div>
-        <div className="card p-5 border-l-4 border-yellow-500">
-          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Contraction</p>
-          <p className="text-2xl font-bold text-yellow-600">{formatCurrency(arrMovementData.contraction)}</p>
-        </div>
-        <div className="card p-5 border-l-4 border-red-500">
-          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Churn</p>
-          <p className="text-2xl font-bold text-red-600">{formatCurrency(arrMovementData.churn)}</p>
-        </div>
+        {([
+          { key: 'New Business', value: arrMovementData.newBusiness, border: 'border-green-500', text: 'text-green-600', prefix: '+' },
+          { key: 'Expansion', value: arrMovementData.expansion, border: 'border-blue-500', text: 'text-blue-600', prefix: '+' },
+          { key: 'Schedule Change', value: arrMovementData.scheduleChange, border: 'border-purple-500', text: 'text-purple-600', prefix: arrMovementData.scheduleChange >= 0 ? '+' : '' },
+          { key: 'Contraction', value: arrMovementData.contraction, border: 'border-yellow-500', text: 'text-yellow-600', prefix: '' },
+          { key: 'Churn', value: arrMovementData.churn, border: 'border-red-500', text: 'text-red-600', prefix: '' },
+        ] as const).map((card) => (
+          <div
+            key={card.key}
+            className={`card p-5 border-l-4 ${card.border} cursor-pointer transition-all hover:shadow-md ${
+              movementTypeFilter === card.key ? 'ring-2 ring-primary-500 shadow-md' : movementTypeFilter ? 'opacity-50' : ''
+            }`}
+            onClick={() => setMovementTypeFilter(prev => prev === card.key ? null : card.key)}
+          >
+            <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">{card.key}</p>
+            <p className={`text-2xl font-bold ${card.text}`}>{card.prefix}{formatCurrency(card.value)}</p>
+          </div>
+        ))}
       </div>
 
       {/* ARR Bridge / Floating Waterfall */}
@@ -2083,9 +2453,11 @@ export default function RevenuePage() {
       {/* Movement Details Table */}
       <div className="card overflow-hidden">
         <div className="p-5 border-b border-secondary-200 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-secondary-900">ARR Movement Details</h2>
+          <h2 className="text-lg font-semibold text-secondary-900">
+            ARR Movement Details{movementTypeFilter ? ` — ${movementTypeFilter}` : ''} ({movementFilteredCustomers.length})
+          </h2>
           <button
-            onClick={() => exportToCSV(customersWithMovement, 'arr_movement_details')}
+            onClick={() => exportToCSV(movementFilteredCustomers, 'arr_movement_details')}
             className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
           >
             Export
@@ -2108,7 +2480,7 @@ export default function RevenuePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-secondary-100">
-              {customersWithMovement.slice(0, 50).map((customer) => (
+              {movementFilteredCustomers.slice(0, 50).map((customer) => (
                 <tr
                   key={customer.id}
                   className={`${
@@ -2160,7 +2532,7 @@ export default function RevenuePage() {
             <h2 className="text-lg font-semibold text-secondary-900">Top Expansions</h2>
             <button
               onClick={() => exportToCSV(
-                customersWithMovement.filter(c => c.movementType === 'Expansion' || c.movementType === 'New').slice(0, 10),
+                movementFilteredCustomers.filter(c => c.movementType === 'Expansion' || c.movementType === 'New').slice(0, 10),
                 'top_expansions'
               )}
               className="px-2 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
@@ -2169,7 +2541,7 @@ export default function RevenuePage() {
             </button>
           </div>
           <div className="space-y-3">
-            {customersWithMovement
+            {movementFilteredCustomers
               .filter(c => c.movementType === 'Expansion' || c.movementType === 'New')
               .sort((a, b) => b.change - a.change)
               .slice(0, 5)
@@ -2187,7 +2559,7 @@ export default function RevenuePage() {
                   </div>
                 </div>
               ))}
-            {customersWithMovement.filter(c => c.movementType === 'Expansion' || c.movementType === 'New').length === 0 && (
+            {movementFilteredCustomers.filter(c => c.movementType === 'Expansion' || c.movementType === 'New').length === 0 && (
               <p className="text-sm text-secondary-400 text-center py-4">No expansions in this period</p>
             )}
           </div>
@@ -2199,7 +2571,7 @@ export default function RevenuePage() {
             <h2 className="text-lg font-semibold text-secondary-900">Top Contractions & Churns</h2>
             <button
               onClick={() => exportToCSV(
-                customersWithMovement.filter(c => c.movementType === 'Contraction' || c.movementType === 'Churn').slice(0, 10),
+                movementFilteredCustomers.filter(c => c.movementType === 'Contraction' || c.movementType === 'Churn').slice(0, 10),
                 'top_contractions'
               )}
               className="px-2 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
@@ -2208,7 +2580,7 @@ export default function RevenuePage() {
             </button>
           </div>
           <div className="space-y-3">
-            {customersWithMovement
+            {movementFilteredCustomers
               .filter(c => c.movementType === 'Contraction' || c.movementType === 'Churn')
               .sort((a, b) => a.change - b.change)
               .slice(0, 5)
@@ -2224,7 +2596,7 @@ export default function RevenuePage() {
                   </div>
                 </div>
               ))}
-            {customersWithMovement.filter(c => c.movementType === 'Contraction' || c.movementType === 'Churn').length === 0 && (
+            {movementFilteredCustomers.filter(c => c.movementType === 'Contraction' || c.movementType === 'Churn').length === 0 && (
               <p className="text-sm text-secondary-400 text-center py-4">No contractions or churns in this period</p>
             )}
           </div>
@@ -2267,14 +2639,52 @@ export default function RevenuePage() {
 
   // Render Customers Tab
   const renderCustomersTab = () => {
-    // Use sortedCustomersList for proper sorting support
-    const displayedCustomers = show2026RenewalsOnly
-      ? renewals2026
-      : sortedCustomersList;
+    const useRealSummary = customerSummaryWithSOWs.length > 0;
+
+    // Apply pie chart risk filter and calendar month filter to the sorted list
+    let displayedSummary = sortedCustomerSummary;
+    if (selectedRiskFilter && show2026RenewalsOnly) {
+      displayedSummary = displayedSummary.filter(c =>
+        c.sows.some(s => s.contractEndDate?.startsWith('2026') && s.renewalRisk === selectedRiskFilter)
+      );
+    }
+    if (selectedRenewalMonth !== null && show2026RenewalsOnly) {
+      displayedSummary = displayedSummary.filter(c =>
+        c.sows.some(s => {
+          if (!s.contractEndDate?.startsWith('2026')) return false;
+          try { return new Date(s.contractEndDate).getMonth() === selectedRenewalMonth; } catch { return false; }
+        })
+      );
+    }
+
+    // Helper to format date safely
+    const fmtDate = (d: string) => {
+      if (!d) return '—';
+      try {
+        return new Date(d).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      } catch { return d; }
+    };
+
+    // Renewal risk badge
+    const riskBadge = (risk: string) => {
+      if (!risk) return null;
+      const badgeColors: Record<string, string> = {
+        'Win/PO': 'bg-green-100 text-green-800',
+        'In Process': 'bg-blue-100 text-blue-800',
+        'Mgmt Approval': 'bg-yellow-100 text-yellow-800',
+        'High Risk': 'bg-orange-100 text-orange-800',
+        'Lost': 'bg-red-100 text-red-800',
+      };
+      const colors = badgeColors[risk] || 'bg-secondary-100 text-secondary-800';
+      return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${colors}`}>{risk}</span>;
+    };
+
+    // 2026 Renewal calendar data from real customer summaries
+    const calendarData = show2026RenewalsOnly ? customerSummary2026Renewals : [];
 
     return (
       <div className="space-y-6">
-        {/* 2026 Renewals Toggle */}
+        {/* Filter Toggles */}
         <div className="card p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -2282,14 +2692,29 @@ export default function RevenuePage() {
                 <input
                   type="checkbox"
                   checked={show2026RenewalsOnly}
-                  onChange={(e) => setShow2026RenewalsOnly(e.target.checked)}
+                  onChange={(e) => { setShow2026RenewalsOnly(e.target.checked); if (!e.target.checked) { setShow2026RenewalRiskOnly(false); setSelectedRiskFilter(null); setSelectedRenewalMonth(null); } }}
                   className="w-4 h-4 rounded border-secondary-300 text-primary-600 focus:ring-primary-500"
                 />
                 <span className="text-sm font-medium text-secondary-700">Show 2026 Renewals Only</span>
               </label>
+              {show2026RenewalsOnly && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={show2026RenewalRiskOnly}
+                    onChange={(e) => setShow2026RenewalRiskOnly(e.target.checked)}
+                    className="w-4 h-4 rounded border-secondary-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  <span className="text-sm font-medium text-secondary-700">Renewal Risk Only</span>
+                </label>
+              )}
             </div>
             <button
-              onClick={() => exportToCSV(displayedCustomers, 'customers')}
+              onClick={() => exportToCSV(displayedSummary.map(c => ({
+                Customer: c.customerName, 'Total ARR': c.totalARR, SOWs: c.sowCount,
+                Region: c.region, Vertical: c.vertical,
+                'Earliest Renewal': c.earliestRenewalDate, Risk: c.highestRisk,
+              })), 'customers')}
               className="px-4 py-2 border border-secondary-200 rounded-lg text-sm font-medium text-secondary-600 hover:bg-secondary-50"
             >
               Export
@@ -2297,19 +2722,38 @@ export default function RevenuePage() {
           </div>
         </div>
 
+        {/* Active interaction filters */}
+        {show2026RenewalsOnly && (selectedRiskFilter || selectedRenewalMonth !== null) && (
+          <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <span className="text-sm text-blue-700 font-medium">Filtered by:</span>
+            {selectedRiskFilter && (
+              <button onClick={() => setSelectedRiskFilter(null)} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 hover:bg-orange-200">
+                Risk: {selectedRiskFilter} <span className="ml-1">&times;</span>
+              </button>
+            )}
+            {selectedRenewalMonth !== null && (
+              <button onClick={() => setSelectedRenewalMonth(null)} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200">
+                Month: {new Date(2026, selectedRenewalMonth, 1).toLocaleString('en-US', { month: 'short' })} 2026 <span className="ml-1">&times;</span>
+              </button>
+            )}
+            <button onClick={() => { setSelectedRiskFilter(null); setSelectedRenewalMonth(null); }}
+              className="ml-auto text-xs text-blue-600 hover:text-blue-800 underline">Clear all</button>
+          </div>
+        )}
+
         {/* 2026 Renewal Risk Distribution */}
-        {show2026RenewalsOnly && (
+        {show2026RenewalsOnly && useRealSummary && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <ChartWrapper
-              title="2026 Renewal Risk Distribution"
-              data={renewalRiskDistribution}
+              title={`2026 Renewal Risk Distribution${selectedRiskFilter ? ` (${selectedRiskFilter})` : ''}`}
+              data={realRenewalRiskDistribution}
               filename="renewal_risk_distribution"
             >
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={renewalRiskDistribution}
+                      data={realRenewalRiskDistribution}
                       cx="50%"
                       cy="50%"
                       innerRadius={40}
@@ -2317,138 +2761,221 @@ export default function RevenuePage() {
                       fill="#8884d8"
                       dataKey="value"
                       label={({ name, value }) => `${name}: ${value}`}
+                      onClick={(_, idx) => {
+                        const clicked = realRenewalRiskDistribution[idx]?.name;
+                        if (clicked) setSelectedRiskFilter(prev => prev === clicked ? null : clicked);
+                      }}
+                      style={{ cursor: 'pointer' }}
                     >
-                      <Cell fill={COLORS.success} />
-                      <Cell fill={COLORS.warning} />
-                      <Cell fill="#f97316" />
-                      <Cell fill={COLORS.danger} />
+                      {realRenewalRiskDistribution.map((entry, idx) => {
+                        const baseColor = RISK_COLORS[entry.name] || COLORS.gray;
+                        return (
+                          <Cell key={idx} fill={baseColor}
+                            opacity={selectedRiskFilter && selectedRiskFilter !== entry.name ? 0.3 : 1}
+                            stroke={selectedRiskFilter === entry.name ? '#1e293b' : 'none'}
+                            strokeWidth={selectedRiskFilter === entry.name ? 2 : 0}
+                          />
+                        );
+                      })}
                     </Pie>
                     <Tooltip />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
+              <p className="text-[10px] text-secondary-400 text-center mt-1">Click a segment to filter</p>
             </ChartWrapper>
 
             <div className="card p-6 lg:col-span-2">
               <h2 className="text-lg font-semibold text-secondary-900 mb-4">2026 Renewal Calendar</h2>
               <div className="grid grid-cols-12 gap-1">
                 {Array.from({ length: 12 }, (_, i) => {
-                  const monthRenewals = renewals2026.filter(c => {
-                    const month = new Date(c.renewalDate).getMonth();
-                    return month === i;
-                  });
-                  const totalARR = monthRenewals.reduce((sum, c) => sum + c.currentARR, 0);
-                  const hasHighRisk = monthRenewals.some(c => c.renewalRiskLevel === 'High' || c.renewalRiskLevel === 'Critical');
+                  // Count SOWs with end dates in this month of 2026
+                  const monthSOWs = calendarData.flatMap(c =>
+                    c.sows.filter(s => {
+                      if (!s.contractEndDate?.startsWith('2026')) return false;
+                      try { return new Date(s.contractEndDate).getMonth() === i; } catch { return false; }
+                    })
+                  );
+                  const totalARR = monthSOWs.reduce((sum, s) => sum + s.endingARR, 0);
+                  const hasHighRisk = monthSOWs.some(s => s.renewalRisk === 'High Risk' || s.renewalRisk === 'Lost');
+                  const isSelected = selectedRenewalMonth === i;
 
                   return (
                     <div
                       key={i}
-                      className={`p-2 rounded text-center ${
-                        hasHighRisk ? 'bg-red-100' : monthRenewals.length > 0 ? 'bg-blue-100' : 'bg-secondary-100'
-                      }`}
+                      onClick={() => monthSOWs.length > 0 && setSelectedRenewalMonth(prev => prev === i ? null : i)}
+                      className={`p-2 rounded text-center transition-all ${
+                        monthSOWs.length > 0 ? 'cursor-pointer hover:shadow-md' : ''
+                      } ${
+                        isSelected ? 'ring-2 ring-primary-500 shadow-md' :
+                        selectedRenewalMonth !== null && !isSelected ? 'opacity-40' :
+                        hasHighRisk ? 'bg-red-100' : monthSOWs.length > 0 ? 'bg-blue-100' : 'bg-secondary-100'
+                      } ${isSelected ? (hasHighRisk ? 'bg-red-200' : 'bg-blue-200') : ''}`}
                     >
                       <p className="text-xs font-medium text-secondary-600">
                         {new Date(2026, i, 1).toLocaleString('en-US', { month: 'short' })}
                       </p>
-                      <p className="text-sm font-bold text-secondary-900">{monthRenewals.length}</p>
+                      <p className="text-sm font-bold text-secondary-900">{monthSOWs.length}</p>
                       <p className="text-[10px] text-secondary-500">{formatCurrency(totalARR)}</p>
                     </div>
                   );
                 })}
               </div>
+              <p className="text-[10px] text-secondary-400 text-center mt-2">Click a month to filter the table below</p>
             </div>
           </div>
         )}
 
-        {/* Customer Table */}
-        <div className="card overflow-hidden">
-          <div className="p-5 border-b border-secondary-200">
-            <h2 className="text-lg font-semibold text-secondary-900">
-              {show2026RenewalsOnly ? '2026 Renewals' : 'All Customers'} ({displayedCustomers.length})
-            </h2>
-          </div>
-          <div className="overflow-x-auto max-h-[600px]">
-            <table className="w-full">
-              <thead className="bg-secondary-50 sticky top-0">
-                <tr>
-                  <SortableHeader label="Customer" sortKey="name" currentSort={sortConfig} onSort={handleSort} />
-                  <SortableHeader label="Current ARR" sortKey="currentARR" currentSort={sortConfig} onSort={handleSort} />
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Sub-Categories</th>
-                  <SortableHeader label="Region" sortKey="region" currentSort={sortConfig} onSort={handleSort} filterOptions={REGIONS} />
-                  <SortableHeader label="Vertical" sortKey="vertical" currentSort={sortConfig} onSort={handleSort} filterOptions={VERTICALS} />
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Contract Start</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Renewal Date</th>
-                  {show2026RenewalsOnly && (
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Renewal Risk</th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-secondary-100">
-                {displayedCustomers.slice(0, 50).map((customer) => (
-                  <tr key={customer.id} className="hover:bg-secondary-50">
-                    <td className="px-4 py-3 font-medium text-secondary-900">{customer.name}</td>
-                    <td className="px-4 py-3 text-right font-medium text-secondary-900">{formatCurrency(customer.currentARR)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {customer.products.slice(0, 2).map((p, i) => (
-                          <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-secondary-100 text-secondary-700">
-                            {p}
-                          </span>
-                        ))}
-                        {customer.products.length > 2 && (
-                          <span className="text-xs text-secondary-400">+{customer.products.length - 2}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-secondary-600">{customer.region}</td>
-                    <td className="px-4 py-3 text-secondary-600">{customer.vertical}</td>
-                    <td className="px-4 py-3 text-secondary-600">
-                      {new Date(customer.contractStartDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                    </td>
-                    <td className="px-4 py-3 text-secondary-600">
-                      {new Date(customer.renewalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </td>
+        {/* Customer Table with Expandable SOW Rows */}
+        {useRealSummary ? (
+          <div className="card overflow-hidden">
+            <div className="p-5 border-b border-secondary-200 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-secondary-900">
+                {show2026RenewalsOnly ? (show2026RenewalRiskOnly ? '2026 Renewal Risk' : '2026 Renewals') : 'All Customers'} ({displayedSummary.length})
+              </h2>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setExpandedCustomers(new Set(displayedSummary.map(c => c.customerName)))}
+                  className="px-3 py-1.5 text-xs font-medium border border-secondary-200 rounded-lg hover:bg-secondary-50 transition-colors"
+                >
+                  Expand All
+                </button>
+                <button
+                  onClick={() => setExpandedCustomers(new Set())}
+                  className="px-3 py-1.5 text-xs font-medium border border-secondary-200 rounded-lg hover:bg-secondary-50 transition-colors"
+                >
+                  Collapse All
+                </button>
+              </div>
+            </div>
+            <div className="overflow-x-auto max-h-[600px]">
+              <table className="w-full">
+                <thead className="bg-secondary-50 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-2 py-3 text-left text-xs font-semibold text-secondary-500 uppercase w-8"></th>
+                    <SortableHeader label="Customer" sortKey="name" currentSort={sortConfig} onSort={handleSort} />
+                    <SortableHeader label="Total ARR" sortKey="currentARR" currentSort={sortConfig} onSort={handleSort} />
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-secondary-500 uppercase">SOWs</th>
+                    <SortableHeader label="Region" sortKey="region" currentSort={sortConfig} onSort={handleSort} />
+                    <SortableHeader label="Vertical" sortKey="vertical" currentSort={sortConfig} onSort={handleSort} />
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Earliest Renewal</th>
                     {show2026RenewalsOnly && (
-                      <td className="px-4 py-3">
-                        {customer.renewalRiskLevel && (
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                            customer.renewalRiskLevel === 'Low' ? 'bg-green-100 text-green-800' :
-                            customer.renewalRiskLevel === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                            customer.renewalRiskLevel === 'High' ? 'bg-orange-100 text-orange-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {customer.renewalRiskLevel}
-                          </span>
-                        )}
-                      </td>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Risk</th>
                     )}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-secondary-100">
+                  {displayedSummary.slice(0, 100).map((customer) => {
+                    const isExpanded = expandedCustomers.has(customer.customerName);
+                    const sowsToShow = show2026RenewalsOnly
+                      ? customer.sows.filter(s => s.contractEndDate?.startsWith('2026'))
+                      : customer.sows;
+
+                    return (
+                      <React.Fragment key={customer.customerName}>
+                        {/* Customer summary row */}
+                        <tr
+                          className={`hover:bg-secondary-50 cursor-pointer ${isExpanded ? 'bg-blue-50' : ''}`}
+                          onClick={() => toggleCustomerExpand(customer.customerName)}
+                        >
+                          <td className="px-2 py-3 text-center">
+                            <span className="text-secondary-400 font-mono text-sm">
+                              {isExpanded ? '−' : '+'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-medium text-secondary-900">{customer.customerName}</td>
+                          <td className="px-4 py-3 text-right font-bold text-secondary-900">{formatCurrency(customer.totalARR)}</td>
+                          <td className="px-4 py-3 text-center text-secondary-600">{customer.sowCount}</td>
+                          <td className="px-4 py-3 text-secondary-600">{customer.region}</td>
+                          <td className="px-4 py-3 text-secondary-600">{customer.vertical}</td>
+                          <td className="px-4 py-3 text-secondary-600">{fmtDate(customer.earliestRenewalDate)}</td>
+                          {show2026RenewalsOnly && (
+                            <td className="px-4 py-3">{riskBadge(customer.highestRisk)}</td>
+                          )}
+                        </tr>
+
+                        {/* Expanded SOW detail rows */}
+                        {isExpanded && sowsToShow.map((sow) => (
+                          <tr key={`${customer.customerName}-${sow.sowId}`} className="bg-secondary-50/50">
+                            <td className="px-2 py-2"></td>
+                            <td className="px-4 py-2 pl-8" colSpan={2}>
+                              <div className="flex items-center gap-2">
+                                <span className="text-secondary-400 text-xs">&#x251C;</span>
+                                <span className="text-sm text-secondary-700">{sow.sowName}</span>
+                                <span className="text-xs text-secondary-400">(SOW {sow.sowId})</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-2 text-right text-sm text-secondary-700">{formatCurrency(sow.endingARR)}</td>
+                            <td className="px-4 py-2 text-xs text-secondary-500">{sow.quantumSmart || '—'}</td>
+                            <td className="px-4 py-2 text-xs text-secondary-500">{fmtDate(sow.contractStartDate)}</td>
+                            <td className="px-4 py-2 text-xs text-secondary-500">{fmtDate(sow.contractEndDate)}</td>
+                            {show2026RenewalsOnly && (
+                              <td className="px-4 py-2">{riskBadge(sow.renewalRisk)}</td>
+                            )}
+                          </tr>
+                        ))}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        ) : (
+          /* Fallback to mock customer data when real data not loaded */
+          <div className="card overflow-hidden">
+            <div className="p-5 border-b border-secondary-200">
+              <h2 className="text-lg font-semibold text-secondary-900">All Customers ({sortedCustomersList.length})</h2>
+            </div>
+            <div className="overflow-x-auto max-h-[600px]">
+              <table className="w-full">
+                <thead className="bg-secondary-50 sticky top-0">
+                  <tr>
+                    <SortableHeader label="Customer" sortKey="name" currentSort={sortConfig} onSort={handleSort} />
+                    <SortableHeader label="Current ARR" sortKey="currentARR" currentSort={sortConfig} onSort={handleSort} />
+                    <SortableHeader label="Region" sortKey="region" currentSort={sortConfig} onSort={handleSort} />
+                    <SortableHeader label="Vertical" sortKey="vertical" currentSort={sortConfig} onSort={handleSort} />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-secondary-100">
+                  {sortedCustomersList.slice(0, 50).map((customer) => (
+                    <tr key={customer.id} className="hover:bg-secondary-50">
+                      <td className="px-4 py-3 font-medium text-secondary-900">{customer.name}</td>
+                      <td className="px-4 py-3 text-right font-medium text-secondary-900">{formatCurrency(customer.currentARR)}</td>
+                      <td className="px-4 py-3 text-secondary-600">{customer.region}</td>
+                      <td className="px-4 py-3 text-secondary-600">{customer.vertical}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* ARR Concentration */}
         <ChartWrapper
           title="Top 10 Customers by ARR"
-          data={filteredCustomers
-            .filter(c => c.currentARR > 0)
-            .sort((a, b) => b.currentARR - a.currentARR)
-            .slice(0, 10)
-            .map(c => ({ name: c.name, arr: c.currentARR }))
-          }
+          data={(useRealSummary
+            ? customerSummaryWithSOWs.slice(0, 10).map(c => ({ name: c.customerName, arr: c.totalARR }))
+            : filteredCustomers
+                .filter(c => c.currentARR > 0)
+                .sort((a, b) => b.currentARR - a.currentARR)
+                .slice(0, 10)
+                .map(c => ({ name: c.name, arr: c.currentARR }))
+          )}
           filename="top_customers"
         >
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 layout="vertical"
-                data={filteredCustomers
-                  .filter(c => c.currentARR > 0)
-                  .sort((a, b) => b.currentARR - a.currentARR)
-                  .slice(0, 10)
-                  .map(c => ({ name: c.name, arr: c.currentARR }))
+                data={useRealSummary
+                  ? customerSummaryWithSOWs.slice(0, 10).map(c => ({ name: c.customerName, arr: c.totalARR }))
+                  : filteredCustomers
+                      .filter(c => c.currentARR > 0)
+                      .sort((a, b) => b.currentARR - a.currentARR)
+                      .slice(0, 10)
+                      .map(c => ({ name: c.name, arr: c.currentARR }))
                 }
                 margin={{ top: 0, right: 30, left: 120, bottom: 0 }}
               >

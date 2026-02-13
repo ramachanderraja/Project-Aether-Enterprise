@@ -7,6 +7,94 @@
 
 <!-- Add entries below in reverse chronological order (newest first) -->
 
+## 2026-02-13 - Expand All/Collapse All + Full Risk Categories + Risk-Only Filter Fix
+**Task:** Add Expand All / Collapse All buttons to Customers table. Fix Renewal Risk Distribution pie chart to show all actual categories from data (High Risk, Lost, Mgmt Approval, In Process, Win/PO). Make "Renewal Risk Only" filter show only High Risk and Lost customers.
+**Changes:**
+- `frontend/src/modules/revenue/pages/RevenuePage.tsx`:
+  - **Expand All / Collapse All**: Added two buttons in the customer table header. "Expand All" sets `expandedCustomers` to all displayed customers. "Collapse All" clears the set.
+  - **`realRenewalRiskDistribution`**: Rewritten to dynamically collect all risk categories from data instead of hardcoded Low/Medium/High Risk/Critical. Filters out bad data (CSV parse artifacts starting with `"`, `#N/A`). Ordered: High Risk, Lost, Mgmt Approval, In Process, Win/PO.
+  - **`RISK_COLORS` map**: New constant mapping all 5 risk categories to distinct colors (Lost=red, High Risk=orange, Mgmt Approval=yellow, In Process=blue, Win/PO=green).
+  - **`riskBadge` helper**: Updated to use per-category badge colors for all 5 categories.
+  - **Pie chart Cell colors**: Now use `RISK_COLORS[entry.name]` instead of hardcoded conditions.
+  - **`customerSummaryRiskOnly`**: Changed to filter only customers with SOWs having "High Risk" or "Lost" risk (was previously `hasRenewalRisk` which matched any risk).
+  - **`RISK_ONLY_CATEGORIES`**: New constant `['High Risk', 'Lost']` used by the Renewal Risk Only filter.
+  - **`riskOrder`**: Updated to rank all 5 categories (Lost=5, High Risk=4, Mgmt Approval=3, In Process=2, Win/PO=1).
+  - **Calendar `hasHighRisk`**: Now checks for "High Risk" OR "Lost" (was checking "Critical").
+**Status:** Completed
+**Branch:** `antony-branch-changes`
+**Notes:** Build clean. Pie chart now shows all 5 real risk categories. "Renewal Risk Only" checkbox filters to only High Risk + Lost. Clicking a pie segment still filters the table (existing interaction).
+
+## 2026-02-13 - Cross-Interactions Across Overview, Movement, and Customers Tabs
+**Task:** Add click-to-filter interactions across all tabs: Overview (ARR by Category/Region/Vertical charts filter each other and KPIs), Movement (summary cards + waterfall filter the details table and top movers), Customers (pie chart risk segments and calendar months filter the table, auto-expand rows on toggle).
+**Changes:**
+- `frontend/src/modules/revenue/pages/RevenuePage.tsx`:
+  - **New state variables:**
+    - `overviewCategoryFilter`, `overviewRegionFilter`, `overviewVerticalFilter` for Overview cross-filtering
+    - `movementTypeFilter` for Movement card/waterfall click filtering
+    - `selectedRiskFilter`, `selectedRenewalMonth` for Customers tab pie/calendar interactions
+  - **Auto-expand**: `useEffect` auto-expands all customer rows when "Show 2026 Renewals" or "Renewal Risk Only" toggles on
+  - **Tab reset**: `useEffect` resets all interactive filters when switching tabs
+  - **Overview tab cross-filtering:**
+    - `overviewFilteredCustomers` useMemo applies category/region/vertical click filters
+    - `crossFilteredByCategory`, `crossFilteredByRegion`, `crossFilteredByVertical`, `crossFilteredCurrentARR` useMemos recompute chart data from filtered customers
+    - Category bar chart: click a bar to toggle `overviewCategoryFilter`, selected bar highlighted (dark blue), unselected bars dimmed
+    - Region bar chart: click a bar to toggle `overviewRegionFilter`, same highlight/dim pattern
+    - Vertical pie chart: click a segment to toggle `overviewVerticalFilter`, selected segment has border, others dimmed
+    - Current ARR KPI card shows filtered value when filters active, with "Filtered from $X" note
+    - Active filter chips shown at top with individual and "Clear all" buttons
+  - **Movement tab cross-filtering:**
+    - `movementFilteredCustomers` useMemo filters `customersWithMovement` by `movementTypeFilter`
+    - Summary cards (New Business, Expansion, etc.) are clickable toggles — selected card gets ring highlight, others dim
+    - Movement Details table, Top Expansions, Top Contractions & Churns all use `movementFilteredCustomers`
+    - Active filter chip shown when a card is selected
+    - Table header shows count and filter name
+  - **Customers tab interactions:**
+    - Pie chart risk segments are clickable — toggle `selectedRiskFilter`, filtering the table to customers with matching risk on 2026 SOWs
+    - Calendar months are clickable — toggle `selectedRenewalMonth`, filtering the table to customers with SOWs ending in that month
+    - Active filter chips (Risk, Month) shown at top with clear buttons
+    - Table `displayedSummary` applies `selectedRiskFilter` and `selectedRenewalMonth` before rendering
+    - All interactive filters reset when "Show 2026 Renewals" is toggled off
+  - **"Click to filter" hints** added below each interactive chart
+**Status:** Completed
+**Branch:** `antony-branch-changes`
+**Notes:** Build clean. All charts show "Click a bar/segment to filter" hint text. Clicking same element again deselects the filter (toggle behavior). Cross-filters compose — can click a Category AND a Region to see their intersection. All interactive state resets when switching tabs.
+
+## 2026-02-13 - Customer Tab: Customer-Level ARR Summary with Expandable SOW Rows
+**Task:** Rebuild the Customers tab in ARR Analytics to show customer-level ARR summaries with expandable SOW-level detail rows. Use SOW Name from updated SOW mapping template, Contract_End_Date from ARR snapshot for renewal dates, Renewal_Risk from ARR snapshot for risk categorization. Support "2026 Renewals Only" and "Renewal Risk Only" filters.
+**Changes:**
+- `frontend/src/shared/store/sowMappingStore.ts`:
+  - Added `SOW_Name: string` to `SOWMappingRecord` interface
+- `frontend/src/shared/store/realDataStore.ts`:
+  - Added `SOW_Name: string` to `RawSOWMapping` interface
+  - Updated SOW mapping parsing to extract `SOW Name` column (with fallback to `SOW_Name`)
+- `frontend/src/modules/settings/pages/SettingsPage.tsx`:
+  - Updated SOW mapping template headers/sample rows to include `SOW Name`
+  - Updated SOW mapping CSV parser to extract `SOW_Name` field (backward compatible)
+- `frontend/public/data/sow_mapping.csv`:
+  - Replaced with latest template from Upload templates (includes SOW Name column)
+- `frontend/src/modules/revenue/pages/RevenuePage.tsx`:
+  - Added `React` import for `React.Fragment`
+  - Added `expandedCustomers` (Set state) and `show2026RenewalRiskOnly` (boolean state)
+  - Added `toggleCustomerExpand()` handler
+  - Added `SOWDetail` and `CustomerSummary` interfaces
+  - Added `customerSummaryWithSOWs` useMemo: groups ARR snapshot rows (for selectedARRMonth) by Customer_Name, attaches SOW-level details (SOW_Name, ARR, Contract_End_Date, Renewal_Risk, platform) from snapshot + SOW mapping
+  - Added `customerSummary2026Renewals` useMemo: filters for customers with SOWs ending in 2026
+  - Added `customerSummaryRiskOnly` useMemo: filters for customers with Renewal_Risk set
+  - Added `realRenewalRiskDistribution` useMemo: risk pie chart from real SOW-level data
+  - Added `sortedCustomerSummary` useMemo: sorted customer list respecting both toggles and sort config
+  - Rewrote `renderCustomersTab`:
+    - Customer-level rows with `+`/`−` expand toggle
+    - Columns: Customer, Total ARR, SOW count, Region, Vertical, Earliest Renewal, Risk
+    - Expanded rows show SOW Name, SOW ID, ARR, Platform, Start Date, End Date, Risk badge
+    - 2026 Renewal Risk Distribution pie chart uses real data with dynamic cell colors
+    - 2026 Renewal Calendar uses SOW-level end dates
+    - "Renewal Risk Only" sub-filter shows only customers with risk flagged
+    - Top 10 Customers chart uses real summary data
+    - Fallback to mock data when real data not loaded
+**Status:** Completed
+**Branch:** `antony-branch-changes`
+**Notes:** Build clean. Contract_End_Date and Renewal_Risk values come from the Monthly ARR Snapshot (only populated for some rows, mainly 1/1/2026 snapshot). SOW Name comes from the SOW Mapping CSV. The "2026 Renewals Only" filter now filters by SOWs with Contract_End_Date starting with "2026". When expanded, only the 2026 SOWs are shown if the filter is on.
+
 ## 2026-02-13 - Movement Tab Tables & Chart Aligned with ARR Bridge Filters
 **Task:** Make all tables below the ARR Bridge (ARR Movement Details, Top Expansions, Top Contractions & Churns) and the Monthly Movement Trend chart use the same filters and date range as the waterfall bridge. Customer-wise details should reflect what is shown in the waterfall. Monthly Movement Trend shows gains and losses from Jan 2024 to prior month.
 **Changes:**
