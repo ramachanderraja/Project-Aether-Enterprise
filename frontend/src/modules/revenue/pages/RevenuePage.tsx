@@ -1050,11 +1050,6 @@ export default function RevenuePage() {
     return buildRealCustomers(realData);
   }, [realData.isLoaded, realData.arrSnapshots, realData.sowMappingIndex, realData.arrSubCategoryBreakdown]);
 
-  const products = useMemo(() => {
-    if (!realData.isLoaded || realData.arrSnapshots.length === 0) return MOCK_PRODUCTS;
-    return buildRealProducts(realData, customers);
-  }, [realData.isLoaded, realData.arrSnapshots, customers, realData.productCategoryIndex]);
-
   const arrMovementHistory = useMemo(() => {
     if (!realData.isLoaded || realData.arrSnapshots.length === 0) return MOCK_ARR_MOVEMENT;
     return buildRealARRMovement(realData);
@@ -1195,6 +1190,12 @@ export default function RevenuePage() {
       return feesType === revenueTypeFilter;
     });
   }, [filteredCustomers, revenueTypeFilter]);
+
+  // Products built from filtered customers so global filters (Region, Vertical, Segment, Quantum/SMART) apply
+  const products = useMemo(() => {
+    if (!realData.isLoaded || realData.arrSnapshots.length === 0) return MOCK_PRODUCTS;
+    return buildRealProducts(realData, filteredCustomers);
+  }, [realData.isLoaded, realData.arrSnapshots, filteredCustomers, realData.productCategoryIndex]);
 
   // Determine the selected ARR snapshot month from filters
   const selectedARRMonth = useMemo(() => {
@@ -3062,32 +3063,45 @@ export default function RevenuePage() {
   }, [products, productCategoryFilter, productSubCategoryFilter, sortConfig]);
 
   // Category-grouped products for the "By Category" drill-down table
+  // Uses distinct customer counts per category (not sum of sub-category counts)
   const categoryGroupedProducts = useMemo(() => {
-    const catMap = new Map<string, { totalARR: number; customerCount: number; avgARRPerCustomer: number; growthPercent: number; subCategories: typeof filteredProducts }>();
+    // Build distinct customer sets per category from actual customer data
+    const categoryCustomers = new Map<string, Set<string>>();
+    filteredCustomers.forEach(c => {
+      Object.keys(c.productARR).forEach(subCat => {
+        const cat = realData.productCategoryIndex[subCat] || 'Other';
+        if (!categoryCustomers.has(cat)) categoryCustomers.set(cat, new Set());
+        categoryCustomers.get(cat)!.add(c.name);
+      });
+    });
+
+    const catMap = new Map<string, { totalARR: number; subCategories: typeof filteredProducts }>();
     filteredProducts.forEach(p => {
       const cat = p.category || 'Other';
       if (!catMap.has(cat)) {
-        catMap.set(cat, { totalARR: 0, customerCount: 0, avgARRPerCustomer: 0, growthPercent: 0, subCategories: [] });
+        catMap.set(cat, { totalARR: 0, subCategories: [] });
       }
       const entry = catMap.get(cat)!;
       entry.totalARR += p.totalARR;
-      entry.customerCount += p.customerCount;
       entry.subCategories.push(p);
     });
-    // Compute averages & sort
+    // Compute averages using distinct customer count & sort
     return Array.from(catMap.entries())
-      .map(([name, data]) => ({
-        name,
-        totalARR: data.totalARR,
-        customerCount: data.customerCount,
-        avgARRPerCustomer: data.customerCount > 0 ? Math.round(data.totalARR / data.customerCount) : 0,
-        growthPercent: data.subCategories.length > 0
-          ? Math.round(data.subCategories.reduce((sum, sc) => sum + sc.growthPercent, 0) / data.subCategories.length)
-          : 0,
-        subCategories: data.subCategories.sort((a, b) => b.totalARR - a.totalARR),
-      }))
+      .map(([name, data]) => {
+        const distinctCount = categoryCustomers.get(name)?.size || 0;
+        return {
+          name,
+          totalARR: data.totalARR,
+          customerCount: distinctCount,
+          avgARRPerCustomer: distinctCount > 0 ? Math.round(data.totalARR / distinctCount) : 0,
+          growthPercent: data.subCategories.length > 0
+            ? Math.round(data.subCategories.reduce((sum, sc) => sum + sc.growthPercent, 0) / data.subCategories.length)
+            : 0,
+          subCategories: data.subCategories.sort((a, b) => b.totalARR - a.totalARR),
+        };
+      })
       .sort((a, b) => b.totalARR - a.totalARR);
-  }, [filteredProducts]);
+  }, [filteredProducts, filteredCustomers, realData.productCategoryIndex]);
 
   // Sorted customers list for Customers tab
   const sortedCustomersList = useMemo(() => {

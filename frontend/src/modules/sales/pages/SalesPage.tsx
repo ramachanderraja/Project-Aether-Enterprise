@@ -858,24 +858,6 @@ export default function SalesPage() {
     return buildRealOpportunities(realData);
   }, [realData.isLoaded, realData.closedAcv, realData.pipelineSnapshots, realData.sowMappingIndex]);
 
-  // Build salespeople from real data or fall back to mock
-  const salespeople = useMemo(() => {
-    if (!realData.isLoaded || realData.salesTeam.length === 0) return MOCK_SALESPEOPLE;
-    return buildRealSalespeople(realData, opportunities);
-  }, [realData.isLoaded, realData.salesTeam, opportunities]);
-
-  // Build quarterly forecast from real data or fall back to mock
-  const quarterlyForecastData = useMemo(() => {
-    if (!realData.isLoaded) return MOCK_QUARTERLY_FORECAST;
-    return buildQuarterlyForecast(opportunities, realData.salesTeam);
-  }, [realData.isLoaded, opportunities, realData.salesTeam]);
-
-  // Build regional forecast from real data or fall back to mock
-  const regionalForecastData = useMemo(() => {
-    if (!realData.isLoaded) return MOCK_REGIONAL_FORECAST;
-    return buildRegionalForecast(opportunities, realData.salesTeam);
-  }, [realData.isLoaded, opportunities, realData.salesTeam]);
-
   // Filters - now with multi-select support (empty = show all years for real data)
   const [yearFilter, setYearFilter] = useState<string[]>([]);
   const [quarterFilter, setQuarterFilter] = useState<string[]>([]);
@@ -1043,6 +1025,24 @@ export default function SalesPage() {
       return true;
     });
   }, [enrichedOpportunities, yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter, segmentFilter, channelFilter, logoTypeFilter, soldByFilter, revenueTypeFilter, productCategoryFilter, productSubCategoryFilter]);
+
+  // Build salespeople from filtered opportunities so global filters apply
+  const salespeople = useMemo(() => {
+    if (!realData.isLoaded || realData.salesTeam.length === 0) return MOCK_SALESPEOPLE;
+    return buildRealSalespeople(realData, filteredOpportunities);
+  }, [realData.isLoaded, realData.salesTeam, filteredOpportunities]);
+
+  // Build quarterly forecast from filtered opportunities so global filters apply
+  const quarterlyForecastData = useMemo(() => {
+    if (!realData.isLoaded) return MOCK_QUARTERLY_FORECAST;
+    return buildQuarterlyForecast(filteredOpportunities, realData.salesTeam);
+  }, [realData.isLoaded, filteredOpportunities, realData.salesTeam]);
+
+  // Build regional forecast from filtered opportunities so global filters apply
+  const regionalForecastData = useMemo(() => {
+    if (!realData.isLoaded) return MOCK_REGIONAL_FORECAST;
+    return buildRegionalForecast(filteredOpportunities, realData.salesTeam);
+  }, [realData.isLoaded, filteredOpportunities, realData.salesTeam]);
 
   // Calculate metrics with proper Closed ACV rules
   const metrics = useMemo(() => {
@@ -1737,30 +1737,42 @@ export default function SalesPage() {
           </div>
         </ChartWrapper>
 
-        {/* Forecast Trend */}
+        {/* Forecast Trend - built from filtered opportunities */}
+        {(() => {
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          // Cumulative closed won by month + weighted pipeline by expected close month
+          const wonDeals = filteredOpportunities.filter(o => o.status === 'Won');
+          const activeDeals = filteredOpportunities.filter(o => o.status === 'Active' || o.status === 'Stalled');
+          const monthlyWon: Record<string, number> = {};
+          const monthlyPipeline: Record<string, number> = {};
+          wonDeals.forEach(d => {
+            const m = monthNames[new Date(d.expectedCloseDate).getMonth()];
+            monthlyWon[m] = (monthlyWon[m] || 0) + d.dealValue;
+          });
+          activeDeals.forEach(d => {
+            const m = monthNames[new Date(d.expectedCloseDate).getMonth()];
+            monthlyPipeline[m] = (monthlyPipeline[m] || 0) + d.weightedValue;
+          });
+          // Build cumulative forecast trend
+          let cumulative = 0;
+          const totalTarget = quarterlyForecastData.reduce((s, q) => s + q.target, 0);
+          const monthlyTarget = totalTarget > 0 ? totalTarget / 12 : 0;
+          let cumulativeTarget = 0;
+          const forecastTrendData = monthNames.map(m => {
+            cumulative += (monthlyWon[m] || 0) + (monthlyPipeline[m] || 0);
+            cumulativeTarget += monthlyTarget;
+            return { month: m, forecast: Math.round(cumulative), target: Math.round(cumulativeTarget) };
+          }).filter(d => d.forecast > 0 || d.target > 0);
+          return (
         <ChartWrapper
           title="Forecast Trend"
-          data={[
-            { month: 'Jan', forecast: 35000000, target: 40000000 },
-            { month: 'Feb', forecast: 36500000, target: 40000000 },
-            { month: 'Mar', forecast: 37200000, target: 40000000 },
-            { month: 'Apr', forecast: 38100000, target: 40000000 },
-            { month: 'May', forecast: 38800000, target: 40000000 },
-            { month: 'Jun', forecast: 39500000, target: 40000000 },
-          ]}
+          data={forecastTrendData}
           filename="forecast_trend"
         >
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
-                data={[
-                  { month: 'Jan', forecast: 35000000, target: 40000000 },
-                  { month: 'Feb', forecast: 36500000, target: 40000000 },
-                  { month: 'Mar', forecast: 37200000, target: 40000000 },
-                  { month: 'Apr', forecast: 38100000, target: 40000000 },
-                  { month: 'May', forecast: 38800000, target: 40000000 },
-                  { month: 'Jun', forecast: 39500000, target: 40000000 },
-                ]}
+                data={forecastTrendData}
                 margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -1777,6 +1789,8 @@ export default function SalesPage() {
             </ResponsiveContainer>
           </div>
         </ChartWrapper>
+          );
+        })()}
 
         {/* Forecast by Sub-Category */}
         {(() => {

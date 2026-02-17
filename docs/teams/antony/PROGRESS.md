@@ -7,6 +7,23 @@
 
 <!-- Add entries below in reverse chronological order (newest first) -->
 
+## 2026-02-17 - Global Filters Fix: Sales Performance + ARR Analytics
+**Task:** Ensure global filters (Region, Vertical, Segment, Quantum/SMART) work across ALL tabs, charts, and tables in both Sales Performance and ARR Analytics pages.
+**Changes:**
+- `frontend/src/modules/sales/pages/SalesPage.tsx`:
+  - **Moved `salespeople`, `quarterlyForecastData`, `regionalForecastData`** useMemos from before filters to after `filteredOpportunities`. Now built from `filteredOpportunities` instead of unfiltered `opportunities`.
+  - **Fixed "Forecast by Quarter" chart** (Overview tab): was using unfiltered data, now uses filtered quarterly forecast
+  - **Fixed "Regional Forecast vs Target" table** (Forecast tab): was using unfiltered data, now uses filtered regional forecast
+  - **Fixed "Pipeline Coverage by Rep" chart** (Quota tab): `salespeople` now built from filtered opportunities
+  - **Fixed "Forecast Trend" chart** (Forecast tab): replaced hardcoded mock data with real cumulative forecast built from `filteredOpportunities` (won deals + weighted pipeline by month)
+- `frontend/src/modules/revenue/pages/RevenuePage.tsx`:
+  - **Moved `products`** useMemo from before filters to after `filteredCustomers`. Now built from `filteredCustomers` instead of unfiltered `customers`.
+  - **Fixed "By Category" view**: category table, KPI cards, and bar chart now respect global filters
+  - **Fixed `categoryGroupedProducts`**: already used `filteredCustomers` for distinct customer counts (from previous fix)
+**Status:** Completed
+**Branch:** `antony-branch-changes`
+**Notes:** Build clean. The root cause in both pages was the same: builder functions (`buildRealProducts`, `buildRealSalespeople`, `buildQuarterlyForecast`, `buildRegionalForecast`) received unfiltered base data instead of the filtered version. All 4 tabs in Sales Performance and all 4 tabs in ARR Analytics now respond to global filter changes.
+
 ## 2026-02-16 - Customer Category Matrix + Customer Name Filter Across Tabs
 **Task:** Rebuild the "By Customer" view in ARR by Category tab to show Customer summary level with SOW Name drill-down, using Category columns instead of Sub-Category. Add Expand All / Collapse All. Add Customer Name filter to: By Customer view, Customers tab, and ARR Movement Details table.
 **Changes:**
