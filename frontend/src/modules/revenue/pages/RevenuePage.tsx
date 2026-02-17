@@ -1100,6 +1100,9 @@ export default function RevenuePage() {
   const [productViewMode, setProductViewMode] = useState<'product' | 'customer'>('product');
   const [productCategoryFilter, setProductCategoryFilter] = useState('All');
   const [productSubCategoryFilter, setProductSubCategoryFilter] = useState('All');
+  const [expandedProductCategories, setExpandedProductCategories] = useState<Set<string>>(new Set());
+  const [expandedMatrixCustomers, setExpandedMatrixCustomers] = useState<Set<string>>(new Set());
+  const [customerNameFilter, setCustomerNameFilter] = useState('');
 
   // Customers
   const [show2026RenewalsOnly, setShow2026RenewalsOnly] = useState(false);
@@ -2452,16 +2455,31 @@ export default function RevenuePage() {
 
       {/* Movement Details Table */}
       <div className="card overflow-hidden">
-        <div className="p-5 border-b border-secondary-200 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-secondary-900">
-            ARR Movement Details{movementTypeFilter ? ` — ${movementTypeFilter}` : ''} ({movementFilteredCustomers.length})
-          </h2>
-          <button
-            onClick={() => exportToCSV(movementFilteredCustomers, 'arr_movement_details')}
-            className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
-          >
-            Export
-          </button>
+        <div className="p-5 border-b border-secondary-200">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-lg font-semibold text-secondary-900">
+              ARR Movement Details{movementTypeFilter ? ` — ${movementTypeFilter}` : ''} ({(customerNameFilter ? movementFilteredCustomers.filter(c => c.name.toLowerCase().includes(customerNameFilter.toLowerCase())) : movementFilteredCustomers).length})
+            </h2>
+            <button
+              onClick={() => exportToCSV(movementFilteredCustomers, 'arr_movement_details')}
+              className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
+            >
+              Export
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-secondary-600">Customer:</label>
+            <input
+              type="text"
+              value={customerNameFilter}
+              onChange={(e) => setCustomerNameFilter(e.target.value)}
+              placeholder="Search customer..."
+              className="px-3 py-1.5 text-sm border border-secondary-200 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 w-48"
+            />
+            {customerNameFilter && (
+              <button onClick={() => setCustomerNameFilter('')} className="text-xs text-secondary-400 hover:text-secondary-600">&times;</button>
+            )}
+          </div>
         </div>
         <div className="overflow-x-auto max-h-96">
           <table className="w-full">
@@ -2480,7 +2498,7 @@ export default function RevenuePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-secondary-100">
-              {movementFilteredCustomers.slice(0, 50).map((customer) => (
+              {(customerNameFilter ? movementFilteredCustomers.filter(c => c.name.toLowerCase().includes(customerNameFilter.toLowerCase())) : movementFilteredCustomers).slice(0, 50).map((customer) => (
                 <tr
                   key={customer.id}
                   className={`${
@@ -2641,8 +2659,12 @@ export default function RevenuePage() {
   const renderCustomersTab = () => {
     const useRealSummary = customerSummaryWithSOWs.length > 0;
 
-    // Apply pie chart risk filter and calendar month filter to the sorted list
+    // Apply pie chart risk filter, calendar month filter, and customer name filter to the sorted list
     let displayedSummary = sortedCustomerSummary;
+    if (customerNameFilter) {
+      const lcFilter = customerNameFilter.toLowerCase();
+      displayedSummary = displayedSummary.filter(c => c.customerName.toLowerCase().includes(lcFilter));
+    }
     if (selectedRiskFilter && show2026RenewalsOnly) {
       displayedSummary = displayedSummary.filter(c =>
         c.sows.some(s => s.contractEndDate?.startsWith('2026') && s.renewalRisk === selectedRiskFilter)
@@ -2708,6 +2730,19 @@ export default function RevenuePage() {
                   <span className="text-sm font-medium text-secondary-700">Renewal Risk Only</span>
                 </label>
               )}
+              <div className="flex items-center gap-2 ml-4">
+                <label className="text-sm text-secondary-600">Customer:</label>
+                <input
+                  type="text"
+                  value={customerNameFilter}
+                  onChange={(e) => setCustomerNameFilter(e.target.value)}
+                  placeholder="Search customer..."
+                  className="px-3 py-1.5 text-sm border border-secondary-200 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 w-48"
+                />
+                {customerNameFilter && (
+                  <button onClick={() => setCustomerNameFilter('')} className="text-xs text-secondary-400 hover:text-secondary-600">&times;</button>
+                )}
+              </div>
             </div>
             <button
               onClick={() => exportToCSV(displayedSummary.map(c => ({
@@ -3026,6 +3061,34 @@ export default function RevenuePage() {
     return data;
   }, [products, productCategoryFilter, productSubCategoryFilter, sortConfig]);
 
+  // Category-grouped products for the "By Category" drill-down table
+  const categoryGroupedProducts = useMemo(() => {
+    const catMap = new Map<string, { totalARR: number; customerCount: number; avgARRPerCustomer: number; growthPercent: number; subCategories: typeof filteredProducts }>();
+    filteredProducts.forEach(p => {
+      const cat = p.category || 'Other';
+      if (!catMap.has(cat)) {
+        catMap.set(cat, { totalARR: 0, customerCount: 0, avgARRPerCustomer: 0, growthPercent: 0, subCategories: [] });
+      }
+      const entry = catMap.get(cat)!;
+      entry.totalARR += p.totalARR;
+      entry.customerCount += p.customerCount;
+      entry.subCategories.push(p);
+    });
+    // Compute averages & sort
+    return Array.from(catMap.entries())
+      .map(([name, data]) => ({
+        name,
+        totalARR: data.totalARR,
+        customerCount: data.customerCount,
+        avgARRPerCustomer: data.customerCount > 0 ? Math.round(data.totalARR / data.customerCount) : 0,
+        growthPercent: data.subCategories.length > 0
+          ? Math.round(data.subCategories.reduce((sum, sc) => sum + sc.growthPercent, 0) / data.subCategories.length)
+          : 0,
+        subCategories: data.subCategories.sort((a, b) => b.totalARR - a.totalARR),
+      }))
+      .sort((a, b) => b.totalARR - a.totalARR);
+  }, [filteredProducts]);
+
   // Sorted customers list for Customers tab
   const sortedCustomersList = useMemo(() => {
     let data = filteredCustomers.filter(c => c.currentARR > 0);
@@ -3092,6 +3155,16 @@ export default function RevenuePage() {
 
     const allProductNames = [...new Set(products.map(p => p.name))];
 
+    const toggleProductCategory = (cat: string) => {
+      setExpandedProductCategories(prev => {
+        const next = new Set(prev);
+        if (next.has(cat)) next.delete(cat); else next.add(cat);
+        return next;
+      });
+    };
+
+    const allCategoryNames = categoryGroupedProducts.map(c => c.name);
+
     return (
       <div className="space-y-6">
         {/* View Mode Toggle */}
@@ -3105,7 +3178,7 @@ export default function RevenuePage() {
                   productViewMode === 'product' ? 'bg-primary-500 text-white' : 'bg-white text-secondary-600'
                 }`}
               >
-                By Sub-Category
+                By Category
               </button>
               <button
                 onClick={() => setProductViewMode('customer')}
@@ -3116,122 +3189,126 @@ export default function RevenuePage() {
                 By Customer
               </button>
             </div>
-
-            <select
-              value={productCategoryFilter}
-              onChange={(e) => {
-                setProductCategoryFilter(e.target.value);
-                setProductSubCategoryFilter('All');
-              }}
-              className="px-4 py-2 border border-secondary-200 rounded-lg text-sm ml-auto"
-            >
-              <option value="All">All Categories</option>
-              {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-
-            {productCategoryFilter !== 'All' && (
-              <select
-                value={productSubCategoryFilter}
-                onChange={(e) => setProductSubCategoryFilter(e.target.value)}
-                className="px-4 py-2 border border-secondary-200 rounded-lg text-sm"
-              >
-                <option value="All">All Sub-Categories</option>
-                {PRODUCT_SUB_CATEGORIES[productCategoryFilter]?.map(sc => (
-                  <option key={sc} value={sc}>{sc}</option>
-                ))}
-              </select>
-            )}
           </div>
         </div>
 
         {productViewMode === 'product' ? (
           <>
-            {/* Product Summary Cards */}
+            {/* Category Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="card p-5">
+                <p className="text-xs font-semibold text-secondary-500 uppercase mb-2">Total Categories</p>
+                <p className="text-3xl font-bold text-secondary-900">{categoryGroupedProducts.length}</p>
+                <p className="text-xs text-secondary-400 mt-1">{filteredProducts.length} sub-categories</p>
+              </div>
+              <div className="card p-5">
+                <p className="text-xs font-semibold text-secondary-500 uppercase mb-2">Top Category</p>
+                <p className="text-xl font-bold text-secondary-900">{categoryGroupedProducts[0]?.name || '-'}</p>
+                <p className="text-sm text-secondary-500">{formatCurrency(categoryGroupedProducts[0]?.totalARR || 0)}</p>
+              </div>
               <div className="card p-5">
                 <p className="text-xs font-semibold text-secondary-500 uppercase mb-2">Total Sub-Categories</p>
                 <p className="text-3xl font-bold text-secondary-900">{filteredProducts.length}</p>
               </div>
               <div className="card p-5">
-                <p className="text-xs font-semibold text-secondary-500 uppercase mb-2">Top Sub-Category</p>
-                <p className="text-xl font-bold text-secondary-900">{filteredProducts[0]?.name || '-'}</p>
-                <p className="text-sm text-secondary-500">{formatCurrency(filteredProducts[0]?.totalARR || 0)}</p>
-              </div>
-              <div className="card p-5">
-                <p className="text-xs font-semibold text-secondary-500 uppercase mb-2">Fastest Growing</p>
-                <p className="text-xl font-bold text-secondary-900">
-                  {filteredProducts.sort((a, b) => b.growthPercent - a.growthPercent)[0]?.name || '-'}
-                </p>
-                <p className="text-sm text-green-600">
-                  +{filteredProducts.sort((a, b) => b.growthPercent - a.growthPercent)[0]?.growthPercent || 0}%
-                </p>
-              </div>
-              <div className="card p-5">
                 <p className="text-xs font-semibold text-secondary-500 uppercase mb-2">Most Adopted</p>
                 <p className="text-xl font-bold text-secondary-900">
-                  {filteredProducts.sort((a, b) => b.customerCount - a.customerCount)[0]?.name || '-'}
+                  {categoryGroupedProducts.sort((a, b) => b.customerCount - a.customerCount)[0]?.name || '-'}
                 </p>
                 <p className="text-sm text-secondary-500">
-                  {filteredProducts.sort((a, b) => b.customerCount - a.customerCount)[0]?.customerCount || 0} customers
+                  {categoryGroupedProducts.sort((a, b) => b.customerCount - a.customerCount)[0]?.customerCount || 0} customers
                 </p>
               </div>
             </div>
 
-            {/* Sub-Category Table */}
+            {/* Category → Sub-Category Drill-Down Table */}
             <div className="card overflow-hidden">
               <div className="p-5 border-b border-secondary-200 flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-secondary-900">Sub-Category Performance</h2>
-                <button
-                  onClick={() => exportToCSV(filteredProducts, 'product_performance')}
-                  className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
-                >
-                  Export
-                </button>
+                <h2 className="text-lg font-semibold text-secondary-900">Category Performance</h2>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setExpandedProductCategories(new Set(allCategoryNames))}
+                    className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50 font-medium"
+                  >
+                    Expand All
+                  </button>
+                  <button
+                    onClick={() => setExpandedProductCategories(new Set())}
+                    className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50 font-medium"
+                  >
+                    Collapse All
+                  </button>
+                  <button
+                    onClick={() => exportToCSV(filteredProducts, 'category_performance')}
+                    className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
+                  >
+                    Export
+                  </button>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-secondary-50">
                     <tr>
-                      <SortableHeader label="Sub-Category" sortKey="name" currentSort={sortConfig} onSort={handleSort} />
-                      <SortableHeader label="Category" sortKey="category" currentSort={sortConfig} onSort={handleSort} filterOptions={PRODUCT_CATEGORIES} />
-                      <SortableHeader label="Total ARR" sortKey="totalARR" currentSort={sortConfig} onSort={handleSort} />
-                      <SortableHeader label="# Customers" sortKey="customerCount" currentSort={sortConfig} onSort={handleSort} />
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Category / Sub-Category</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Total ARR</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase"># Customers</th>
                       <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Avg ARR/Customer</th>
-                      <SortableHeader label="Growth %" sortKey="growthPercent" currentSort={sortConfig} onSort={handleSort} />
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase"># Sub-Categories</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-secondary-100">
-                    {filteredProducts.map((product) => (
-                      <tr key={product.id} className="hover:bg-secondary-50">
-                        <td className="px-4 py-3 font-medium text-secondary-900">{product.name}</td>
-                        <td className="px-4 py-3 text-secondary-600">{product.category}</td>
-                        <td className="px-4 py-3 text-right font-medium text-secondary-900">{formatCurrency(product.totalARR)}</td>
-                        <td className="px-4 py-3 text-right text-secondary-600">{product.customerCount}</td>
-                        <td className="px-4 py-3 text-right text-secondary-600">{formatCurrency(product.avgARRPerCustomer)}</td>
-                        <td className={`px-4 py-3 text-right font-medium ${product.growthPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {product.growthPercent >= 0 ? '+' : ''}{product.growthPercent}%
-                        </td>
-                      </tr>
+                    {categoryGroupedProducts.map((cat) => (
+                      <React.Fragment key={cat.name}>
+                        {/* Category row */}
+                        <tr
+                          className="bg-secondary-50/50 hover:bg-secondary-100 cursor-pointer"
+                          onClick={() => toggleProductCategory(cat.name)}
+                        >
+                          <td className="px-4 py-3 font-semibold text-secondary-900">
+                            <span className="inline-flex items-center gap-2">
+                              <span className="w-5 h-5 flex items-center justify-center rounded text-xs font-bold bg-primary-100 text-primary-700">
+                                {expandedProductCategories.has(cat.name) ? '−' : '+'}
+                              </span>
+                              {cat.name}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-secondary-900">{formatCurrency(cat.totalARR)}</td>
+                          <td className="px-4 py-3 text-right font-semibold text-secondary-600">{cat.customerCount}</td>
+                          <td className="px-4 py-3 text-right font-semibold text-secondary-600">{formatCurrency(cat.avgARRPerCustomer)}</td>
+                          <td className="px-4 py-3 text-right text-secondary-600">{cat.subCategories.length}</td>
+                        </tr>
+                        {/* Sub-category rows (expanded) */}
+                        {expandedProductCategories.has(cat.name) && cat.subCategories.map((sc) => (
+                          <tr key={sc.id} className="hover:bg-secondary-50">
+                            <td className="px-4 py-2 text-secondary-700 pl-12">{sc.name}</td>
+                            <td className="px-4 py-2 text-right text-secondary-900">{formatCurrency(sc.totalARR)}</td>
+                            <td className="px-4 py-2 text-right text-secondary-600">{sc.customerCount}</td>
+                            <td className="px-4 py-2 text-right text-secondary-600">{formatCurrency(sc.avgARRPerCustomer)}</td>
+                            <td className="px-4 py-2 text-right text-secondary-400">—</td>
+                          </tr>
+                        ))}
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
               </div>
             </div>
 
-            {/* Product Trend */}
+            {/* Category ARR Comparison Chart */}
             <ChartWrapper
-              title="Sub-Category ARR Comparison"
-              data={filteredProducts.slice(0, 10)}
-              filename="subcategory_arr_comparison"
+              title="Category ARR Comparison"
+              data={categoryGroupedProducts}
+              filename="category_arr_comparison"
             >
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={filteredProducts.slice(0, 10)}
+                    data={categoryGroupedProducts}
                     margin={{ top: 10, right: 30, left: 0, bottom: 60 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} angle={-45} textAnchor="end" height={80} />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} angle={-45} textAnchor="end" height={80} />
                     <YAxis tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(v) => formatCurrency(v)} />
                     <Tooltip formatter={(value: number) => formatCurrency(value)} />
                     <Bar dataKey="totalARR" name="Total ARR" fill={COLORS.primary} radius={[4, 4, 0, 0]} />
@@ -3240,51 +3317,159 @@ export default function RevenuePage() {
               </div>
             </ChartWrapper>
           </>
-        ) : (
+        ) : (() => {
+          // Build category names from products
+          const allCategoryNamesForMatrix = [...new Set(products.map(p => p.category))].sort();
+
+          // Group customers by name, aggregate category-level ARR, keep SOW-level detail
+          const customerCategoryMatrix = (() => {
+            const custMap = new Map<string, {
+              name: string; region: string; vertical: string; totalARR: number; sowCount: number;
+              categoryARR: Record<string, number>;
+              sows: Array<{ sowId: string; sowName: string; arr: number; categoryARR: Record<string, number> }>;
+            }>();
+            filteredCustomersForProducts.filter(c => c.currentARR > 0).forEach(c => {
+              if (!custMap.has(c.name)) {
+                custMap.set(c.name, { name: c.name, region: c.region, vertical: c.vertical, totalARR: 0, sowCount: 0, categoryARR: {}, sows: [] });
+              }
+              const entry = custMap.get(c.name)!;
+              entry.totalARR += c.currentARR;
+              entry.sowCount += 1;
+              // Build category ARR for this SOW
+              const sowCatARR: Record<string, number> = {};
+              Object.entries(c.productARR).forEach(([subCat, arr]) => {
+                const cat = realData.productCategoryIndex[subCat] || 'Other';
+                sowCatARR[cat] = (sowCatARR[cat] || 0) + arr;
+                entry.categoryARR[cat] = (entry.categoryARR[cat] || 0) + arr;
+              });
+              const sowMapping = realData.sowMappingIndex[c.sowId];
+              entry.sows.push({ sowId: c.sowId, sowName: sowMapping?.SOW_Name || `SOW ${c.sowId}`, arr: c.currentARR, categoryARR: sowCatARR });
+            });
+            return Array.from(custMap.values()).sort((a, b) => b.totalARR - a.totalARR);
+          })();
+
+          // Apply customer name filter
+          const filteredMatrix = customerNameFilter
+            ? customerCategoryMatrix.filter(c => c.name.toLowerCase().includes(customerNameFilter.toLowerCase()))
+            : customerCategoryMatrix;
+
+          const allMatrixCustomerNames = filteredMatrix.map(c => c.name);
+
+          const toggleMatrixCustomer = (name: string) => {
+            setExpandedMatrixCustomers(prev => {
+              const next = new Set(prev);
+              if (next.has(name)) next.delete(name); else next.add(name);
+              return next;
+            });
+          };
+
+          return (
           <>
-            {/* Customer-Product Matrix */}
+            {/* Customer Category Matrix */}
             <div className="card overflow-hidden">
-              <div className="p-5 border-b border-secondary-200 flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-secondary-900">Customer Sub-Category Matrix</h2>
-                <button
-                  onClick={() => exportToCSV(customerProductMatrix, 'customer_product_matrix')}
-                  className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
-                >
-                  Export
-                </button>
+              <div className="p-5 border-b border-secondary-200">
+                <div className="flex justify-between items-center mb-3">
+                  <h2 className="text-lg font-semibold text-secondary-900">Customer Category Matrix</h2>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setExpandedMatrixCustomers(new Set(allMatrixCustomerNames))}
+                      className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50 font-medium"
+                    >
+                      Expand All
+                    </button>
+                    <button
+                      onClick={() => setExpandedMatrixCustomers(new Set())}
+                      className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50 font-medium"
+                    >
+                      Collapse All
+                    </button>
+                    <button
+                      onClick={() => exportToCSV(filteredMatrix.map(c => ({ Customer: c.name, Region: c.region, Vertical: c.vertical, ...c.categoryARR, 'Total ARR': c.totalARR })), 'customer_category_matrix')}
+                      className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
+                    >
+                      Export
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-secondary-600">Customer:</label>
+                  <input
+                    type="text"
+                    value={customerNameFilter}
+                    onChange={(e) => setCustomerNameFilter(e.target.value)}
+                    placeholder="Search customer name..."
+                    className="px-3 py-1.5 text-sm border border-secondary-200 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 w-64"
+                  />
+                  {customerNameFilter && (
+                    <button onClick={() => setCustomerNameFilter('')} className="text-xs text-secondary-400 hover:text-secondary-600">&times; Clear</button>
+                  )}
+                  <span className="text-xs text-secondary-400 ml-2">{filteredMatrix.length} customers</span>
+                </div>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-h-[600px]">
                 <table className="w-full">
-                  <thead className="bg-secondary-50">
+                  <thead className="bg-secondary-50 sticky top-0">
                     <tr>
-                      <th className="px-3 py-3 text-left text-xs font-semibold text-secondary-500 uppercase sticky left-0 bg-secondary-50">Customer</th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold text-secondary-500 uppercase sticky left-0 bg-secondary-50 z-10">Customer / SOW</th>
                       <th className="px-3 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Region</th>
                       <th className="px-3 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Vertical</th>
-                      {allProductNames.slice(0, 8).map(p => (
-                        <th key={p} className="px-2 py-3 text-right text-[10px] font-semibold text-secondary-500 uppercase whitespace-nowrap">
-                          {p.split(' ').slice(0, 2).join(' ')}
+                      {allCategoryNamesForMatrix.map(cat => (
+                        <th key={cat} className="px-2 py-3 text-right text-[10px] font-semibold text-secondary-500 uppercase whitespace-nowrap">
+                          {cat}
                         </th>
                       ))}
-                      <th className="px-3 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Total</th>
+                      <th className="px-3 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Total ARR</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-secondary-100">
-                    {customerProductMatrix.slice(0, 20).map((row) => (
-                      <tr key={row.name} className="hover:bg-secondary-50">
-                        <td className="px-3 py-2 font-medium text-secondary-900 sticky left-0 bg-white">{row.name}</td>
-                        <td className="px-3 py-2 text-xs text-secondary-600">{row.region}</td>
-                        <td className="px-3 py-2 text-xs text-secondary-600">{row.vertical}</td>
-                        {allProductNames.slice(0, 8).map(p => (
-                          <td key={p} className="px-2 py-2 text-right">
-                            {row[p] ? (
-                              <span className="text-xs font-medium text-secondary-900">{formatCurrency(row[p] as number)}</span>
-                            ) : (
-                              <span className="text-xs text-secondary-300">-</span>
-                            )}
+                    {filteredMatrix.slice(0, 50).map((cust) => (
+                      <React.Fragment key={cust.name}>
+                        {/* Customer summary row */}
+                        <tr className="bg-secondary-50/50 hover:bg-secondary-100 cursor-pointer" onClick={() => toggleMatrixCustomer(cust.name)}>
+                          <td className="px-3 py-2 font-semibold text-secondary-900 sticky left-0 bg-secondary-50/50 z-10">
+                            <span className="inline-flex items-center gap-2">
+                              <span className="w-5 h-5 flex items-center justify-center rounded text-xs font-bold bg-primary-100 text-primary-700">
+                                {expandedMatrixCustomers.has(cust.name) ? '−' : '+'}
+                              </span>
+                              {cust.name}
+                              <span className="text-xs font-normal text-secondary-400">({cust.sowCount} SOW{cust.sowCount !== 1 ? 's' : ''})</span>
+                            </span>
                           </td>
+                          <td className="px-3 py-2 text-xs text-secondary-600">{cust.region}</td>
+                          <td className="px-3 py-2 text-xs text-secondary-600">{cust.vertical}</td>
+                          {allCategoryNamesForMatrix.map(cat => (
+                            <td key={cat} className="px-2 py-2 text-right">
+                              {cust.categoryARR[cat] ? (
+                                <span className="text-xs font-semibold text-secondary-900">{formatCurrency(cust.categoryARR[cat])}</span>
+                              ) : (
+                                <span className="text-xs text-secondary-300">-</span>
+                              )}
+                            </td>
+                          ))}
+                          <td className="px-3 py-2 text-right font-semibold text-secondary-900">{formatCurrency(cust.totalARR)}</td>
+                        </tr>
+                        {/* SOW-level rows */}
+                        {expandedMatrixCustomers.has(cust.name) && cust.sows.map((sow) => (
+                          <tr key={`${cust.name}-${sow.sowId}`} className="hover:bg-secondary-50">
+                            <td className="px-3 py-1.5 pl-12 text-secondary-700 sticky left-0 bg-white z-10">
+                              <span className="text-sm">{sow.sowName}</span>
+                              <span className="text-xs text-secondary-400 ml-1">(SOW {sow.sowId})</span>
+                            </td>
+                            <td className="px-3 py-1.5 text-xs text-secondary-400">—</td>
+                            <td className="px-3 py-1.5 text-xs text-secondary-400">—</td>
+                            {allCategoryNamesForMatrix.map(cat => (
+                              <td key={cat} className="px-2 py-1.5 text-right">
+                                {sow.categoryARR[cat] ? (
+                                  <span className="text-xs text-secondary-700">{formatCurrency(sow.categoryARR[cat])}</span>
+                                ) : (
+                                  <span className="text-xs text-secondary-300">-</span>
+                                )}
+                              </td>
+                            ))}
+                            <td className="px-3 py-1.5 text-right text-sm text-secondary-700">{formatCurrency(sow.arr)}</td>
+                          </tr>
                         ))}
-                        <td className="px-3 py-2 text-right font-medium text-secondary-900">{formatCurrency(row.totalARR)}</td>
-                      </tr>
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
@@ -3315,9 +3500,9 @@ export default function RevenuePage() {
               </ChartWrapper>
 
               <ChartWrapper
-                title="Sub-Category Performance Matrix"
-                data={filteredProducts}
-                filename="subcategory_performance_matrix"
+                title="Category Performance Matrix"
+                data={categoryGroupedProducts}
+                filename="category_performance_matrix"
               >
                 <div className="h-48">
                   <ResponsiveContainer width="100%" height="100%">
@@ -3344,14 +3529,15 @@ export default function RevenuePage() {
                           name
                         ]}
                       />
-                      <Scatter name="Sub-Categories" data={filteredProducts} fill={COLORS.primary} />
+                      <Scatter name="Categories" data={categoryGroupedProducts} fill={COLORS.primary} />
                     </ScatterChart>
                   </ResponsiveContainer>
                 </div>
               </ChartWrapper>
             </div>
           </>
-        )}
+          );
+        })()}
       </div>
     );
   };
@@ -3497,7 +3683,7 @@ export default function RevenuePage() {
             { id: 'overview', label: 'Overview' },
             { id: 'movement', label: 'ARR Movement' },
             { id: 'customers', label: 'Customers' },
-            { id: 'products', label: 'ARR by Sub-Category' },
+            { id: 'products', label: 'ARR by Category' },
           ].map((tab) => (
             <button
               key={tab.id}

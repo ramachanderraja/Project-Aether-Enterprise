@@ -7,6 +7,43 @@
 
 <!-- Add entries below in reverse chronological order (newest first) -->
 
+## 2026-02-16 - Customer Category Matrix + Customer Name Filter Across Tabs
+**Task:** Rebuild the "By Customer" view in ARR by Category tab to show Customer summary level with SOW Name drill-down, using Category columns instead of Sub-Category. Add Expand All / Collapse All. Add Customer Name filter to: By Customer view, Customers tab, and ARR Movement Details table.
+**Changes:**
+- `frontend/src/modules/revenue/pages/RevenuePage.tsx`:
+  - **New state**: `expandedMatrixCustomers` (Set<string>) for matrix drill-down, `customerNameFilter` (string) shared across tabs
+  - **Customer Category Matrix** ("By Customer" view, rewritten):
+    - Groups `filteredCustomersForProducts` by customer name → summary row shows customer name (+/− toggle), region, vertical, category-level ARR columns, total ARR, SOW count
+    - Expand: shows individual SOW rows with SOW Name (from SOW mapping) + SOW ID, category ARR per SOW
+    - Category columns derived from `productCategoryIndex` (aggregates sub-category ARR up to category)
+    - Customer Name search filter at top, Expand All / Collapse All buttons
+    - Title: "Customer Category Matrix" (was "Customer Sub-Category Matrix")
+  - **Scatter chart**: renamed to "Category Performance Matrix" using `categoryGroupedProducts`
+  - **Customers Tab**: Added Customer Name text input in filter bar (alongside 2026 Renewals / Risk toggles). Filters `displayedSummary` by `customerName`.
+  - **ARR Movement Details**: Added Customer Name text input above the table. Filters movement rows by `name`. Count in header reflects filtered count.
+  - **Customer filter is shared**: Single `customerNameFilter` state used across all three tabs (persists when switching tabs, not reset by tab-switch logic). Clear button (×) next to each input.
+**Status:** Completed
+**Branch:** `antony-branch-changes`
+**Notes:** Build clean. The customer filter is case-insensitive substring match. Matrix shows max 50 customers. SOW Name comes from `realData.sowMappingIndex[sowId].SOW_Name` with fallback to `SOW {id}`.
+
+## 2026-02-16 - ARR by Category Tab: Category-First Drill-Down with Expand/Collapse
+**Task:** Restructure the "ARR by Sub-Category" tab to be "ARR by Category" with Category as the first level and Sub-Category as a drill-down using +/− expand. Add Expand All / Collapse All buttons.
+**Changes:**
+- `frontend/src/modules/revenue/pages/RevenuePage.tsx`:
+  - **Tab renamed**: "ARR by Sub-Category" → "ARR by Category"
+  - **View mode button**: "By Sub-Category" → "By Category"
+  - **New state**: `expandedProductCategories` (Set<string>) for tracking which categories are expanded
+  - **New useMemo**: `categoryGroupedProducts` — groups `filteredProducts` by category, aggregates totalARR, customerCount, avgARRPerCustomer, and lists sub-categories per category. Sorted by totalARR descending.
+  - **Category table**: Replaced flat sub-category table with hierarchical Category → Sub-Category drill-down. Category rows show `+`/`−` toggle, bold styling, and aggregated metrics. Clicking a category row expands/collapses its sub-category child rows (indented).
+  - **Expand All / Collapse All**: Two buttons in the table header. "Expand All" sets all category names into the set. "Collapse All" clears the set.
+  - **KPI cards updated**: Total Categories (with sub-category count below), Top Category, Total Sub-Categories, Most Adopted Category.
+  - **Bar chart**: Changed from "Sub-Category ARR Comparison" to "Category ARR Comparison" showing category-level data.
+  - **Removed**: Category/Sub-Category filter dropdowns (no longer needed since categories are the primary grouping with drill-down).
+  - **"By Customer" view**: Unchanged.
+**Status:** Completed
+**Branch:** `antony-branch-changes`
+**Notes:** Build clean. Category rows have light background and bold text. Sub-category rows are indented with `pl-12`. The `+`/`−` button is styled with a rounded primary-colored badge.
+
 ## 2026-02-13 - Expand All/Collapse All + Full Risk Categories + Risk-Only Filter Fix
 **Task:** Add Expand All / Collapse All buttons to Customers table. Fix Renewal Risk Distribution pie chart to show all actual categories from data (High Risk, Lost, Mgmt Approval, In Process, Win/PO). Make "Renewal Risk Only" filter show only High Risk and Lost customers.
 **Changes:**
