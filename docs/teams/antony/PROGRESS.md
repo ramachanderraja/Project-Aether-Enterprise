@@ -7,6 +7,162 @@
 
 <!-- Add entries below in reverse chronological order (newest first) -->
 
+## 2026-02-18 - Key Deals Unweighted Fee, Closed ACV Rev Type Filter, Regional Forecast Fix, Forecast Trend Rev Type
+**Task:** 4 changes: (1) Key Deals show unweighted fee (weighted/probability), (2) Closed ACV table filters columns by revenue type, (3) Regional Performance variance/YoY against forecast ACV, (4) Forecast Trend filters for License vs Implementation.
+**Changes:**
+- `frontend/src/modules/sales/pages/SalesPage.tsx`:
+  - **Key Deals in Pipeline**: Now shows **unweighted fee** = weighted value / (probability/100). Column renamed to "Unweighted Fee". Sorting and display both use unweighted values, respecting revenue type filter.
+  - **Closed ACV Deals table**: Columns dynamically show/hide based on revenue type filter. License filter → shows License ACV column only. Implementation filter → shows Impl ACV only. All → shows both + combined Closed ACV. Sorted by revenue-type-aware value. Sub-category breakdown rows also match.
+  - **Regional Performance (`buildRegionalForecast`)**: Variance and YoY growth now calculated against **forecast ACV** (closed + weighted pipeline) for both current and previous year, instead of just closedACV.
+  - **Forecast Trend graph**: Uses revenue-type-aware value getters (`getClosedVal`/`getPipeVal`) for won deals, pipeline deals, and previous year comparison — filters for License vs Implementation correctly.
+**Status:** Complete
+**Branch:** `antony-branch-changes`
+
+---
+
+## 2026-02-18 - Fix JavaScript Timezone Bug Causing Wrong Year for Close_Date
+**Task:** Investigate why 2026 Closed ACV = $0 (should be $1.03M), 2025 = $17.18M (should be $16.19M), 2024 = $19.99M (should be $21.73M).
+**Root Cause:** Classic JavaScript timezone bug. `new Date('2026-01-01')` interprets the string as UTC midnight, but `.getFullYear()` returns the LOCAL year. In US timezones (UTC-5), UTC midnight on Jan 1 is Dec 31 of the previous year locally. ALL Close_Date values on the 1st of the month were shifted back one day, causing Jan 1 dates to be counted in the wrong year.
+**Fix:** Added `parseDateLocal()` helper that constructs Date objects in local time (`new Date(y, m-1, d)` instead of `new Date('YYYY-MM-DD')`). Replaced ALL 19 instances of `new Date(dateStr)` in SalesPage.tsx with `parseDateLocal(dateStr)`.
+**Verification:** `new Date('2026-01-01').getFullYear()` = 2025 (BUG) vs `parseDateLocal('2026-01-01').getFullYear()` = 2026 (FIXED)
+**Changes:**
+- `frontend/src/modules/sales/pages/SalesPage.tsx`:
+  - Added `parseDateLocal(dateStr)` helper function
+  - Replaced all `new Date(o.expectedCloseDate)`, `new Date(opp.expectedCloseDate)`, `new Date(deal.expectedCloseDate)`, `new Date(d.expectedCloseDate)`, `new Date(o.createdDate)` with `parseDateLocal()` calls
+**Status:** Complete
+**Branch:** `antony-branch-changes`
+
+---
+
+## 2026-02-18 - Closed ACV Data Sourced Exclusively from Closed ACV Template
+**Task:** Ensure Closed ACV Key Card and Actual ACV everywhere use data ONLY from Closed_ACV_Template (values, Close_Date, Logo_Type) and SOW Mapping (Region, Vertical). Nothing from pipeline snapshot.
+**Changes:**
+- `frontend/src/modules/sales/pages/SalesPage.tsx`:
+  - **`buildRealOpportunities` Won deals**: Region/Vertical now use SOW Mapping as PRIMARY source (was Closed ACV primary, SOW Mapping fallback). `normalizeRegion` applied to both SOW Mapping and Closed ACV Region.
+  - **Enrichment step**: `normalizeRegion()` applied to `sowMappingStore` Region (was raw, could be "NA" instead of "North America")
+  - **`buildQuarterlyForecast` actual**: Fixed `q < currentQuarter` → `q <= currentQuarter` so current quarter (Q1 2026) shows actuals from Close_Date
+  - **Metrics comments**: Clarified that Won deals come ONLY from Closed ACV template, pipeline "Closed Won" excluded
+**Status:** Complete
+**Branch:** `antony-branch-changes`
+
+---
+
+## 2026-02-18 - Closed ACV Uses Column Directly (No Logo Type Gating)
+**Task:** Closed ACV Key Card and Actual ACV everywhere should read `License_ACV` / `Implementation_Value` columns directly from the Closed_ACV_Template — no logo type filtering on the value.
+**Changes:**
+- `frontend/src/modules/sales/pages/SalesPage.tsx`:
+  - **`getClosedValue` in metrics useMemo**: Removed `LICENSE_ACV_LOGO_TYPES` check. License → `deal.licenseValue`, Implementation → `deal.implementationValue`, All → sum of both.
+  - **`getClosedVal` in `buildQuarterlyForecast`**: Same simplification — reads column directly.
+  - **`getClosedVal` in `buildRegionalForecast`**: Same simplification.
+  - **Revenue Type row filter removed** for closed deals in both `filteredOpportunities` and `previousYearOpportunities` — all closed deals are now included; the value column is picked by the helper function.
+**Status:** Complete
+**Branch:** `antony-branch-changes`
+
+---
+
+## 2026-02-18 - Overview Charts & Tables Revenue-Type-Aware + Default Year 2026
+**Task:** Make Forecast by Quarter, Sales Funnel, and Key Deals in Pipeline all respect the Revenue Type global filter (License/Implementation). Default year filter to 2026.
+**Changes:**
+- `frontend/src/modules/sales/pages/SalesPage.tsx`:
+  - **Year filter default**: Changed from `[]` (all) to `['2026']`; Clear All resets to `['2026']`
+  - **Forecast by Quarter chart**: `buildQuarterlyForecast` now accepts `revenueType` parameter — uses `License_ACV` or `Implementation_Value` based on filter; call site passes `revenueTypeFilter`
+  - **Regional Forecast chart**: `buildRegionalForecast` updated identically
+  - **Sales Funnel (`funnelData`)**: Now uses revenue-type-aware `getPipeVal` helper instead of `o.dealValue`; `revenueTypeFilter` added to dependency array
+  - **Key Deals in Pipeline (`keyDeals`)**: Sorted by revenue-type-aware value; `revenueTypeFilter` added to dependency array
+  - **Key Deals table rendering**: Displays `licenseValue`, `implementationValue`, or sum based on `revenueTypeFilter` instead of `dealValue`
+**Status:** Complete
+**Branch:** `antony-branch-changes`
+
+---
+
+## 2026-02-17 - SOW Mapping Data Update + Services→Implementation + Metrics Robustness
+**Task:** Copy updated SOW mapping (16 new SOW IDs, all 'Services' Revenue_Type → 'Implementation'), add 'LA' region abbreviation, remove 'Services' from Revenue Type filter, move metrics helpers inside useMemo for robustness.
+**Changes:**
+- `frontend/public/data/sow_mapping.csv` — **REPLACED** with updated template (857 rows, was 841). Key changes:
+  - 16 existing SOW IDs: Revenue_Type changed from 'Services' to 'Implementation'
+  - 16 new SOW IDs added (including SOW 3894 for ARADA 2026 deal, JPMorgan, Bayer, Caterpillar, Gaspro, Vivaaerobus, Mondelez, Linde India, Rashmi, Wartsila, Accor, etc.)
+- `frontend/src/shared/store/realDataStore.ts`:
+  - **`normalizeRegion`**: Added 'LA' → 'LATAM' mapping (new SOW rows use 'LA' abbreviation)
+- `frontend/src/modules/sales/pages/SalesPage.tsx`:
+  - **`REVENUE_TYPE_OPTIONS`**: Removed 'Services' (no longer exists in data), now `['License', 'Implementation']`
+  - **Metrics helpers moved inside useMemo**: `getClosedValue` and `getPipelineValue` defined inside the metrics `useMemo` to eliminate any potential stale closure issues. Added `|| 0` guards on all value accesses.
+  - **Diagnostic console.warn**: Added debug logging when closedWon has deals but totalClosedACV=0 to help diagnose runtime issues
+- **Branch:** `antony-branch-changes`
+- **Status:** Complete (build verified clean)
+
+---
+
+## 2026-02-17 - Revenue Type Filter Controls Pipeline & Closed ACV Column Pickup
+**Task:** Fix Weighted Pipeline ACV and Closed ACV to pick up the correct column based on Revenue Type filter. License filter → License_ACV, Implementation filter → Implementation_Value, All → both.
+**Changes:**
+- `frontend/src/modules/sales/pages/SalesPage.tsx`:
+  - **Revenue Type filter scope**: Changed to only filter closed deals (Won/Lost) by revenueType. Pipeline deals (Active/Stalled) are no longer filtered out since they have BOTH License_ACV and Implementation_Value columns.
+  - **`getDealValueForRevenueType` helper**: New function that picks the correct value column based on `revenueTypeFilter` ('License' → licenseValue, 'Implementation' → implementationValue, 'All' → both). For closed deals, License still respects Logo Type rules (New Logo/Upsell/Cross-Sell only).
+  - **`weightedPipelineACV`**: Now uses `getDealValueForRevenueType(o, 'pipeline')` — picks License_ACV when License filter, Implementation_Value when Implementation filter
+  - **`totalClosedACV`**: Now uses `getDealValueForRevenueType(o, 'closed')` — picks the matching column from closed_acv template
+  - **Previous year metrics**: Same column-picking logic applied to `previousYearClosedACV` and `previousYearPipelineACV`
+  - **`revenueTypeFilter` added to metrics useMemo dependency array**
+  - **KPI card labels**: Now show "- License" or "- Implementation" suffix when filtered
+  - **Forecast Deep Dive labels**: Show "(License)" or "(Implementation)" and "License only" / "Implementation only" when filtered
+  - **Same filter fix applied to `previousYearOpportunities`** — pipeline deals not filtered by revenue type there either
+- **Branch:** `antony-branch-changes`
+- **Status:** Complete (build verified clean)
+
+---
+
+## 2026-02-17 - Weighted Pipeline ACV Card, Forecast Formula, Data Pickup Fixes, Funnel Fix
+**Task:** Add "Weighted Pipeline ACV" KPI card, change Forecast ACV = Closed ACV + Weighted Pipeline ACV, compute YoY growth against Forecast ACV, fix Closed ACV to pick up from License_ACV and Implementation_Value columns directly, fix pipeline weighted value to include Implementation_Value, fix Sales Funnel chart spacing for long stage names.
+**Changes:**
+- `frontend/src/modules/sales/pages/SalesPage.tsx`:
+  - **Closed ACV data pickup**: Changed from `isLicense ? row.Amount : 0` to `row.License_ACV || 0` and `row.Implementation_Value || 0` directly from template columns
+  - **Pipeline weighted value**: Changed from `row.License_ACV` only to `row.License_ACV + row.Implementation_Value` (includes implementation)
+  - **Metrics**: Added `weightedPipelineACV` (License + Implementation from active pipeline deals), changed `forecastACV = totalClosedACV + weightedPipelineACV`, added `previousYearForecastACV` and `previousYearPipelineACV` for YoY comparison
+  - **YoY Growth**: Now computed against Forecast ACV (current year forecast vs previous year forecast) instead of just Closed ACV
+  - **KPI Cards**: Changed from 5 to 6 columns (`lg:grid-cols-6`), added new "Weighted Pipeline ACV" card (orange), updated "Forecast ACV" subtitle to "Closed + Pipeline", updated "YoY Growth" subtitle to "vs prev yr forecast", reduced font sizes to `text-2xl`
+  - **Forecast Deep Dive tab**: Replaced single hero card with 3-card grid (Closed ACV / Weighted Pipeline ACV / Forecast ACV) + breakdown card showing formula
+  - **Sales Funnel chart**: Dynamic height (`Math.max(280, funnelData.length * 50 + 40)`), Y-axis width increased to 220, tickFormatter truncates at 35 chars, right margin increased to 80, full label on tooltip hover
+- **Branch:** `antony-branch-changes`
+- **Status:** Complete (build verified clean)
+
+---
+
+## 2026-02-17 - Remove Targets, Use Deal_Stage, YoY Performance Comparison
+**Task:** Remove "Target" and "Gap to Target" from entire Sales Performance page. Use Deal_Stage directly from pipeline snapshot instead of simplified stage mapping. Replace target with "Performance vs Previous Year" in all graphs and tables.
+**Changes:**
+- `frontend/src/modules/sales/pages/SalesPage.tsx`:
+  - **Interfaces**: Replaced `annualTarget` → `previousYearClosed` in Salesperson; `target` → `previousYear` in QuarterlyForecast; `target`/`percentToTarget` → `previousYearACV`/`yoyGrowth` in RegionalForecast
+  - **Stage mapping**: Removed `simpleStage` logic in buildRealOpportunities; pipeline deals now use `row.Deal_Stage` directly
+  - **Previous year data**: Added `previousYearOpportunities` useMemo that computes year-1 data with same non-year filters
+  - **Builder functions**: Updated `buildRealSalespeople`, `buildQuarterlyForecast`, `buildRegionalForecast` to accept `prevYearOpps` parameter and compute YoY metrics
+  - **Metrics**: Removed `gapToTarget`, `pipelineCoverage`; added `previousYearClosedACV`, `yoyGrowth`
+  - **KPI Cards**: Replaced "Gap to Target" card with "YoY Growth" card showing percentage and previous year value
+  - **Forecast by Quarter chart**: Replaced "Target" bar with "Previous Year" bar
+  - **Regional Forecast table**: Replaced "Target"/"% to Target" columns with "Previous Year"/"YoY Growth" columns
+  - **Forecast Trend chart**: Replaced cumulative target line with cumulative previous year closed line
+  - **Sales Funnel**: Changed from hardcoded stages to dynamic Deal_Stage values from data
+  - **Quota tab → YoY Performance tab**: All target-based attainment replaced with previous year comparison
+  - **Sales Rep table**: "Target" column → "Prev Year"; "YTD Att." → "YTD vs PY"; "Forecast Att." → "Forecast vs PY"
+  - **Top Performers chart**: Attainment now vs previous year, with 100% reference line
+  - **Pipeline Coverage chart**: Now shows pipeline as multiple of previous year closed (1x reference line)
+  - **Mock data**: Updated all mock generators to use previousYear instead of target
+- **Branch:** `antony-branch-changes`
+- **Status:** Complete (build verified clean)
+
+---
+
+## 2026-02-17 - Forecast ACV: Latest Snapshot + License_ACV + Period-Aware Label
+**Task:** Forecast ACV should use only the latest pipeline snapshot month (not latest per deal), use License_ACV (already probability-adjusted), and show the correct period label based on year/month/quarter filters.
+**Changes:**
+- `frontend/src/modules/sales/pages/SalesPage.tsx`:
+  - **`buildRealOpportunities`**: Changed pipeline snapshot filtering from "latest per deal" to "latest Snapshot_Month globally". Now finds the max Snapshot_Month across all records and only uses rows from that month. Deals not in the latest snapshot are excluded.
+  - **`weightedValue`**: Changed from `row.Deal_Value` to `row.License_ACV` (License ACV is the primary forecast metric, already probability-adjusted).
+  - **`metrics.forecastACV`**: Changed from `sum(weightedValue)` to `sum(licenseValue)` from active pipeline deals. Explicitly uses License_ACV as the forecast value.
+  - **KPI card label**: "Forecast ACV" now shows the period: e.g., "Forecast ACV (2026)" when year filtered, "Forecast ACV (Jan 2026)" when month filtered, "Forecast ACV (Q1 2026)" when quarter filtered. Subtitle shows deal count + "(License ACV)".
+  - **Filter behavior**: Year filter → shows full year forecast. Month/Quarter filter → shows that specific period. This works because `filteredOpportunities` filters by Expected_Close_Date matching the year/month/quarter selections.
+**Status:** Completed
+**Branch:** `antony-branch-changes`
+**Notes:** Build clean. No double-weighting — License_ACV values from the CSV are pre-multiplied by probability. The latest snapshot month is determined globally (e.g., if Feb 2026 is the latest, only Feb 2026 pipeline rows are used). Deals that dropped out of the pipeline (not in latest snapshot) are no longer included.
+
 ## 2026-02-17 - Global Filters Fix: Sales Performance + ARR Analytics
 **Task:** Ensure global filters (Region, Vertical, Segment, Quantum/SMART) work across ALL tabs, charts, and tables in both Sales Performance and ARR Analytics pages.
 **Changes:**

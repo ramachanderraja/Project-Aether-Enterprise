@@ -84,6 +84,7 @@ export function normalizeRegion(raw: string): string {
     'EU': 'Europe',
     'ME': 'Middle East',
     'APAC': 'APAC',
+    'LA': 'LATAM',
     'LATAM': 'LATAM',
     'Global': 'Global',
   };
