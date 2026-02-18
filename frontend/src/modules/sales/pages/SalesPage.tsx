@@ -9,8 +9,6 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
-  PieChart,
-  Pie,
   Cell,
   Legend,
   LabelList,
@@ -379,12 +377,11 @@ function buildRealOpportunities(store: RealDataState): Opportunity[] {
   store.pipelineSnapshots.forEach(row => {
     if (row.Snapshot_Month > latestSnapshotMonth) latestSnapshotMonth = row.Snapshot_Month;
   });
-  // Only use deals from the latest snapshot month, dedup by Deal_Name|Customer_Name
+  // Only use deals from the latest snapshot month, dedup by Pipeline_Deal_ID
   const dealMap = new Map<string, (typeof store.pipelineSnapshots)[0]>();
   store.pipelineSnapshots.forEach(row => {
     if (row.Snapshot_Month.slice(0, 7) !== latestSnapshotMonth.slice(0, 7)) return;
-    const key = `${row.Deal_Name}|${row.Customer_Name}`;
-    dealMap.set(key, row);
+    dealMap.set(row.Pipeline_Deal_ID, row);
   });
 
   let pipIdx = 0;
@@ -403,7 +400,7 @@ function buildRealOpportunities(store: RealDataState): Opportunity[] {
     const prob = status === 'Lost' ? 0 : row.Probability;
 
     opps.push({
-      id: `PIP-${String(++pipIdx).padStart(4, '0')}`,
+      id: row.Pipeline_Deal_ID || `PIP-${String(++pipIdx).padStart(4, '0')}`,
       name: row.Deal_Name,
       accountName: row.Customer_Name,
       region: row.Region || 'North America',
@@ -612,8 +609,6 @@ const COLORS = {
   pink: '#ec4899',
   gray: '#64748b',
 };
-
-const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 // Note: Sub-category breakdown utility functions available for future implementation:
 // - calculateDealSubCategoryBreakdown(deal, contributions) - for Closed ACV breakdown
@@ -946,9 +941,6 @@ export default function SalesPage() {
 
   // Tabs
   const [activeTab, setActiveTab] = useState<'overview' | 'forecast' | 'pipeline' | 'quota'>('overview');
-
-  // Pipeline Movement
-  const [lookbackPeriod, setLookbackPeriod] = useState<'1' | '3' | '6' | '12'>('1');
 
   // Sorting
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
@@ -1309,186 +1301,352 @@ export default function SalesPage() {
     return deals.slice(0, 10);
   }, [filteredOpportunities, sortConfig, revenueTypeFilter]);
 
-  // Pipeline movement data - TRUE floating waterfall chart
-  const pipelineMovementWaterfall = useMemo(() => {
-    const oppsWithMovement = filteredOpportunities.filter(o => o.previousValue !== undefined);
+  // ====== Pipeline Movement: Month-over-Month Snapshot Comparison ======
+  // Determine the target month from filters to compare previous vs current snapshot.
+  const snapshotComparison = useMemo(() => {
+    const snapshots = realData.pipelineSnapshots;
+    if (!realData.isLoaded || snapshots.length === 0) return null;
 
-    const newDeals = filteredOpportunities.filter(o => {
-      const createdDate = parseDateLocal(o.createdDate);
-      const cutoffDate = new Date();
-      cutoffDate.setMonth(cutoffDate.getMonth() - parseInt(lookbackPeriod));
-      return createdDate >= cutoffDate && o.status !== 'Lost';
-    });
+    // Get all unique snapshot months sorted ascending (YYYY-MM-DD format)
+    const allMonths = Array.from(new Set(snapshots.map(s => s.Snapshot_Month.slice(0, 7)))).sort();
+    if (allMonths.length < 2) return null;
 
-    const lostDeals = filteredOpportunities.filter(o => o.status === 'Lost');
+    // Determine the "current" snapshot month based on filters
+    let targetYYYYMM = allMonths[allMonths.length - 1]; // default: latest
+    if (yearFilter.length > 0) {
+      const filteredMonths = allMonths.filter(m => yearFilter.includes(m.slice(0, 4)));
+      if (filteredMonths.length > 0) {
+        if (monthFilter.length === 1) {
+          // Single month selected — find matching YYYY-MM
+          const monthIdx = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].indexOf(monthFilter[0]);
+          if (monthIdx >= 0) {
+            const mm = String(monthIdx + 1).padStart(2, '0');
+            const match = filteredMonths.find(m => m.endsWith(`-${mm}`));
+            if (match) targetYYYYMM = match;
+            else targetYYYYMM = filteredMonths[filteredMonths.length - 1];
+          }
+        } else if (quarterFilter.length === 1) {
+          // Single quarter — use the last month of that quarter within the filtered year
+          const qNum = parseInt(quarterFilter[0].replace('Q', ''));
+          const qMonths = [(qNum - 1) * 3 + 1, (qNum - 1) * 3 + 2, (qNum - 1) * 3 + 3]
+            .map(m => String(m).padStart(2, '0'));
+          const qMatches = filteredMonths.filter(m => qMonths.some(mm => m.endsWith(`-${mm}`)));
+          if (qMatches.length > 0) targetYYYYMM = qMatches[qMatches.length - 1];
+          else targetYYYYMM = filteredMonths[filteredMonths.length - 1];
+        } else {
+          targetYYYYMM = filteredMonths[filteredMonths.length - 1];
+        }
+      }
+    }
 
-    // Calculate starting pipeline
-    const startingPipeline = filteredOpportunities
-      .filter(o => o.status === 'Active' || o.status === 'Won')
-      .reduce((sum, o) => sum + (o.previousValue || o.dealValue), 0);
+    // Find the previous month in the data
+    const targetIdx = allMonths.indexOf(targetYYYYMM);
+    if (targetIdx <= 0) return null; // No previous month available
+    const prevYYYYMM = allMonths[targetIdx - 1];
 
-    // New deals added
-    const newDealsValue = newDeals.reduce((sum, o) => sum + o.dealValue, 0);
+    // Deal type for comparison between months
+    type SnapDeal = {
+      licenseACV: number; implValue: number; currentStage: string;
+      dealName: string; customerName: string; salesRep: string;
+      dealStage: string; probability: number; logoType: string;
+      pipelineDealId: string;
+    };
 
-    // Deals increased
-    const increasedValue = oppsWithMovement
-      .filter(o => o.dealValue > (o.previousValue || 0))
-      .reduce((sum, o) => sum + (o.dealValue - (o.previousValue || 0)), 0);
+    // Individual deal movement detail
+    type DealMovement = {
+      id: string; dealName: string; customerName: string;
+      prevValue: number; currValue: number; change: number;
+      category: 'New' | 'Increased' | 'Decreased' | 'Won' | 'Lost';
+      stage: string; salesRep: string;
+    };
 
-    // Deals decreased
-    const decreasedValue = oppsWithMovement
-      .filter(o => o.dealValue < (o.previousValue || 0) && o.status !== 'Lost')
-      .reduce((sum, o) => sum + ((o.previousValue || 0) - o.dealValue), 0);
+    // Apply global filters
+    const passesFilters = (row: typeof snapshots[0]): boolean => {
+      if (regionFilter.length > 0 && !regionFilter.includes(row.Region)) return false;
+      if (verticalFilter.length > 0 && !verticalFilter.includes(row.Vertical)) return false;
+      if (segmentFilter.length > 0 && !segmentFilter.includes(row.Segment)) return false;
+      if (logoTypeFilter.length > 0) {
+        const normalizedLogoType = (row.Logo_Type === 'Renewal' || row.Logo_Type === 'Extension')
+          ? 'Extension/Renewal' : row.Logo_Type;
+        const normalizedFilters = logoTypeFilter.map(lt =>
+          (lt === 'Extension' || lt === 'Renewal') ? 'Extension/Renewal' : lt
+        );
+        if (!normalizedFilters.includes(normalizedLogoType) && !logoTypeFilter.includes(row.Logo_Type)) return false;
+      }
+      return true;
+    };
 
-    // Lost deals
-    const lostValue = lostDeals.reduce((sum, o) => sum + o.dealValue, 0);
-
-    // Closed won
-    const closedWonValue = filteredOpportunities
-      .filter(o => o.status === 'Won')
-      .reduce((sum, o) => sum + o.dealValue, 0);
-
-    // Build waterfall data with proper floating columns
-    // Each bar needs: bottom (invisible spacer), value (visible bar), and type (initial/increase/decrease/final)
-    let runningTotal = startingPipeline;
-
-    const data: Array<{
-      name: string;
-      bottom: number;      // Invisible spacer height (where bar starts)
-      value: number;       // Visible bar height
-      displayValue: number; // Value to display on label
-      fill: string;
-      type: 'initial' | 'increase' | 'decrease' | 'final';
-      connectTo?: number;  // Y value to connect to next bar
-    }> = [];
-
-    // Starting Pipeline - anchored to axis
-    data.push({
-      name: 'Starting\nPipeline',
-      bottom: 0,
-      value: startingPipeline,
-      displayValue: startingPipeline,
-      fill: COLORS.gray,
-      type: 'initial',
-      connectTo: startingPipeline
-    });
-
-    // New Deals - positive, floats from running total
-    data.push({
-      name: 'New\nDeals',
-      bottom: runningTotal,
-      value: newDealsValue,
-      displayValue: newDealsValue,
-      fill: COLORS.success,
-      type: 'increase',
-      connectTo: runningTotal + newDealsValue
-    });
-    runningTotal += newDealsValue;
-
-    // Value Increased - positive, floats from running total
-    data.push({
-      name: 'Value\nIncreased',
-      bottom: runningTotal - increasedValue,
-      value: increasedValue,
-      displayValue: increasedValue,
-      fill: COLORS.primary,
-      type: 'increase',
-      connectTo: runningTotal
-    });
-    // Note: runningTotal already includes this since we add increasedValue above the previous total
-
-    data.push({
-      name: 'Value\nDecreased',
-      bottom: runningTotal - decreasedValue,
-      value: decreasedValue,
-      displayValue: -decreasedValue,
-      fill: COLORS.warning,
-      type: 'decrease',
-      connectTo: runningTotal - decreasedValue
-    });
-    runningTotal -= decreasedValue;
-
-    // Lost Deals - negative, hangs down from running total
-    data.push({
-      name: 'Lost\nDeals',
-      bottom: runningTotal - lostValue,
-      value: lostValue,
-      displayValue: -lostValue,
-      fill: COLORS.danger,
-      type: 'decrease',
-      connectTo: runningTotal - lostValue
-    });
-    runningTotal -= lostValue;
-
-    // Closed Won - negative (removed from pipeline), hangs down
-    data.push({
-      name: 'Closed\nWon',
-      bottom: runningTotal - closedWonValue,
-      value: closedWonValue,
-      displayValue: -closedWonValue,
-      fill: COLORS.purple,
-      type: 'decrease',
-      connectTo: runningTotal - closedWonValue
-    });
-    runningTotal -= closedWonValue;
-
-    // Ending Pipeline - anchored to axis
-    data.push({
-      name: 'Ending\nPipeline',
-      bottom: 0,
-      value: runningTotal,
-      displayValue: runningTotal,
-      fill: COLORS.gray,
-      type: 'final'
-    });
-
-    return data;
-  }, [filteredOpportunities, lookbackPeriod]);
-
-  // Pipeline movement legacy data for cards/tables
-  const pipelineMovement = useMemo(() => {
-    const oppsWithMovement = filteredOpportunities.filter(o => o.previousValue !== undefined);
-
-    const newDeals = filteredOpportunities.filter(o => {
-      const createdDate = parseDateLocal(o.createdDate);
-      const cutoffDate = new Date();
-      cutoffDate.setMonth(cutoffDate.getMonth() - parseInt(lookbackPeriod));
-      return createdDate >= cutoffDate;
-    });
-
-    const lostDeals = filteredOpportunities.filter(o => o.status === 'Lost');
-
-    const totalChange = oppsWithMovement.reduce((sum, o) => {
-      return sum + (o.dealValue - (o.previousValue || 0));
-    }, 0);
-
-    const movedOut = oppsWithMovement.filter(o => o.dealValue < (o.previousValue || 0));
-    const increased = oppsWithMovement.filter(o => o.dealValue > (o.previousValue || 0));
-
-    // Group by reason
-    const reasonCounts: Record<string, number> = {};
-    oppsWithMovement.forEach(o => {
-      if (o.movementReason) {
-        reasonCounts[o.movementReason] = (reasonCounts[o.movementReason] || 0) + 1;
+    // Build maps using Pipeline_Deal_ID as key (IDs are now proper 12-digit numbers)
+    const prevMap = new Map<string, SnapDeal>();
+    const currMap = new Map<string, SnapDeal>();
+    snapshots.forEach(row => {
+      if (!passesFilters(row)) return;
+      const ym = row.Snapshot_Month.slice(0, 7);
+      const key = row.Pipeline_Deal_ID;
+      const deal: SnapDeal = {
+        licenseACV: row.License_ACV || 0,
+        implValue: row.Implementation_Value || 0,
+        currentStage: row.Current_Stage || '',
+        dealName: row.Deal_Name || '',
+        customerName: row.Customer_Name || '',
+        salesRep: row.Sales_Rep || '',
+        dealStage: row.Deal_Stage || '',
+        probability: row.Probability || 0,
+        logoType: row.Logo_Type || '',
+        pipelineDealId: row.Pipeline_Deal_ID,
+      };
+      if (ym === prevYYYYMM) {
+        prevMap.set(key, deal);
+      } else if (ym === targetYYYYMM) {
+        currMap.set(key, deal);
       }
     });
 
-    const reasonData = Object.entries(reasonCounts).map(([name, value]) => ({ name, value }));
+    // Revenue-type-aware value getter
+    const getVal = (d: SnapDeal): number => {
+      if (revenueTypeFilter === 'Implementation') return d.implValue;
+      if (revenueTypeFilter === 'License') return d.licenseACV;
+      return d.licenseACV + d.implValue;
+    };
+
+    // Starting Pipeline = sum of all deals in previous month
+    let startingPipeline = 0;
+    prevMap.forEach(d => { startingPipeline += getVal(d); });
+
+    // Ending Pipeline = sum of all deals in current month
+    let endingPipeline = 0;
+    currMap.forEach(d => { endingPipeline += getVal(d); });
+
+    // Compare deals between months — track both aggregates and individual deal details
+    let newDealsValue = 0;
+    let newDealsCount = 0;
+    let increasedValue = 0;
+    let increasedCount = 0;
+    let decreasedValue = 0;
+    let decreasedCount = 0;
+    let wonValue = 0;
+    let wonCount = 0;
+    let lostValue = 0;
+    let lostCount = 0;
+    const dealDetails: DealMovement[] = [];
+
+    // Deals in current but NOT in previous → New Deals
+    currMap.forEach((currDeal, key) => {
+      if (!prevMap.has(key)) {
+        const val = getVal(currDeal);
+        newDealsValue += val;
+        newDealsCount++;
+        dealDetails.push({
+          id: key, dealName: currDeal.dealName, customerName: currDeal.customerName,
+          prevValue: 0, currValue: val, change: val,
+          category: 'New', stage: currDeal.dealStage, salesRep: currDeal.salesRep,
+        });
+      }
+    });
+
+    // Deals in both → Value Increase / Decrease
+    currMap.forEach((currDeal, key) => {
+      const prevDeal = prevMap.get(key);
+      if (prevDeal) {
+        const currVal = getVal(currDeal);
+        const prevVal = getVal(prevDeal);
+        if (currVal > prevVal) {
+          increasedValue += currVal - prevVal;
+          increasedCount++;
+          dealDetails.push({
+            id: key, dealName: currDeal.dealName, customerName: currDeal.customerName,
+            prevValue: prevVal, currValue: currVal, change: currVal - prevVal,
+            category: 'Increased', stage: currDeal.dealStage, salesRep: currDeal.salesRep,
+          });
+        } else if (currVal < prevVal) {
+          decreasedValue += prevVal - currVal;
+          decreasedCount++;
+          dealDetails.push({
+            id: key, dealName: currDeal.dealName, customerName: currDeal.customerName,
+            prevValue: prevVal, currValue: currVal, change: currVal - prevVal,
+            category: 'Decreased', stage: currDeal.dealStage, salesRep: currDeal.salesRep,
+          });
+        }
+      }
+    });
+
+    // Deals in previous but NOT in current → check Current_Stage for Won/Lost
+    // Stage 7 = Won, Stages 8/10/11/12 = Lost
+    prevMap.forEach((prevDeal, key) => {
+      if (!currMap.has(key)) {
+        const stage = prevDeal.currentStage;
+        const val = getVal(prevDeal);
+        if (stage.startsWith('Stage 7')) {
+          wonValue += val;
+          wonCount++;
+          dealDetails.push({
+            id: key, dealName: prevDeal.dealName, customerName: prevDeal.customerName,
+            prevValue: val, currValue: 0, change: -val,
+            category: 'Won', stage: prevDeal.currentStage, salesRep: prevDeal.salesRep,
+          });
+        } else if (stage.startsWith('Stage 8') || stage.startsWith('Stage 10') ||
+                   stage.startsWith('Stage 11') || stage.startsWith('Stage 12')) {
+          lostValue += val;
+          lostCount++;
+          dealDetails.push({
+            id: key, dealName: prevDeal.dealName, customerName: prevDeal.customerName,
+            prevValue: val, currValue: 0, change: -val,
+            category: 'Lost', stage: prevDeal.currentStage, salesRep: prevDeal.salesRep,
+          });
+        } else {
+          lostValue += val;
+          lostCount++;
+          dealDetails.push({
+            id: key, dealName: prevDeal.dealName, customerName: prevDeal.customerName,
+            prevValue: val, currValue: 0, change: -val,
+            category: 'Lost', stage: prevDeal.currentStage || 'Unknown', salesRep: prevDeal.salesRep,
+          });
+        }
+      }
+    });
+
+    // Format month labels
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const prevMM = parseInt(prevYYYYMM.slice(5, 7), 10);
+    const currMM = parseInt(targetYYYYMM.slice(5, 7), 10);
+    const prevLabel = `${monthNames[prevMM - 1]}'${prevYYYYMM.slice(2, 4)}`;
+    const currLabel = `${monthNames[currMM - 1]}'${targetYYYYMM.slice(2, 4)}`;
 
     return {
-      totalChange,
-      newDealsCount: newDeals.length,
-      newDealsValue: newDeals.reduce((sum, o) => sum + o.dealValue, 0),
-      movedOutCount: movedOut.length,
-      movedOutValue: movedOut.reduce((sum, o) => sum + ((o.previousValue || 0) - o.dealValue), 0),
-      lostDealsCount: lostDeals.length,
-      lostDealsValue: lostDeals.reduce((sum, o) => sum + o.dealValue, 0),
-      increasedCount: increased.length,
-      oppsWithMovement,
-      lostDeals,
-      reasonData,
+      prevLabel, currLabel,
+      startingPipeline, endingPipeline,
+      newDealsValue, newDealsCount,
+      increasedValue, increasedCount,
+      decreasedValue, decreasedCount,
+      wonValue, wonCount,
+      lostValue, lostCount,
+      totalChange: endingPipeline - startingPipeline,
+      dealDetails,
     };
-  }, [filteredOpportunities, lookbackPeriod]);
+  }, [realData.isLoaded, realData.pipelineSnapshots, yearFilter, monthFilter, quarterFilter,
+      regionFilter, verticalFilter, segmentFilter, logoTypeFilter, revenueTypeFilter]);
+
+  // Pipeline movement waterfall chart data — built from snapshot comparison
+  const pipelineMovementWaterfall = useMemo(() => {
+    if (!snapshotComparison) {
+      // Fallback when no snapshot data available
+      return [
+        { name: 'Starting\nPipeline', bottom: 0, value: 0, displayValue: 0, fill: COLORS.gray, type: 'initial' as const },
+        { name: 'Ending\nPipeline', bottom: 0, value: 0, displayValue: 0, fill: COLORS.gray, type: 'final' as const },
+      ];
+    }
+
+    const sc = snapshotComparison;
+    let runningTotal = sc.startingPipeline;
+
+    const data: Array<{
+      name: string;
+      bottom: number;
+      value: number;
+      displayValue: number;
+      fill: string;
+      type: 'initial' | 'increase' | 'decrease' | 'final';
+      connectTo?: number;
+    }> = [];
+
+    // Starting Pipeline
+    data.push({
+      name: `${sc.prevLabel}\nPipeline`,
+      bottom: 0, value: sc.startingPipeline, displayValue: sc.startingPipeline,
+      fill: COLORS.gray, type: 'initial', connectTo: sc.startingPipeline,
+    });
+
+    // New Deals (+)
+    data.push({
+      name: 'New\nDeals',
+      bottom: runningTotal, value: sc.newDealsValue, displayValue: sc.newDealsValue,
+      fill: COLORS.success, type: 'increase', connectTo: runningTotal + sc.newDealsValue,
+    });
+    runningTotal += sc.newDealsValue;
+
+    // Value Increased (+)
+    data.push({
+      name: 'Value\nIncreased',
+      bottom: runningTotal, value: sc.increasedValue, displayValue: sc.increasedValue,
+      fill: COLORS.primary, type: 'increase', connectTo: runningTotal + sc.increasedValue,
+    });
+    runningTotal += sc.increasedValue;
+
+    // Value Decreased (-)
+    data.push({
+      name: 'Value\nDecreased',
+      bottom: runningTotal - sc.decreasedValue, value: sc.decreasedValue, displayValue: -sc.decreasedValue,
+      fill: COLORS.warning, type: 'decrease', connectTo: runningTotal - sc.decreasedValue,
+    });
+    runningTotal -= sc.decreasedValue;
+
+    // Won (removed from pipeline) (-)
+    data.push({
+      name: 'Closed\nWon',
+      bottom: runningTotal - sc.wonValue, value: sc.wonValue, displayValue: -sc.wonValue,
+      fill: COLORS.purple, type: 'decrease', connectTo: runningTotal - sc.wonValue,
+    });
+    runningTotal -= sc.wonValue;
+
+    // Lost (-)
+    data.push({
+      name: 'Lost\nDeals',
+      bottom: runningTotal - sc.lostValue, value: sc.lostValue, displayValue: -sc.lostValue,
+      fill: COLORS.danger, type: 'decrease', connectTo: runningTotal - sc.lostValue,
+    });
+    runningTotal -= sc.lostValue;
+
+    // Ending Pipeline
+    data.push({
+      name: `${sc.currLabel}\nPipeline`,
+      bottom: 0, value: sc.endingPipeline, displayValue: sc.endingPipeline,
+      fill: COLORS.gray, type: 'final',
+    });
+
+    return data;
+  }, [snapshotComparison]);
+
+  // Pipeline movement summary data for cards
+  type DealMovementDetail = {
+    id: string; dealName: string; customerName: string;
+    prevValue: number; currValue: number; change: number;
+    category: 'New' | 'Increased' | 'Decreased' | 'Won' | 'Lost';
+    stage: string; salesRep: string;
+  };
+
+  const pipelineMovement = useMemo(() => {
+    const emptyDetails: DealMovementDetail[] = [];
+    if (!snapshotComparison) {
+      return {
+        totalChange: 0, newDealsCount: 0, newDealsValue: 0,
+        movedOutCount: 0, movedOutValue: 0,
+        lostDealsCount: 0, lostDealsValue: 0,
+        increasedCount: 0, wonCount: 0, wonValue: 0,
+        dealDetails: emptyDetails,
+        lostDeals: emptyDetails,
+        topMovers: emptyDetails,
+      };
+    }
+    const sc = snapshotComparison;
+    const details = sc.dealDetails || [];
+    const lostDeals = details.filter(d => d.category === 'Lost').sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
+    const topMovers = [...details].sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
+    return {
+      totalChange: sc.totalChange,
+      newDealsCount: sc.newDealsCount,
+      newDealsValue: sc.newDealsValue,
+      movedOutCount: sc.decreasedCount,
+      movedOutValue: sc.decreasedValue,
+      lostDealsCount: sc.lostCount,
+      lostDealsValue: sc.lostValue,
+      increasedCount: sc.increasedCount,
+      wonCount: sc.wonCount,
+      wonValue: sc.wonValue,
+      dealDetails: details,
+      lostDeals,
+      topMovers,
+    };
+  }, [snapshotComparison]);
 
 
   // Render tabs
@@ -2074,28 +2232,21 @@ export default function SalesPage() {
 
   const renderPipelineTab = () => (
     <div className="space-y-6">
-      {/* Time Period Selector */}
-      <div className="card p-4">
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-secondary-700">Compare to:</span>
-          {(['1', '3', '6', '12'] as const).map((period) => (
-            <button
-              key={period}
-              onClick={() => setLookbackPeriod(period)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                lookbackPeriod === period
-                  ? 'bg-primary-500 text-white'
-                  : 'bg-secondary-100 text-secondary-600 hover:bg-secondary-200'
-              }`}
-            >
-              {period} month{period !== '1' ? 's' : ''} back
-            </button>
-          ))}
+      {/* Month-over-Month Comparison Info */}
+      {snapshotComparison && (
+        <div className="card p-4">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-secondary-700">Comparing:</span>
+            <span className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-primary-100 text-primary-700">
+              {snapshotComparison.prevLabel} → {snapshotComparison.currLabel}
+            </span>
+            <span className="text-xs text-secondary-400">Use month/year filters to change the comparison period</span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="card p-5">
           <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Pipeline Change</p>
           <p className={`text-3xl font-bold ${pipelineMovement.totalChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
@@ -2108,9 +2259,14 @@ export default function SalesPage() {
           <p className="text-xs text-secondary-400 mt-1">{formatCurrency(pipelineMovement.newDealsValue)}</p>
         </div>
         <div className="card p-5">
-          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Deals Moved Out</p>
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Value Decreased</p>
           <p className="text-3xl font-bold text-orange-500">{pipelineMovement.movedOutCount}</p>
           <p className="text-xs text-secondary-400 mt-1">{formatCurrency(pipelineMovement.movedOutValue)}</p>
+        </div>
+        <div className="card p-5">
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Closed Won</p>
+          <p className="text-3xl font-bold text-purple-500">{pipelineMovement.wonCount}</p>
+          <p className="text-xs text-secondary-400 mt-1">{formatCurrency(pipelineMovement.wonValue)}</p>
         </div>
         <div className="card p-5">
           <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Deals Lost</p>
@@ -2122,7 +2278,7 @@ export default function SalesPage() {
       {/* Pipeline Movement Floating Waterfall Chart */}
       <ChartWrapper
         title="Pipeline Movement"
-        subtitle="Floating waterfall showing $ value changes in pipeline"
+        subtitle={snapshotComparison ? `${snapshotComparison.prevLabel} snapshot → ${snapshotComparison.currLabel} snapshot` : 'Month-over-month pipeline comparison'}
         data={pipelineMovementWaterfall}
         filename="pipeline_movement"
       >
@@ -2244,18 +2400,18 @@ export default function SalesPage() {
         {/* Waterfall explanation */}
         <div className="mt-4 p-3 bg-secondary-50 rounded-lg">
           <p className="text-xs text-secondary-500 text-center">
-            <strong>How to read:</strong> Starting Pipeline + New Deals + Increases - Decreases - Lost - Closed Won = Ending Pipeline
+            <strong>How to read:</strong> Previous Month Pipeline + New Deals + Value Increased - Value Decreased - Closed Won - Lost = Current Month Pipeline
           </p>
         </div>
       </ChartWrapper>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Key Deal Movement Table */}
+        {/* Key Deal Movement Table — top movers by absolute change */}
         <div className="card overflow-hidden">
           <div className="p-5 border-b border-secondary-200 flex justify-between items-center">
             <h2 className="text-lg font-semibold text-secondary-900">Key Deal Movement</h2>
             <button
-              onClick={() => exportToCSV(pipelineMovement.oppsWithMovement, 'deal_movement')}
+              onClick={() => exportToCSV(pipelineMovement.topMovers, 'deal_movement')}
               className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
             >
               Export
@@ -2266,99 +2422,160 @@ export default function SalesPage() {
               <thead className="bg-secondary-50 sticky top-0">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Deal</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Account</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Previous</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Current</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Change</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Reason</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Category</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-secondary-100">
-                {pipelineMovement.oppsWithMovement.slice(0, 10).map((deal) => {
-                  const change = deal.dealValue - (deal.previousValue || 0);
-                  const changePercent = deal.previousValue ? ((change / deal.previousValue) * 100).toFixed(0) : 0;
-                  return (
-                    <tr key={deal.id} className={`${change > 0 ? 'bg-green-50' : change < 0 ? 'bg-red-50' : ''}`}>
-                      <td className="px-4 py-3 font-medium text-secondary-900">{deal.name}</td>
-                      <td className="px-4 py-3 text-right text-secondary-600">{formatCurrency(deal.previousValue || 0)}</td>
-                      <td className="px-4 py-3 text-right font-medium text-secondary-900">{formatCurrency(deal.dealValue)}</td>
-                      <td className={`px-4 py-3 text-right font-medium ${change > 0 ? 'text-green-600' : change < 0 ? 'text-red-600' : 'text-secondary-400'}`}>
-                        {change > 0 ? '+' : ''}{formatCurrency(change)} ({changePercent}%)
-                      </td>
-                      <td className="px-4 py-3 text-secondary-600">{deal.movementReason || '-'}</td>
-                    </tr>
-                  );
-                })}
+                {pipelineMovement.topMovers.slice(0, 10).map((deal) => (
+                  <tr key={deal.id} className={`${deal.change > 0 ? 'bg-green-50' : deal.change < 0 ? 'bg-red-50' : ''}`}>
+                    <td className="px-4 py-3 font-medium text-secondary-900">{deal.dealName}</td>
+                    <td className="px-4 py-3 text-secondary-600">{deal.customerName}</td>
+                    <td className="px-4 py-3 text-right text-secondary-600">{formatCurrency(deal.prevValue)}</td>
+                    <td className="px-4 py-3 text-right font-medium text-secondary-900">{formatCurrency(deal.currValue)}</td>
+                    <td className={`px-4 py-3 text-right font-medium ${deal.change > 0 ? 'text-green-600' : deal.change < 0 ? 'text-red-600' : 'text-secondary-400'}`}>
+                      {deal.change > 0 ? '+' : ''}{formatCurrency(deal.change)}
+                      {deal.prevValue > 0 ? ` (${((deal.change / deal.prevValue) * 100).toFixed(0)}%)` : ''}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        deal.category === 'New' ? 'bg-blue-100 text-blue-800' :
+                        deal.category === 'Increased' ? 'bg-green-100 text-green-800' :
+                        deal.category === 'Decreased' ? 'bg-amber-100 text-amber-800' :
+                        deal.category === 'Won' ? 'bg-emerald-100 text-emerald-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {deal.category}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Reasons for Pipeline Movement - Kept as Pie Chart per original */}
-        <ChartWrapper
-          title="Reasons for Pipeline Movement"
-          data={pipelineMovement.reasonData}
-          filename="movement_reasons"
-        >
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pipelineMovement.reasonData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {pipelineMovement.reasonData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+        {/* Lost Deals Analysis */}
+        <div className="card overflow-hidden">
+          <div className="p-5 border-b border-secondary-200 flex justify-between items-center">
+            <h2 className="text-lg font-semibold text-secondary-900">Lost Deals Analysis</h2>
+            <button
+              onClick={() => exportToCSV(pipelineMovement.lostDeals, 'lost_deals')}
+              className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
+            >
+              Export
+            </button>
           </div>
-        </ChartWrapper>
+          <div className="overflow-x-auto max-h-80">
+            <table className="w-full">
+              <thead className="bg-secondary-50 sticky top-0">
+                <tr>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Deal Name</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Account</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Value</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Stage Lost At</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Owner</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-secondary-100">
+                {pipelineMovement.lostDeals.length === 0 ? (
+                  <tr><td colSpan={5} className="px-5 py-8 text-center text-secondary-400">No lost deals in this period</td></tr>
+                ) : pipelineMovement.lostDeals.map((deal) => (
+                  <tr key={deal.id} className="hover:bg-secondary-50">
+                    <td className="px-5 py-4 font-medium text-secondary-900">{deal.dealName}</td>
+                    <td className="px-5 py-4 text-secondary-600">{deal.customerName}</td>
+                    <td className="px-5 py-4 text-right font-medium text-red-600">{formatCurrency(Math.abs(deal.prevValue))}</td>
+                    <td className="px-5 py-4 text-secondary-600">{deal.stage}</td>
+                    <td className="px-5 py-4 text-secondary-600">{deal.salesRep}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
-      {/* Lost Deals Analysis */}
+      {/* All Deal Movement Table — searchable by deal name */}
       <div className="card overflow-hidden">
         <div className="p-5 border-b border-secondary-200 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-secondary-900">Lost Deals Analysis</h2>
-          <button
-            onClick={() => exportToCSV(pipelineMovement.lostDeals, 'lost_deals')}
-            className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
-          >
-            Export
-          </button>
+          <div>
+            <h2 className="text-lg font-semibold text-secondary-900">All Deal Movement</h2>
+            <p className="text-sm text-secondary-500">
+              {snapshotComparison ? `${snapshotComparison.prevLabel} → ${snapshotComparison.currLabel}` : 'Month-over-month deal changes'}
+              {' — '}{pipelineMovement.dealDetails.length} deals with movement
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="text"
+              placeholder="Filter by deal name..."
+              className="px-3 py-1.5 text-sm border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              onChange={(e) => {
+                const el = e.target.closest('.card')?.querySelector('[data-deal-filter]');
+                if (el) (el as HTMLElement).dataset.dealFilter = e.target.value.toLowerCase();
+                e.target.closest('.card')?.querySelectorAll('[data-deal-row]').forEach((row) => {
+                  const name = (row as HTMLElement).dataset.dealRow || '';
+                  (row as HTMLElement).style.display = name.includes(e.target.value.toLowerCase()) ? '' : 'none';
+                });
+              }}
+            />
+            <button
+              onClick={() => exportToCSV(pipelineMovement.dealDetails, 'all_deal_movement')}
+              className="px-3 py-1.5 text-sm border border-secondary-200 rounded-lg hover:bg-secondary-50 flex items-center gap-2"
+            >
+              Export
+            </button>
+          </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-96">
           <table className="w-full">
-            <thead className="bg-secondary-50">
+            <thead className="bg-secondary-50 sticky top-0">
               <tr>
-                <SortableHeader label="Deal Name" sortKey="name" currentSort={sortConfig} onSort={handleSort} />
-                <SortableHeader label="Account" sortKey="accountName" currentSort={sortConfig} onSort={handleSort} />
-                <SortableHeader label="Value" sortKey="dealValue" currentSort={sortConfig} onSort={handleSort} />
-                <SortableHeader label="Loss Reason" sortKey="lossReason" currentSort={sortConfig} onSort={handleSort} filterOptions={LOSS_REASONS} />
-                <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Stage Lost At</th>
-                <SortableHeader label="Owner" sortKey="owner" currentSort={sortConfig} onSort={handleSort} />
+                <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Deal Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Account</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Category</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Previous Value</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Current Value</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Change</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Stage</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Owner</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-secondary-100">
-              {pipelineMovement.lostDeals.slice(0, 10).map((deal) => (
-                <tr key={deal.id} className="hover:bg-secondary-50">
-                  <td className="px-5 py-4 font-medium text-secondary-900">{deal.name}</td>
-                  <td className="px-5 py-4 text-secondary-600">{deal.accountName}</td>
-                  <td className="px-5 py-4 text-right font-medium text-red-600">{formatCurrency(deal.dealValue)}</td>
-                  <td className="px-5 py-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                      {deal.lossReason}
+              {pipelineMovement.dealDetails.length === 0 ? (
+                <tr><td colSpan={8} className="px-5 py-8 text-center text-secondary-400">No deal movement in this period</td></tr>
+              ) : pipelineMovement.dealDetails
+                .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
+                .map((deal) => (
+                <tr key={deal.id} data-deal-row={deal.dealName.toLowerCase()} className={`hover:bg-secondary-50 ${
+                  deal.category === 'Won' ? 'bg-emerald-50/50' :
+                  deal.category === 'Lost' ? 'bg-red-50/50' :
+                  deal.change > 0 ? 'bg-green-50/50' :
+                  deal.change < 0 ? 'bg-red-50/30' : ''
+                }`}>
+                  <td className="px-4 py-3 font-medium text-secondary-900">{deal.dealName}</td>
+                  <td className="px-4 py-3 text-secondary-600">{deal.customerName}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                      deal.category === 'New' ? 'bg-blue-100 text-blue-800' :
+                      deal.category === 'Increased' ? 'bg-green-100 text-green-800' :
+                      deal.category === 'Decreased' ? 'bg-amber-100 text-amber-800' :
+                      deal.category === 'Won' ? 'bg-emerald-100 text-emerald-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {deal.category}
                     </span>
                   </td>
-                  <td className="px-5 py-4 text-secondary-600">{deal.stage}</td>
-                  <td className="px-5 py-4 text-secondary-600">{deal.owner}</td>
+                  <td className="px-4 py-3 text-right text-secondary-600">{formatCurrency(deal.prevValue)}</td>
+                  <td className="px-4 py-3 text-right font-medium text-secondary-900">{formatCurrency(deal.currValue)}</td>
+                  <td className={`px-4 py-3 text-right font-medium ${deal.change > 0 ? 'text-green-600' : deal.change < 0 ? 'text-red-600' : 'text-secondary-400'}`}>
+                    {deal.change > 0 ? '+' : ''}{formatCurrency(deal.change)}
+                  </td>
+                  <td className="px-4 py-3 text-secondary-600">{deal.stage}</td>
+                  <td className="px-4 py-3 text-secondary-600">{deal.salesRep}</td>
                 </tr>
               ))}
             </tbody>

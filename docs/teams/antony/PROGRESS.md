@@ -7,6 +7,56 @@
 
 <!-- Add entries below in reverse chronological order (newest first) -->
 
+## 2026-02-18 - Pipeline Movement: Deal-Level Tables + Lost Deals + All Deal Movement
+**Task:** Populate Key Deal Movement and Lost Deal Analysis tables with real data from snapshot comparison. Add new "All Deal Movement" table with deal name filter. Remove reasons columns and pie chart.
+**Changes:**
+- `frontend/src/modules/sales/pages/SalesPage.tsx`:
+  - **`snapshotComparison` useMemo**: Enhanced `AggDeal` → `SnapDeal` type to store deal name, customer, sales rep, stage, etc. Added `DealMovement` type and `dealDetails` array tracking all individual deal movements (New, Increased, Decreased, Won, Lost) with previous/current values.
+  - **`pipelineMovement` useMemo**: Now derives `lostDeals` (filtered/sorted from dealDetails), `topMovers` (sorted by absolute change), and full `dealDetails` array.
+  - **Key Deal Movement table**: Populated with top 10 movers. Replaced "Reason" column with "Category" badge (New/Increased/Decreased/Won/Lost). Added "Account" column.
+  - **Lost Deals Analysis table**: Populated with lost deals from snapshot comparison. Removed "Loss Reason" column. Shows Deal Name, Account, Value, Stage Lost At, Owner.
+  - **NEW "All Deal Movement" table**: Full table of all deals with movement. Columns: Deal Name, Account, Category, Previous Value, Current Value, Change, Stage, Owner. Filterable by deal name with text input. Sorted by absolute change.
+  - **Removed**: "Reasons for Pipeline Movement" pie chart, `PIE_COLORS` constant, `PieChart`/`Pie` imports.
+**Status:** Complete
+**Branch:** `antony-branch-changes`
+
+## 2026-02-18 - Update Pipeline_Deal_ID as Primary Key (Fixed CSV Data)
+**Task:** User re-exported Monthly Pipeline Snapshot CSV with proper 12-digit Pipeline_Deal_IDs (no more scientific notation). Update all code to use Pipeline_Deal_ID as the key instead of the `Deal_Name|Customer_Name` workaround.
+**Changes:**
+- `frontend/public/data/monthly_pipeline_snapshot.csv`: Replaced with updated template (1,377 unique Pipeline_Deal_IDs vs 69 corrupted)
+- `frontend/src/modules/sales/pages/SalesPage.tsx`:
+  - **`buildRealOpportunities`**: Changed pipeline deal dedup key from `Deal_Name|Customer_Name` to `Pipeline_Deal_ID`. Used `Pipeline_Deal_ID` as Opportunity `id` instead of synthetic `PIP-0001`.
+  - **`snapshotComparison` useMemo**: Changed Map key from `Deal_Name|Customer_Name` to `Pipeline_Deal_ID` for month-over-month comparison.
+**Status:** Complete
+**Branch:** `antony-branch-changes`
+
+## 2026-02-18 - Fix Pipeline Movement: Deal_Name|Customer_Name Key + Revenue Type
+**Task:** Fix pipeline starting value ($3.67M instead of $29.21M) caused by Pipeline_Deal_ID scientific notation corruption collapsing 263 deals into 52 groups. Ensure Implementation filter works.
+**Root Cause:** Pipeline_Deal_ID values in CSV are in scientific notation (e.g., "3.08E+11" represents 189 different deals). Using Pipeline_Deal_ID as Map key kept only 1 deal per truncated ID.
+**Fix:** Switched to `Deal_Name|Customer_Name` as composite key (same as `buildRealOpportunities`). Aggregates values for any duplicate keys within a month. Revenue-type-aware `getAggVal` uses `licenseACV` for License filter, `implValue` for Implementation filter.
+**Verification:** Deal_Name|Customer_Name gives 263 unique keys for Jan 2026 (matches row count) vs 52 with corrupted Pipeline_Deal_ID.
+**Changes:**
+- `frontend/src/modules/sales/pages/SalesPage.tsx`:
+  - **`snapshotComparison` useMemo**: Replaced `Pipeline_Deal_ID` key with `Deal_Name|Customer_Name`. Added `AggDeal` type with `licenseACV`, `implValue`, `currentStage`, `count`. Values aggregated per key. `getAggVal` picks the right field based on `revenueTypeFilter`.
+**Status:** Complete
+**Branch:** `antony-branch-changes`
+
+---
+
+## 2026-02-18 - Pipeline Movement Waterfall: Month-over-Month Snapshot Comparison
+**Task:** Rewrite pipeline movement to compare previous month snapshot vs current month snapshot. Deals matched by Pipeline_Deal_ID.
+**Changes:**
+- `frontend/src/modules/sales/pages/SalesPage.tsx`:
+  - **New `snapshotComparison` useMemo**: Compares two consecutive pipeline snapshots from raw `realDataStore.pipelineSnapshots`. Determines target month from year/month/quarter filters. Applies global filters (region, vertical, segment, logo type). Revenue-type-aware value getters.
+  - **Deal classification**: Deals in current but not previous = New Deals. Deals in both with value change = Value Increased/Decreased. Deals in previous but not current: Current_Stage "Stage 7" = Won, Stages 8/10/11/12 = Lost.
+  - **Waterfall chart**: Now shows "Jan'26 Pipeline → Feb'26 Pipeline" style labels. Bars: Starting Pipeline, New Deals (+), Value Increased (+), Value Decreased (-), Closed Won (-), Lost Deals (-), Ending Pipeline.
+  - **Summary cards**: Updated to 5 cards (Pipeline Change, New Deals, Value Decreased, Closed Won, Deals Lost). Shows snapshot months being compared.
+  - **Removed**: `lookbackPeriod` state and old time period selector buttons (replaced by month/year global filters).
+**Status:** Complete
+**Branch:** `antony-branch-changes`
+
+---
+
 ## 2026-02-18 - Key Deals Unweighted Fee, Closed ACV Rev Type Filter, Regional Forecast Fix, Forecast Trend Rev Type
 **Task:** 4 changes: (1) Key Deals show unweighted fee (weighted/probability), (2) Closed ACV table filters columns by revenue type, (3) Regional Performance variance/YoY against forecast ACV, (4) Forecast Trend filters for License vs Implementation.
 **Changes:**
