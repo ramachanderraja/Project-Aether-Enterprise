@@ -15,6 +15,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Public } from '../auth/decorators/public.decorator';
 import { SalesService } from './sales.service';
 import { DealService } from './services/deal.service';
 import { ForecastService } from './services/forecast.service';
@@ -30,6 +31,14 @@ export class SalesController {
     private readonly dealService: DealService,
     private readonly forecastService: ForecastService,
   ) {}
+
+  @Public()
+  @Get('data')
+  @ApiOperation({ summary: 'Get all sales CSV data for the Sales page' })
+  @ApiResponse({ status: 200, description: 'Sales data retrieved from CSV files' })
+  getSalesData() {
+    return this.salesService.getSalesData();
+  }
 
   @Get('pipeline')
   @ApiOperation({ summary: 'Get sales pipeline overview' })

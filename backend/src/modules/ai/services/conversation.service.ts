@@ -1,14 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../../database/prisma.service';
 import { CreateConversationDto } from '../dto';
 
 @Injectable()
 export class ConversationService {
-  // In-memory store for demo - in production use database
+  // In-memory store for demo
   private conversations: Map<string, any> = new Map();
   private messages: Map<string, any[]> = new Map();
-
-  constructor(private readonly prisma: PrismaService) {}
 
   async createConversation(
     userId: string,

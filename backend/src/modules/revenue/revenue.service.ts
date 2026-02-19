@@ -1,106 +1,158 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../database/prisma.service';
+import { DataService } from '../data/data.service';
 
 @Injectable()
 export class RevenueService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly dataService: DataService) {}
+
+  getRevenueData() {
+    return {
+      arrSnapshots: this.dataService.getArrSnapshots(),
+      pipelineSnapshots: this.dataService.getPipelineSnapshots(),
+      closedAcv: this.dataService.getClosedAcv(),
+      sowMappings: this.dataService.getSowMappings(),
+      customerNameMappings: this.dataService.getCustomerNameMappings(),
+      arrSubCategoryBreakdown: this.dataService.getArrSubCategoryBreakdown(),
+      productCategoryMapping: this.dataService.getProductCategoryMapping(),
+    };
+  }
 
   async getRevenueOverview(period?: string) {
+    const arr = this.dataService.getArrSnapshots();
+    const closedAcv = this.dataService.getClosedAcv();
+
+    const latestMonth = arr.length > 0
+      ? arr.reduce((max, r) => r.Snapshot_Month > max ? r.Snapshot_Month : max, arr[0].Snapshot_Month)
+      : '';
+
+    const latestSnapshots = arr.filter(r => r.Snapshot_Month === latestMonth);
+    const totalEndingARR = latestSnapshots.reduce((s, r) => s + r.Ending_ARR, 0);
+    const totalNewARR = latestSnapshots.reduce((s, r) => s + r.New_ARR, 0);
+    const totalExpansion = latestSnapshots.reduce((s, r) => s + r.Expansion_ARR, 0);
+    const totalContraction = latestSnapshots.reduce((s, r) => s + r.Contraction_ARR, 0);
+    const totalChurn = latestSnapshots.reduce((s, r) => s + r.Churn_ARR, 0);
+    const totalClosed = closedAcv.reduce((s, d) => s + d.Amount, 0);
+
     return {
-      period: period || 'January 2026',
+      period: period || latestMonth || 'current',
       summary: {
-        total_revenue: 12500000,
-        recurring_revenue: 4000000,
-        one_time_revenue: 8500000,
-        arr: 48000000,
-        mrr: 4000000,
-        budget: 12000000,
-        variance: 500000,
-        prior_year: 10200000,
-        yoy_growth: 22.55,
+        total_arr: totalEndingARR,
+        new_arr: totalNewARR,
+        expansion_arr: totalExpansion,
+        contraction_arr: totalContraction,
+        churn_arr: totalChurn,
+        total_closed_acv: totalClosed,
+        customer_count: new Set(latestSnapshots.map(r => r.Customer_Name)).size,
       },
-      by_type: [
-        { type: 'Subscription', amount: 4000000, percent: 32.0 },
-        { type: 'License', amount: 6500000, percent: 52.0 },
-        { type: 'Services', amount: 2000000, percent: 16.0 },
-      ],
-      by_segment: [
-        { segment: 'Enterprise', amount: 8750000, percent: 70.0, growth: 25.0 },
-        { segment: 'Mid-Market', amount: 2500000, percent: 20.0, growth: 18.0 },
-        { segment: 'SMB', amount: 1250000, percent: 10.0, growth: 12.0 },
-      ],
-      by_region: [
-        { region: 'North America', amount: 7500000, percent: 60.0 },
-        { region: 'EMEA', amount: 3125000, percent: 25.0 },
-        { region: 'APAC', amount: 1875000, percent: 15.0 },
-      ],
     };
   }
 
   async getArrMovement(period?: string) {
+    const arr = this.dataService.getArrSnapshots();
+
+    const monthMap = new Map<string, {
+      starting: number; newArr: number; expansion: number;
+      scheduleChange: number; contraction: number; churn: number; ending: number;
+    }>();
+
+    arr.forEach(r => {
+      const month = r.Snapshot_Month?.slice(0, 7) || '';
+      if (!month) return;
+      const entry = monthMap.get(month) || {
+        starting: 0, newArr: 0, expansion: 0,
+        scheduleChange: 0, contraction: 0, churn: 0, ending: 0,
+      };
+      entry.starting += r.Starting_ARR;
+      entry.newArr += r.New_ARR;
+      entry.expansion += r.Expansion_ARR;
+      entry.scheduleChange += r.Schedule_Change;
+      entry.contraction += r.Contraction_ARR;
+      entry.churn += r.Churn_ARR;
+      entry.ending += r.Ending_ARR;
+      monthMap.set(month, entry);
+    });
+
+    const sorted = [...monthMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+
     return {
-      period: period || 'January 2026',
-      opening_arr: 47150000,
-      closing_arr: 48000000,
-      movements: {
-        new_business: { arr: 1200000, deals: 28, avg_arr: 42857 },
-        expansion: { arr: 450000, customers: 45, upsell: 300000, cross_sell: 150000 },
-        contraction: { arr: -150000, customers: 12 },
-        churn: { arr: -350000, customers: 8 },
-        reactivation: { arr: 100000, customers: 2 },
-      },
-      net_arr_change: 850000,
-      ndr: 1.0063,
-      grr: 0.9894,
-      logo_retention: 0.9657,
+      period: period || 'all',
+      movements: sorted.map(([month, v]) => ({
+        month,
+        starting_arr: v.starting,
+        new_business: v.newArr,
+        expansion: v.expansion,
+        schedule_change: v.scheduleChange,
+        contraction: v.contraction,
+        churn: v.churn,
+        ending_arr: v.ending,
+        net_change: v.newArr + v.expansion + v.scheduleChange + v.contraction + v.churn,
+      })),
     };
   }
 
   async getCustomerHealth(riskLevel?: string) {
-    const customers = [
-      { id: 'cust_001', name: 'Enterprise Corp', arr: 250000, health_score: 85, risk_level: 'healthy', churn_probability: 0.05 },
-      { id: 'cust_002', name: 'At Risk Inc', arr: 150000, health_score: 45, risk_level: 'at_risk', churn_probability: 0.45 },
-      { id: 'cust_003', name: 'Critical Systems', arr: 180000, health_score: 25, risk_level: 'critical', churn_probability: 0.70 },
-      { id: 'cust_004', name: 'Growth Tech', arr: 120000, health_score: 92, risk_level: 'healthy', churn_probability: 0.02 },
-    ];
+    const arr = this.dataService.getArrSnapshots();
 
-    const filtered = riskLevel ? customers.filter(c => c.risk_level === riskLevel) : customers;
+    const latestMonth = arr.length > 0
+      ? arr.reduce((max, r) => r.Snapshot_Month > max ? r.Snapshot_Month : max, arr[0].Snapshot_Month)
+      : '';
+
+    const latestSnapshots = arr.filter(r => r.Snapshot_Month === latestMonth);
+    const filtered = riskLevel
+      ? latestSnapshots.filter(r => r.Renewal_Risk?.toLowerCase() === riskLevel.toLowerCase())
+      : latestSnapshots;
 
     return {
-      summary: { total_customers: 485, healthy: 380, at_risk: 75, critical: 30, arr_at_risk: 4500000 },
-      customers: filtered,
+      summary: {
+        total_customers: new Set(latestSnapshots.map(r => r.Customer_Name)).size,
+        arr_at_risk: latestSnapshots.filter(r => r.Renewal_Risk === 'High' || r.Renewal_Risk === 'Critical')
+          .reduce((s, r) => s + r.Ending_ARR, 0),
+      },
+      customers: filtered.slice(0, 50).map(r => ({
+        name: r.Customer_Name,
+        sow_id: r.SOW_ID,
+        arr: r.Ending_ARR,
+        risk_level: r.Renewal_Risk || 'Low',
+        contract_end: r.Contract_End_Date,
+      })),
     };
   }
 
   async getCohortAnalysis() {
+    const arr = this.dataService.getArrSnapshots();
+
+    const cohortMap = new Map<string, { customers: Set<string>; initialArr: number; currentArr: number }>();
+    arr.forEach(r => {
+      const startYear = r.Contract_Start_Date?.slice(0, 4);
+      if (!startYear) return;
+      const cohort = startYear;
+      const entry = cohortMap.get(cohort) || { customers: new Set<string>(), initialArr: 0, currentArr: 0 };
+      entry.customers.add(r.Customer_Name);
+      entry.currentArr += r.Ending_ARR;
+      cohortMap.set(cohort, entry);
+    });
+
     return {
-      cohorts: [
-        { cohort: 'Q1 2025', customers: 45, initial_arr: 2800000, current_arr: 3100000, retention: 0.92, expansion: 0.18 },
-        { cohort: 'Q2 2025', customers: 52, initial_arr: 3200000, current_arr: 3400000, retention: 0.94, expansion: 0.12 },
-        { cohort: 'Q3 2025', customers: 48, initial_arr: 2900000, current_arr: 2950000, retention: 0.96, expansion: 0.05 },
-        { cohort: 'Q4 2025', customers: 55, initial_arr: 3500000, current_arr: 3500000, retention: 0.98, expansion: 0.02 },
-      ],
+      cohorts: [...cohortMap.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([cohort, v]) => ({
+          cohort,
+          customers: v.customers.size,
+          current_arr: v.currentArr,
+        })),
     };
   }
 
   async getChurnAnalysis() {
+    const arr = this.dataService.getArrSnapshots();
+
+    const churned = arr.filter(r => r.Churn_ARR < 0);
+    const churnedARR = churned.reduce((s, r) => s + Math.abs(r.Churn_ARR), 0);
+
     return {
-      period: 'Last 12 Months',
-      total_churned: 42,
-      churned_arr: 2100000,
-      churn_rate: 0.05,
-      by_reason: [
-        { reason: 'Competitor', count: 15, arr: 750000, percent: 35.7 },
-        { reason: 'Budget Cuts', count: 12, arr: 600000, percent: 28.6 },
-        { reason: 'Company Closed', count: 8, arr: 400000, percent: 19.0 },
-        { reason: 'Product Fit', count: 5, arr: 250000, percent: 11.9 },
-        { reason: 'Other', count: 2, arr: 100000, percent: 4.8 },
-      ],
-      by_segment: [
-        { segment: 'SMB', count: 28, arr: 840000, churn_rate: 0.08 },
-        { segment: 'Mid-Market', count: 10, arr: 750000, churn_rate: 0.04 },
-        { segment: 'Enterprise', count: 4, arr: 510000, churn_rate: 0.02 },
-      ],
+      total_churned_rows: churned.length,
+      churned_arr: churnedARR,
+      unique_customers: new Set(churned.map(r => r.Customer_Name)).size,
     };
   }
 }

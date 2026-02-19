@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../database/prisma.service';
 import { GetDashboardDto } from './dto';
 import { KpiService } from './services/kpi.service';
 import { AnomalyService } from './services/anomaly.service';
@@ -7,7 +6,6 @@ import { AnomalyService } from './services/anomaly.service';
 @Injectable()
 export class DashboardService {
   constructor(
-    private readonly prisma: PrismaService,
     private readonly kpiService: KpiService,
     private readonly anomalyService: AnomalyService,
   ) {}
@@ -16,7 +14,6 @@ export class DashboardService {
     const asOfDate = query.as_of_date ? new Date(query.as_of_date) : new Date();
     const comparisonPeriod = query.comparison_period || 'mom';
 
-    // Get KPIs
     const kpis = await this.kpiService.getExecutiveKpis({
       asOfDate,
       comparisonPeriod,
@@ -24,16 +21,12 @@ export class DashboardService {
       lob: query.lob,
     });
 
-    // Get active anomalies
     const anomalies = await this.anomalyService.getAnomalies({
       status: 'unresolved',
       limit: 5,
     });
 
-    // Get AI insights
     const aiInsights = await this.getAiInsights(query);
-
-    // Get cash flow forecast
     const cashFlowForecast = await this.getCashFlowForecast(query);
 
     return {
@@ -47,7 +40,6 @@ export class DashboardService {
   }
 
   async getCashFlowForecast(query: GetDashboardDto) {
-    // Generate 6-month cash flow forecast
     const periods = [];
     const inflows = [];
     const outflows = [];
@@ -55,7 +47,7 @@ export class DashboardService {
     const endingBalance = [];
 
     const baseDate = query.as_of_date ? new Date(query.as_of_date) : new Date();
-    let currentBalance = 8500000; // Starting balance
+    let currentBalance = 8500000;
 
     for (let i = 1; i <= 6; i++) {
       const forecastDate = new Date(baseDate);
@@ -66,7 +58,6 @@ export class DashboardService {
         year: 'numeric',
       });
 
-      // Simulated forecast with some variance
       const baseInflow = 4200000 + (i * 150000);
       const baseOutflow = 3800000 + (i * 50000);
       const variance = (Math.random() - 0.5) * 200000;
@@ -93,8 +84,6 @@ export class DashboardService {
   }
 
   async getAiInsights(query: GetDashboardDto) {
-    // In production, this would call the AI service
-    // For now, return sample insights
     return [
       {
         id: 'ins_001',

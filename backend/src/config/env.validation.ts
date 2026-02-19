@@ -18,6 +18,7 @@ class EnvironmentVariables {
   PORT: number = 3001;
 
   @IsString()
+  @IsOptional()
   DATABASE_URL: string;
 
   @IsString()
@@ -33,7 +34,8 @@ class EnvironmentVariables {
   REDIS_PASSWORD: string;
 
   @IsString()
-  JWT_SECRET: string;
+  @IsOptional()
+  JWT_SECRET: string = 'dev-secret-change-in-production';
 
   @IsString()
   @IsOptional()

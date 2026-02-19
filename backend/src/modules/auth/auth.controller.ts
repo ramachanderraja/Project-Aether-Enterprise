@@ -14,91 +14,26 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LoginDto, RefreshTokenDto, LogoutDto } from './dto';
 import { Public } from './decorators/public.decorator';
-import { PrismaService } from '../../database/prisma.service';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Public()
   @Post('seed')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Seed demo users (temp endpoint)' })
+  @ApiOperation({ summary: 'Seed demo users (no-op in file-based mode)' })
   async seedDemoUsers() {
-    try {
-      // Create default tenant
-      const tenant = await this.prisma.tenant.upsert({
-        where: { domain: 'demo.aether.local' },
-        update: {},
-        create: {
-          name: 'Demo Organization',
-          domain: 'demo.aether.local',
-          plan: 'enterprise',
-          isActive: true,
-        },
-      });
-
-      // Create admin role
-      const adminRole = await this.prisma.role.upsert({
-        where: { name: 'admin' },
-        update: {},
-        create: {
-          name: 'admin',
-          description: 'Administrator with full access',
-          isSystem: true,
-        },
-      });
-
-      // Create demo user
-      const hashedPassword = await bcrypt.hash('Demo@2024', 10);
-      const adminUser = await this.prisma.user.upsert({
-        where: { email: 'admin@demo.com' },
-        update: { passwordHash: hashedPassword },
-        create: {
-          email: 'admin@demo.com',
-          passwordHash: hashedPassword,
-          firstName: 'Demo',
-          lastName: 'Admin',
-          isActive: true,
-          tenantId: tenant.id,
-        },
-      });
-
-      // Assign admin role
-      await this.prisma.userRole.upsert({
-        where: {
-          userId_roleId: {
-            userId: adminUser.id,
-            roleId: adminRole.id,
-          },
-        },
-        update: {},
-        create: {
-          userId: adminUser.id,
-          roleId: adminRole.id,
-        },
-      });
-
-      return {
-        message: 'Demo users seeded successfully',
-        user: { email: adminUser.email, id: adminUser.id },
-      };
-    } catch (error) {
-      return {
-        message: 'Seed failed',
-        error: error.message,
-      };
-    }
+    return {
+      message: 'Demo users are pre-configured in file-based mode',
+      user: { email: 'admin@demo.com', id: 'usr_admin_001' },
+    };
   }
 
   @Public()

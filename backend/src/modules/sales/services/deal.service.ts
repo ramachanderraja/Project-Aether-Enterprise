@@ -1,10 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../../database/prisma.service';
 import { GetDealsDto, CreateDealDto, UpdateDealDto } from '../dto';
 
 @Injectable()
 export class DealService {
-  constructor(private readonly prisma: PrismaService) {}
 
   async getDeals(query: GetDealsDto) {
     const { stage, owner_id, region, risk_level, page = 1, limit = 20 } = query;

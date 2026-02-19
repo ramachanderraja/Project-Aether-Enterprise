@@ -1,6 +1,7 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Public } from '../auth/decorators/public.decorator';
 import { RevenueService } from './revenue.service';
 
 @ApiTags('Revenue')
@@ -9,6 +10,13 @@ import { RevenueService } from './revenue.service';
 @Controller('revenue')
 export class RevenueController {
   constructor(private readonly revenueService: RevenueService) {}
+
+  @Public()
+  @Get('data')
+  @ApiOperation({ summary: 'Get all revenue CSV data for the Revenue page' })
+  getRevenueData() {
+    return this.revenueService.getRevenueData();
+  }
 
   @Get('overview')
   @ApiOperation({ summary: 'Get revenue overview' })

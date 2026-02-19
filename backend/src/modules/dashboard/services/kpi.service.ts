@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../../database/prisma.service';
 
 interface GetKpisParams {
   asOfDate: Date;
@@ -10,16 +9,9 @@ interface GetKpisParams {
 
 @Injectable()
 export class KpiService {
-  constructor(private readonly prisma: PrismaService) {}
-
   async getExecutiveKpis(params: GetKpisParams) {
     const { asOfDate, comparisonPeriod } = params;
 
-    // Calculate period dates based on comparison type
-    const previousPeriodStart = this.getPreviousPeriodDate(asOfDate, comparisonPeriod);
-
-    // In production, these would be calculated from actual financial data
-    // For now, return realistic sample data
     return {
       revenue: {
         current: 12500000,
@@ -72,7 +64,6 @@ export class KpiService {
   }
 
   async getKpiDetails(kpiId: string, query: any) {
-    // Return detailed breakdown for specific KPI
     const kpiDefinitions: Record<string, any> = {
       revenue: {
         kpi_id: 'revenue',

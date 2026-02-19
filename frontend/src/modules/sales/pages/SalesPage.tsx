@@ -18,7 +18,8 @@ import { useSOWMappingStore } from '@shared/store/sowMappingStore';
 import { usePipelineSubCategoryStore } from '@shared/store/pipelineSubCategoryStore';
 import { useARRSubCategoryStore } from '@shared/store/arrSubCategoryStore';
 import { useProductCategoryMappingStore } from '@shared/store/productCategoryMappingStore';
-import { useRealDataStore, normalizeRegion, type RealDataState } from '@shared/store/realDataStore';
+import { normalizeRegion } from '@shared/store/dataTypes';
+import { useSalesDataStore, type SalesDataState } from '@shared/store/salesDataStore';
 
 // ==================== TYPE DEFINITIONS ====================
 interface Opportunity {
@@ -95,8 +96,7 @@ interface SortConfig {
   direction: SortDirection;
 }
 
-// ==================== SAMPLE DATA GENERATION ====================
-// Standard filter options as per requirements document
+// ==================== FILTER OPTIONS ====================
 const REGIONS = ['North America', 'Europe', 'LATAM', 'Middle East', 'APAC'];
 const VERTICALS = [
   'Life Sciences',
@@ -114,207 +114,20 @@ const VERTICALS = [
 const SEGMENTS = ['Enterprise', 'SMB'];
 const CHANNELS = ['Direct', 'Partner', 'Reseller', 'Organic', 'Referral'];
 
-// Logo Types - Extension and Renewal are interchangeable
-const LOGO_TYPES = ['New Logo', 'Upsell', 'Cross-Sell', 'Extension', 'Renewal'];
-// Logo types that count toward License ACV (excludes Extension/Renewal)
 const LICENSE_ACV_LOGO_TYPES = ['New Logo', 'Upsell', 'Cross-Sell'];
 const STAGES = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
-const LOSS_REASONS = ['Budget Constraints', 'Competitor Selected', 'Project Cancelled', 'Timeline Delayed', 'Price Sensitivity', 'No Decision'];
-const MOVEMENT_REASONS = ['Expanded Scope', 'Reduced Scope', 'Lost to Competitor', 'Budget Cuts', 'Timeline Change', 'New Opportunity'];
 
-// Sold By classification (Change 9)
 const SOLD_BY_OPTIONS = ['Sales', 'GD', 'TSO'] as const;
-
-// Revenue Type options (from SOW Mapping Revenue_Type)
 const REVENUE_TYPE_OPTIONS = ['License', 'Implementation'] as const;
 
-// Parse a YYYY-MM-DD date string into a local Date without timezone shift.
-// IMPORTANT: new Date('2026-01-01') interprets as UTC midnight, so getFullYear() in US timezones
-// returns 2025 (Dec 31). This helper avoids that by constructing the Date in local time.
 function parseDateLocal(dateStr: string): Date {
   const [y, m, d] = dateStr.split('-').map(Number);
   return new Date(y, m - 1, d || 1);
 }
 
-// Product Sub-Categories for breakdown (Change 1, 2)
-const SALESPERSON_NAMES = [
-  'Sarah Johnson', 'Mike Wilson', 'Emily Davis', 'John Smith', 'Lisa Chen',
-  'David Brown', 'Jennifer Lee', 'Robert Taylor', 'Amanda White', 'Chris Martin',
-  'Michelle Garcia', 'Kevin Anderson'
-];
-
-// Get current date info for mock data
-const now = new Date();
-const currentYear = now.getFullYear();
-const currentMonth = now.getMonth(); // 0-indexed
-
-// Generate 40+ opportunities with current data
-const generateOpportunities = (): Opportunity[] => {
-  const opportunities: Opportunity[] = [];
-
-  for (let i = 1; i <= 50; i++) {
-    const stageIndex = Math.floor(Math.random() * STAGES.length);
-    const stage = STAGES[stageIndex];
-    const isWon = stage === 'Closed Won';
-    const isLost = stage === 'Closed Lost';
-    const dealValue = Math.floor(Math.random() * 950000) + 50000; // $50K - $1M
-    const probability = isWon ? 100 : isLost ? 0 : [10, 25, 50, 75][Math.min(stageIndex, 3)];
-
-    // Split deal value into license and implementation components
-    const licenseRatio = 0.6 + Math.random() * 0.3; // 60-90% license
-    const licenseValue = Math.round(dealValue * licenseRatio);
-    const implementationValue = dealValue - licenseValue;
-
-    // Logo type distribution
-    const logoType = LOGO_TYPES[Math.floor(Math.random() * LOGO_TYPES.length)] as Opportunity['logoType'];
-
-    // Segment
-    const segment = SEGMENTS[Math.floor(Math.random() * SEGMENTS.length)] as 'Enterprise' | 'SMB';
-
-    // For won deals, close date should be in past (before current month)
-    // For active deals, close date should be current month onwards
-    let closeDate: Date;
-    if (isWon || isLost) {
-      // Past months (actuals)
-      const pastMonth = Math.floor(Math.random() * currentMonth);
-      closeDate = new Date(currentYear, pastMonth, Math.floor(Math.random() * 28) + 1);
-    } else {
-      // Current month onwards (forecast)
-      const futureMonth = currentMonth + Math.floor(Math.random() * (12 - currentMonth));
-      closeDate = new Date(currentYear, futureMonth, Math.floor(Math.random() * 28) + 1);
-    }
-
-    const createdDate = new Date(closeDate);
-    createdDate.setDate(createdDate.getDate() - Math.floor(Math.random() * 180) - 30);
-
-    const previousValue = Math.random() > 0.5 ? dealValue * (0.7 + Math.random() * 0.6) : undefined;
-
-    // Calculate Closed ACV based on Logo Type rules:
-    // - License: only count if Logo Type in (New Logo, Upsell, Cross-Sell)
-    // - Implementation: always count regardless of Logo Type
-    const licenseCountsTowardACV = LICENSE_ACV_LOGO_TYPES.includes(logoType);
-    const closedACV = (licenseCountsTowardACV ? licenseValue : 0) + implementationValue;
-
-    // Sold By distribution - Sales 60%, GD 25%, TSO 15%
-    const soldByRand = Math.random();
-    const soldBy: 'Sales' | 'GD' | 'TSO' = soldByRand < 0.6 ? 'Sales' : soldByRand < 0.85 ? 'GD' : 'TSO';
-
-    opportunities.push({
-      id: `OPP-${String(i).padStart(4, '0')}`,
-      name: `${['Enterprise', 'Platform', 'Cloud', 'Analytics', 'Integration'][Math.floor(Math.random() * 5)]} Deal ${i}`,
-      accountName: `${['Acme', 'Global', 'Tech', 'Prime', 'Alpha'][Math.floor(Math.random() * 5)]} ${['Corp', 'Inc', 'Solutions', 'Industries', 'Group'][Math.floor(Math.random() * 5)]}`,
-      region: REGIONS[Math.floor(Math.random() * REGIONS.length)],
-      vertical: VERTICALS[Math.floor(Math.random() * VERTICALS.length)],
-      segment,
-      channel: CHANNELS[Math.floor(Math.random() * CHANNELS.length)],
-      stage,
-      probability,
-      dealValue,
-      licenseValue,
-      implementationValue,
-      weightedValue: Math.round(dealValue * (probability / 100)),
-      expectedCloseDate: closeDate.toISOString().split('T')[0],
-      daysInStage: Math.floor(Math.random() * 120) + 5,
-      owner: SALESPERSON_NAMES[Math.floor(Math.random() * SALESPERSON_NAMES.length)],
-      status: isWon ? 'Won' : isLost ? 'Lost' : Math.random() > 0.9 ? 'Stalled' : 'Active',
-      lossReason: isLost ? LOSS_REASONS[Math.floor(Math.random() * LOSS_REASONS.length)] : undefined,
-      logoType,
-      salesCycleDays: Math.floor(Math.random() * 120) + 30,
-      createdDate: createdDate.toISOString().split('T')[0],
-      previousValue: previousValue ? Math.round(previousValue) : undefined,
-      movementReason: previousValue ? MOVEMENT_REASONS[Math.floor(Math.random() * MOVEMENT_REASONS.length)] : undefined,
-      closedACV: isWon ? closedACV : undefined,
-      soldBy,
-      // SOW ID (Change 1) - only for won deals
-      sowId: isWon ? `SOW-${String(Math.floor(Math.random() * 100) + 1).padStart(5, '0')}` : undefined,
-      revenueType: ['License', 'Implementation', 'Services'][Math.floor(Math.random() * 3)],
-    });
-  }
-  return opportunities;
-};
-
-// Generate salespeople with managers
-const generateSalespeople = (): Salesperson[] => {
-  const salespeople: Salesperson[] = [];
-
-  // Add managers first
-  const managers = [
-    { name: 'Sarah Johnson', region: 'North America' },
-    { name: 'David Brown', region: 'Europe' },
-  ];
-
-  managers.forEach((mgr, idx) => {
-    salespeople.push({
-      id: `SP-${String(idx + 1).padStart(3, '0')}`,
-      name: mgr.name,
-      region: mgr.region,
-      isManager: true,
-      previousYearClosed: Math.floor(Math.random() * 1500000) + 1000000,
-      closedYTD: Math.floor(Math.random() * 2000000) + 1500000,
-      forecast: Math.floor(Math.random() * 1500000) + 1000000,
-      pipelineValue: Math.floor(Math.random() * 3000000) + 2000000,
-      monthlyAttainment: Array.from({ length: 12 }, () => Math.floor(Math.random() * 50) + 50),
-    });
-  });
-
-  // Add individual contributors
-  const icNames = SALESPERSON_NAMES.filter(n => !managers.find(m => m.name === n));
-  icNames.forEach((name, idx) => {
-    const region = REGIONS[idx % REGIONS.length];
-    const managerId = managers.find(m => m.region === region)?.name ? `SP-001` : `SP-002`;
-
-    salespeople.push({
-      id: `SP-${String(idx + 3).padStart(3, '0')}`,
-      name,
-      region,
-      isManager: false,
-      managerId,
-      previousYearClosed: Math.floor(Math.random() * 800000) + 200000,
-      closedYTD: Math.floor(Math.random() * 1200000) + 300000,
-      forecast: Math.floor(Math.random() * 800000) + 200000,
-      pipelineValue: Math.floor(Math.random() * 1500000) + 500000,
-      monthlyAttainment: Array.from({ length: 12 }, () => Math.floor(Math.random() * 60) + 40),
-    });
-  });
-
-  return salespeople;
-};
-
-const MOCK_OPPORTUNITIES = generateOpportunities();
-const MOCK_SALESPEOPLE = generateSalespeople();
-
-// Quarterly forecast data - with actuals for past quarters only
-const getQuarterlyForecastData = (): QuarterlyForecast[] => {
-  const currentQuarter = Math.floor(currentMonth / 3) + 1;
-
-  return [
-    { quarter: 'Q1', forecast: 8500000, actual: currentQuarter > 1 ? 7800000 : 0, previousYear: 7200000 },
-    { quarter: 'Q2', forecast: 9200000, actual: currentQuarter > 2 ? 8900000 : 0, previousYear: 8100000 },
-    { quarter: 'Q3', forecast: 10500000, actual: currentQuarter > 3 ? 9200000 : 0, previousYear: 8800000 },
-    { quarter: 'Q4', forecast: 12000000, actual: 0, previousYear: 9500000 },
-  ];
-};
-
-const MOCK_QUARTERLY_FORECAST = getQuarterlyForecastData();
-
-// Regional forecast data - using closedACV with previous year comparison
-const MOCK_REGIONAL_FORECAST: RegionalForecast[] = REGIONS.map(region => {
-  const previousYearACV = Math.floor(Math.random() * 2000000) + 500000;
-  const closedACV = Math.floor(Math.random() * 2500000) + 300000;
-  const forecast = closedACV + Math.floor(Math.random() * 1000000);
-  return {
-    region,
-    forecast,
-    previousYearACV,
-    closedACV,
-    variance: closedACV - previousYearACV,
-    yoyGrowth: previousYearACV > 0 ? Math.round(((closedACV - previousYearACV) / previousYearACV) * 100) : 0,
-  };
-});
-
 // ==================== REAL DATA BUILDERS ====================
 
-function buildRealOpportunities(store: RealDataState): Opportunity[] {
+function buildRealOpportunities(store: SalesDataState): Opportunity[] {
   const opps: Opportunity[] = [];
   const ACV_LOGO_TYPES = ['New Logo', 'Upsell', 'Cross-Sell'];
 
@@ -430,7 +243,7 @@ function buildRealOpportunities(store: RealDataState): Opportunity[] {
   return opps;
 }
 
-function buildRealSalespeople(store: RealDataState, opps: Opportunity[], prevYearOpps: Opportunity[]): Salesperson[] {
+function buildRealSalespeople(store: SalesDataState, opps: Opportunity[], prevYearOpps: Opportunity[]): Salesperson[] {
   const yr = new Date().getFullYear();
 
   return store.salesTeam
@@ -905,12 +718,15 @@ export default function SalesPage() {
   const arrSubCategoryStore = useARRSubCategoryStore();
   const productCategoryMappingStore = useProductCategoryMappingStore();
 
-  // Real data store - loads actual CSV data
-  const realData = useRealDataStore();
+  // Sales data store - loads from /sales/data API, caches in Zustand
+  const realData = useSalesDataStore();
 
-  // Build opportunities from real data or fall back to mock
+  useEffect(() => {
+    realData.loadData();
+  }, []);
+
   const opportunities = useMemo(() => {
-    if (!realData.isLoaded || realData.closedAcv.length === 0) return MOCK_OPPORTUNITIES;
+    if (!realData.isLoaded) return [];
     return buildRealOpportunities(realData);
   }, [realData.isLoaded, realData.closedAcv, realData.pipelineSnapshots, realData.sowMappingIndex]);
 
@@ -1122,23 +938,28 @@ export default function SalesPage() {
     });
   }, [enrichedOpportunities, yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter, segmentFilter, channelFilter, logoTypeFilter, soldByFilter, revenueTypeFilter, productCategoryFilter, productSubCategoryFilter]);
 
-  // Build salespeople from filtered opportunities so global filters apply
   const salespeople = useMemo(() => {
-    if (!realData.isLoaded || realData.salesTeam.length === 0) return MOCK_SALESPEOPLE;
+    if (!realData.isLoaded) return [];
     return buildRealSalespeople(realData, filteredOpportunities, previousYearOpportunities);
   }, [realData.isLoaded, realData.salesTeam, filteredOpportunities, previousYearOpportunities]);
 
-  // Build quarterly forecast from filtered opportunities so global filters apply
   const quarterlyForecastData = useMemo(() => {
-    if (!realData.isLoaded) return MOCK_QUARTERLY_FORECAST;
+    if (!realData.isLoaded) return [];
     return buildQuarterlyForecast(filteredOpportunities, previousYearOpportunities, revenueTypeFilter);
   }, [realData.isLoaded, filteredOpportunities, previousYearOpportunities, revenueTypeFilter]);
 
-  // Build regional forecast from filtered opportunities so global filters apply
   const regionalForecastData = useMemo(() => {
-    if (!realData.isLoaded) return MOCK_REGIONAL_FORECAST;
+    if (!realData.isLoaded) return [];
     return buildRegionalForecast(filteredOpportunities, previousYearOpportunities, revenueTypeFilter);
   }, [realData.isLoaded, filteredOpportunities, previousYearOpportunities, revenueTypeFilter]);
+
+  const ownerNames = useMemo(() => {
+    return [...new Set(opportunities.map(o => o.owner).filter(Boolean))].sort();
+  }, [opportunities]);
+
+  const salespersonNames = useMemo(() => {
+    return [...new Set(salespeople.map(s => s.name).filter(Boolean))].sort();
+  }, [salespeople]);
 
   // Calculate metrics with proper Closed ACV rules
   const metrics = useMemo(() => {
@@ -1797,7 +1618,7 @@ export default function SalesPage() {
                 <SortableHeader label="Stage" sortKey="stage" currentSort={sortConfig} onSort={handleSort} filterOptions={STAGES.filter(s => !s.includes('Closed'))} />
                 <SortableHeader label="Close Date" sortKey="expectedCloseDate" currentSort={sortConfig} onSort={handleSort} />
                 <SortableHeader label="Probability" sortKey="probability" currentSort={sortConfig} onSort={handleSort} />
-                <SortableHeader label="Owner" sortKey="owner" currentSort={sortConfig} onSort={handleSort} filterOptions={SALESPERSON_NAMES} />
+                <SortableHeader label="Owner" sortKey="owner" currentSort={sortConfig} onSort={handleSort} filterOptions={ownerNames} />
               </tr>
             </thead>
             <tbody className="divide-y divide-secondary-100">
@@ -2783,7 +2604,7 @@ export default function SalesPage() {
                     currentSort={sortConfig}
                     onSort={handleSort}
                     onFilter={handleTableFilter}
-                    filterOptions={SALESPERSON_NAMES}
+                    filterOptions={salespersonNames}
                     activeFilters={tableColumnFilters.name || []}
                   />
                   <SortableHeader

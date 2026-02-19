@@ -15,7 +15,7 @@ export const REDIS_CLIENT = 'REDIS_CLIENT';
         const password = configService.get<string>('redis.password');
 
         // Skip Redis connection if REDIS_ENABLED is explicitly set to false
-        const redisEnabled = configService.get<string>('REDIS_ENABLED', 'true');
+        const redisEnabled = configService.get<string>('REDIS_ENABLED', 'false');
         if (redisEnabled === 'false') {
           console.log('Redis is disabled via REDIS_ENABLED=false, skipping connection');
           return null;

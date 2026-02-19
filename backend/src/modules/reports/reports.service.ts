@@ -1,5 +1,4 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../database/prisma.service';
 import {
   CreateReportDto,
   ScheduleReportDto,
@@ -13,8 +12,6 @@ import {
 @Injectable()
 export class ReportsService {
   private readonly logger = new Logger(ReportsService.name);
-
-  constructor(private readonly prisma: PrismaService) {}
 
   // Report generation
   async generateReport(organizationId: string, dto: CreateReportDto) {

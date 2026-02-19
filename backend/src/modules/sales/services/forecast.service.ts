@@ -1,10 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../../database/prisma.service';
 import { GetPipelineDto } from '../dto';
 
 @Injectable()
 export class ForecastService {
-  constructor(private readonly prisma: PrismaService) {}
 
   async getForecast(query: GetPipelineDto) {
     const period = query.period || 'Q1 2026';

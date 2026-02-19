@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Res } from '@nestjs/common';
+import { Controller, Get, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Response } from 'express';
 import { PrismaService } from '../../database/prisma.service';
@@ -26,13 +26,17 @@ export class HealthController {
       },
     };
 
-    // Database check
-    try {
-      await this.prisma.$queryRaw`SELECT 1`;
-      checks.checks.database = 'healthy';
-    } catch (error) {
-      checks.checks.database = 'unhealthy';
-      checks.status = 'unhealthy';
+    // Database check – skip if running without DB
+    if (this.prisma.isConnected) {
+      try {
+        await (this.prisma as any).$queryRaw`SELECT 1`;
+        checks.checks.database = 'healthy';
+      } catch (error) {
+        checks.checks.database = 'unhealthy';
+        checks.status = 'unhealthy';
+      }
+    } else {
+      checks.checks.database = 'skipped (file-based mode)';
     }
 
     // Memory check

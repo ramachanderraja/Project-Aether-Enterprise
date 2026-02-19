@@ -1,0 +1,43 @@
+Sales_Rep_ID,Name,Email,Role,Region,Vertical_Focus,Segment,Manager_ID,Manager_Name,Annual_Quota,Q1_Quota,Q2_Quota,Q3_Quota,Q4_Quota,Hire_Date,Status
+GEP.9647,Stephanie Meer,stephanie.meer@gep.com,Senior Manager - Business Development,North America,All,Enterprise,GEP.4366,Michael Clear,"2,100,000","525,000","525,000","525,000","525,000",9/15/2025,Active
+GEP.6046,William Hoffman,william.hoffman@gep.com,Senior Manager - Business Development,North America,All,Enterprise,GEP.4366,Michael Clear,"1,800,000","450,000","450,000","450,000","450,000",4/22/2024,Active
+GEP.10046,Bill Constantakis,bill.constantakis@gep.com,Senior Manager - Business Development,North America,All,Enterprise,GEP.4366,Michael Clear,"2,100,000","525,000","525,000","525,000","525,000",11/17/2025,Active
+GEP.4366,Michael Clear,michael.clear@gep.com,"Senior Director - Business Development, SW",North America,All,Enterprise,GEP.4366,Michael Clear,"5,000,000","1,250,000","1,250,000","1,250,000","1,250,000",12/4/2023,Active
+GEP.6225,Addison Cauley,addison.cauley@gep.com,Manager - Business Development,North America,All,Enterprise,GEP89500,Brian Bergersen,"1,800,000","450,000","450,000","450,000","450,000",5/13/2024,Active
+GEP.8136,Christopher Govers,chris.govers@gep.com,Senior Manager - Business Development,North America,All,Enterprise,GEP89500,Brian Bergersen,"1,800,000","450,000","450,000","450,000","450,000",2/24/2025,Active
+GEP.9711,Patrick Akpaette,patrick.akpaette@gep.com,Senior Manager - Business Development,North America,All,Enterprise,GEP89500,Brian Bergersen,"2,100,000","525,000","525,000","525,000","525,000",11/3/2025,Active
+GEP05667,Brian Bergersen,brian.bergersen@gep.com,"Director - Business Development, SW",North America,All,Enterprise,GEP89500,Brian Bergersen,"5,000,000","1,250,000","1,250,000","1,250,000","1,250,000",8/6/2018,Active
+GEP11062,Parker Berg,parker.middleton@gep.com,"Account Executive - Business Development, SW",North America,All,Enterprise,GEP.10308,Rob Tartre,"1,800,000","450,000","450,000","450,000","450,000",5/24/2021,Active
+GEP.10309,Anthony Fabbrino,Anthony.Fabbroni@gep.com,"Senior Manager - Business Development, SW",North America,All,Enterprise,GEP.10308,Rob Tartre,"2,100,000","525,000","525,000","525,000","525,000",1/5/2026,Active
+GEP.10308,Robert Tartre,Rob.Tartre@gep.com,"Senior Director - Business Development, SW",North America,All,Enterprise,GEP.10308,Rob Tartre,"5,000,000","1,250,000","1,250,000","1,250,000","1,250,000",1/5/2026,Active
+GEP.5899,James Higgins,james.higgins@gep.com,"Senior Manager - Business Development, SW",North America,All,Emerging Enterprise,GEP.9340,Sean Delaney,"1,800,000","450,000","450,000","450,000","450,000",4/1/2024,Active
+GEP.10047,Russell Bogan,russell.bogan@gep.com,Senior Manager - Business Development,North America,All,Emerging Enterprise,GEP.9340,Sean Delaney,"1,800,000","450,000","450,000","450,000","450,000",11/24/2025,Active
+GEP.9340,Sean Delaney,sean.delaney@gep.com,Vice President - Alliances,North America,All,Mid-Market and Emerging Enterprise,GEP.9340,Sean Delaney,"9,500,000","2,375,000","2,375,000","2,375,000","2,375,000",7/28/2025,Active
+GEP.9129,Patrick Van Osta,patrick.vanosta@gep.com,Senior Manager - Business Development,Europe,All,Enterprise,GEP05105,Bernard Remacle,"1,300,000","325,000","325,000","325,000","325,000",7/14/2025,Active
+GEP.1794,Sam Zaki,sam.zaki@gep.com,Manager - Business Development,Europe,All,Enterprise,GEP05105,Bernard Remacle,"1,300,000","325,000","325,000","325,000","325,000",8/8/2022,Active
+GEP89205,Quentin Bodinier,quentin.bodinier@gep.com,Manager - Business Development,Europe,All,Enterprise,GEP05105,Bernard Remacle,"1,300,000","325,000","325,000","325,000","325,000",1/1/2026,Active
+GEP.7298,Oliver Oehmke,oliver.oehmke@gep.com,Manager - Business Development,Europe,All,Enterprise,GEP05105,Bernard Remacle,"1,300,000","325,000","325,000","325,000","325,000",10/1/2024,Active
+GEP.7529,Stefan Walch,stefan.walch@gep.com,Regional Manager - Business Development,Europe,All,All,GEP05105,Bernard Remacle,"1,000,000","250,000","250,000","250,000","250,000",,Active
+,Maik Hinz,,,Europe,All,All,GEP05105,Bernard Remacle,"1,000,000","250,000","250,000","250,000","250,000",,Active
+GEP.7524,Antti Matikainen,antti.matikainen@gep.com,Manager - Business Development,Europe,All,All,GEP05105,Bernard Remacle,"1,000,000","250,000","250,000","250,000","250,000",,Active
+GEP.2370,Stephan Hesselgren,stephan.hesselgren@gep.com,Manager - Business Development,Europe,All,Enterprise,GEP05105,Bernard Remacle,"1,300,000","325,000","325,000","325,000","325,000",10/31/2022,Active
+GEP.7532,Martin Warngard,martin.warngard@gep.com,Manager - Business Development,Europe,All,All,GEP05105,Bernard Remacle,"1,000,000","250,000","250,000","250,000","250,000",,Active
+GEP.7528,Heikki Pulli,heikki.pulli@gep.com,Manager - Business Development,Europe,All,All,GEP05105,Bernard Remacle,"500,000","125,000","125,000","125,000","125,000",,Active
+GEP05105,Bernard Remacle,bernard.remacle@gep.com,"Director - Business Development, SW",Europe,All,Enterprise,GEP05105,Bernard Remacle,"10,000,000","2,500,000","2,500,000","2,500,000","2,500,000",6/1/2018,Active
+GEP10357,Abdel Halim,abdel.halim@gep.com,"Senior Director - Business Development, SW",Middle East,All,Enterprise,GEP10357,Abdel Halim,"4,000,000","1,000,000","1,000,000","1,000,000","1,000,000",1/4/2021,Active
+GEP10488,Jack Keogh,jack.keogh@gep.com,"Senior Manager - Business Development, SW",APAC,All,Enterprise,GEP.5924,Amit Bhatia ,"1,200,000","300,000","300,000","300,000","300,000",3/1/2021,Active
+GEP.7709,Wildan Ramadhani,wildan.ramadhani@gep.com,Senior Manager - Business Development,APAC,All,Enterprise,GEP.5924,Amit Bhatia ,"1,200,000","300,000","300,000","300,000","300,000",12/23/2024,Active
+GEP.9239,Milan Oza,milan.oza@gep.com,"Associate Director - Business Development, SW",APAC,All,Enterprise,GEP.7687,Rajiv Upadhyay,"800,000","200,000","200,000","200,000","200,000",7/9/2025,Active
+GEP.10321,Harsh Goyal,harsh.goyal@gep.com,Senior Manager - Business Development,APAC,All,Enterprise,GEP.7687,Rajiv Upadhyay,"800,000","200,000","200,000","200,000","200,000",1/12/2026,Active
+GEP.7687,Rajiv Upadhyay,rajiv.upadhyay@gep.com,"Director - Business Development, SW",APAC,All,Enterprise,GEP.5924,Amit Bhatia ,"2,400,000","600,000","600,000","600,000","600,000",12/18/2024,Active
+GEP.5924,Amit Bhatia,amit.bhatia@gep.com,"Senior Director - Business Development, SW",APAC,All,Enterprise,GEP.5924,Amit Bhatia ,"5,500,000","1,375,000","1,375,000","1,375,000","1,375,000",3/25/2024,Active
+GEP.4127,Mihir Veshvikar,mihir.veshvikar@gep.com,Manager - Business Development,Global,All,Mid-Market,GEP03819,Abhishek Garde,"750,000","187,500","187,500","187,500","187,500",10/4/2023,Active
+GEP.6365,Alvira Khan,alvira.khan@gep.com,Assistant Manager - Business Development,Global,All,Mid-Market,GEP03819,Abhishek Garde,"500,000","125,000","125,000","125,000","125,000",6/5/2024,Active
+GEP.6412,Rajmohan Nayak,rajmohan.nayak@gep.com,Manager - Business Development,Global,All,Mid-Market,GEP03819,Abhishek Garde,"500,000","125,000","125,000","125,000","125,000",6/5/2024,Active
+GEP03819,Abhishek Garde,abhishek.garde@gep.com,Senior Manager - Business Development,Global,All,Mid-Market,GEP06660,Saurabh Bhalla,"2,500,000","625,000","625,000","625,000","625,000",5/10/2017,Active
+GEP11377,Sourabh Sharma,sourabh.sharma@gep.com,"Senior Manager - Business Development, SW",Global,All,Mid-Market,GEP06660,Saurabh Bhalla,"1,000,000","250,000","250,000","250,000","250,000",7/5/2021,Active
+GEP.4037,Rajat Vij,rajat.vij@gep.com,Manager - Business Development,Global,All,Mid-Market,GEP06660,Saurabh Bhalla,"750,000","187,500","187,500","187,500","187,500",9/4/2023,Active
+GEP.7427,Aishwarya Pandey,aishwarya.pandey@gep.com,Manager - Business Development,Global,All,Mid-Market,GEP06660,Saurabh Bhalla,"500,000","125,000","125,000","125,000","125,000",11/6/2024,Active
+GEP.8600,Anirban Sengupta,anirban.sengupta@gep.com,Manager - Business Development,Global,All,Mid-Market,GEP06660,Saurabh Bhalla,"500,000","125,000","125,000","125,000","125,000",4/23/2025,Active
+GEP.9908,Karan Brar,karan.brar@gep.com,"Manager - Business Development, SW",Global,All,Mid-Market,GEP06660,Saurabh Bhalla,"500,000","125,000","125,000","125,000","125,000",10/27/2025,Active
+GEP06660,Saurabh Bhalla,Saurabh.Bhalla@gep.com,"Senior Director - Business Development, SW",Global,All,Mid-Market,GEP.9340,Sean Delaney,"5,500,000","1,375,000","1,375,000","1,375,000","1,375,000",6/10/2019,Active

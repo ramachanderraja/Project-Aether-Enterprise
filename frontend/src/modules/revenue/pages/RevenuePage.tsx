@@ -19,7 +19,8 @@ import {
   LabelList,
 } from 'recharts';
 import { useSOWMappingStore } from '@shared/store/sowMappingStore';
-import { useRealDataStore, normalizeRegion, type RealDataState } from '@shared/store/realDataStore';
+import { normalizeRegion } from '@shared/store/dataTypes';
+import { useRevenueDataStore, type RevenueDataState } from '@shared/store/revenueDataStore';
 
 // ==================== TYPE DEFINITIONS ====================
 
@@ -106,21 +107,6 @@ const PLATFORM_FILTER_OPTIONS = ['All', 'Quantum', 'SMART'];  // For Quantum/SMA
 const DEFAULT_PLATFORMS = ['Quantum', 'SMART', 'Cost Drivers']; // Default selected platforms
 const REVENUE_TYPES = ['All', 'Fees', 'Travel'];  // Revenue Type filter options (Fees_Type from SOW Mapping)
 
-const PRODUCT_CATEGORIES = ['Platform', 'Analytics', 'Integration', 'Services', 'Add-ons'];
-const PRODUCT_SUB_CATEGORIES: Record<string, string[]> = {
-  'Platform': ['Core Platform', 'Enterprise Edition', 'Cloud Suite'],
-  'Analytics': ['Business Intelligence', 'Predictive Analytics', 'Real-time Dashboards'],
-  'Integration': ['API Gateway', 'Data Connectors', 'ETL Tools'],
-  'Services': ['Professional Services', 'Managed Services', 'Training'],
-  'Add-ons': ['Security Pack', 'Compliance Module', 'Advanced Reporting'],
-};
-const MOVEMENT_REASONS = {
-  New: ['New Logo', 'Referral', 'Marketing Campaign', 'Partner Deal'],
-  Expansion: ['Upsell', 'Cross-sell', 'Additional Users', 'New Module'],
-  ScheduleChange: ['Contract Schedule', 'Post Go-Live Rate', 'Milestone Rate Change', 'Volume Tier Change'],  // Added (Change 8)
-  Contraction: ['Reduced Users', 'Downgrade', 'Partial Churn', 'Budget Cut'],
-  Churn: ['Competitor', 'Budget Constraints', 'Poor Fit', 'Acquisition', 'Bankruptcy'],
-};
 
 const COLORS = {
   primary: '#3b82f6',
@@ -135,250 +121,13 @@ const COLORS = {
 
 const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'];
 
-// Get current date info for mock data
-const now = new Date();
-const currentYear = now.getFullYear();
-const currentMonth = now.getMonth(); // 0-indexed
-
-// ==================== SAMPLE DATA GENERATION ====================
-const generateCustomers = (): Customer[] => {
-  const customers: Customer[] = [];
-  const companyNames = [
-    'Acme Corp', 'TechGiant Inc', 'Global Finance', 'Retail Leaders', 'HealthTech Pro',
-    'Manufacturing Co', 'Digital Solutions', 'Cloud Dynamics', 'Data Insights', 'Smart Systems',
-    'Innovation Labs', 'Future Tech', 'Prime Industries', 'Alpha Group', 'Beta Solutions',
-    'Gamma Corp', 'Delta Enterprises', 'Epsilon Holdings', 'Zeta Technologies', 'Eta Global',
-    'Theta Systems', 'Iota Digital', 'Kappa Solutions', 'Lambda Tech', 'Mu Industries',
-    'Nu Corporation', 'Xi Partners', 'Omicron Group', 'Pi Holdings', 'Rho Technologies',
-    'Sigma Corp', 'Tau Enterprises', 'Upsilon Systems', 'Phi Digital', 'Chi Solutions',
-    'Psi Technologies', 'Omega Group', 'Apex Corp', 'Summit Industries', 'Peak Solutions',
-    'Zenith Holdings', 'Pinnacle Tech', 'Vertex Systems', 'Quantum Corp', 'Nexus Digital',
-    'Synergy Solutions', 'Momentum Tech', 'Velocity Group', 'Catalyst Corp', 'Fusion Industries',
-    // Add more to reach 100+
-    ...Array.from({ length: 60 }, (_, i) => `Enterprise ${i + 1}`)
-  ];
-
-  const products = generateProducts();
-  const productNames = products.map(p => p.name);
-
-  companyNames.forEach((name, idx) => {
-    const currentARR = Math.floor(Math.random() * 4990000) + 10000; // $10K - $5M
-    const previousARR = currentARR * (0.7 + Math.random() * 0.6); // -30% to +30%
-    const region = REGIONS[Math.floor(Math.random() * REGIONS.length)];
-    const vertical = VERTICALS[Math.floor(Math.random() * VERTICALS.length)];
-    const segment = SEGMENTS[Math.floor(Math.random() * SEGMENTS.length)] as 'Enterprise' | 'SMB';
-    const platform = PLATFORMS[Math.floor(Math.random() * PLATFORMS.length)];
-
-    // Assign 1-4 products to each customer
-    const numProducts = Math.floor(Math.random() * 4) + 1;
-    const customerProducts = productNames.sort(() => Math.random() - 0.5).slice(0, numProducts);
-    const productARR: Record<string, number> = {};
-    let remainingARR = currentARR;
-    customerProducts.forEach((prod, i) => {
-      if (i === customerProducts.length - 1) {
-        productARR[prod] = remainingARR;
-      } else {
-        const portion = Math.floor(remainingARR * (0.2 + Math.random() * 0.5));
-        productARR[prod] = portion;
-        remainingARR -= portion;
-      }
-    });
-
-    // Generate contract dates
-    const contractStartYear = 2021 + Math.floor(Math.random() * 3);
-    const contractStartMonth = Math.floor(Math.random() * 12) + 1;
-    const contractStartDate = `${contractStartYear}-${String(contractStartMonth).padStart(2, '0')}-01`;
-
-    // Generate renewal date (some in 2026)
-    const renewalYear = Math.random() > 0.5 ? 2026 : currentYear;
-    const renewalMonth = Math.floor(Math.random() * 12) + 1;
-    const renewalDate = `${renewalYear}-${String(renewalMonth).padStart(2, '0')}-15`;
-    const contractEndDate = renewalDate;
-
-    // Product sub-category
-    const productSubCategory = customerProducts[0] || 'Core Platform';
-
-    // Determine movement type (added ScheduleChange - Change 8)
-    let movementType: Customer['movementType'] = 'Flat';
-    if (idx < 15) movementType = 'New';
-    else if (currentARR > previousARR * 1.1) {
-      // 20% of expansions are actually schedule changes
-      movementType = Math.random() < 0.2 ? 'ScheduleChange' : 'Expansion';
-    }
-    else if (currentARR < previousARR * 0.9) movementType = 'Contraction';
-    else if (currentARR === 0 || Math.random() < 0.05) movementType = 'Churn';
-    else if (Math.random() < 0.1) movementType = 'ScheduleChange';  // Some flat changes are schedule-related
-
-    const movementReason = movementType !== 'Flat'
-      ? MOVEMENT_REASONS[movementType][Math.floor(Math.random() * MOVEMENT_REASONS[movementType].length)]
-      : undefined;
-
-    // Renewal risk for 2026 renewals
-    let renewalRiskLevel: Customer['renewalRiskLevel'];
-    if (renewalYear === 2026) {
-      const riskRandom = Math.random();
-      if (riskRandom < 0.6) renewalRiskLevel = 'Low';
-      else if (riskRandom < 0.85) renewalRiskLevel = 'Medium';
-      else if (riskRandom < 0.95) renewalRiskLevel = 'High';
-      else renewalRiskLevel = 'Critical';
-    }
-
-    // Quantum/SMART classification (Change 5/6)
-    // ~60% on Quantum, ~40% on SMART, with ~20% having a Go-Live date
-    const quantumSmart: 'Quantum' | 'SMART' = Math.random() > 0.4 ? 'Quantum' : 'SMART';
-    // Some customers have a Go-Live date indicating migration
-    const hasGoLiveDate = Math.random() < 0.2;
-    const quantumGoLiveDate = hasGoLiveDate
-      ? `${2024 + Math.floor(Math.random() * 2)}-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-01`
-      : undefined;
-
-    // Fees Type from SOW Mapping (Change 4) - ~85% Fees, ~15% Travel
-    const feesType: 'Fees' | 'Travel' = Math.random() > 0.15 ? 'Fees' : 'Travel';
-
-    customers.push({
-      id: `CUST-${String(idx + 1).padStart(4, '0')}`,
-      sowId: `SOW-${String(idx + 1).padStart(5, '0')}`,
-      name,
-      currentARR: movementType === 'Churn' ? 0 : currentARR,
-      previousARR: Math.round(previousARR),
-      region,
-      vertical,
-      segment,
-      platform,
-      quantumSmart,
-      quantumGoLiveDate,
-      feesType,
-      products: customerProducts,
-      productARR,
-      productSubCategory,
-      contractStartDate,
-      contractEndDate,
-      renewalDate,
-      renewalRiskLevel,
-      movementType,
-      movementReason,
-    });
-  });
-
-  return customers;
-};
-
-const generateProducts = (): Product[] => {
-  const products: Product[] = [];
-  let productId = 1;
-
-  Object.entries(PRODUCT_SUB_CATEGORIES).forEach(([category, subCategories]) => {
-    subCategories.forEach(subCategory => {
-      const totalARR = Math.floor(Math.random() * 15000000) + 1000000;
-      const customerCount = Math.floor(Math.random() * 50) + 5;
-      products.push({
-        id: `PROD-${String(productId++).padStart(3, '0')}`,
-        name: subCategory,
-        category,
-        subCategory,
-        totalARR,
-        customerCount,
-        avgARRPerCustomer: Math.round(totalARR / customerCount),
-        growthPercent: Math.floor(Math.random() * 60) - 10,
-      });
-    });
-  });
-
-  return products;
-};
-
-const generateMonthlyARRData = (): MonthlyARR[] => {
-  const data: MonthlyARR[] = [];
-  let baseARR = 85000000;
-
-  // Historical data (24 months) - actuals only until previous month
-  for (let i = 0; i < 24; i++) {
-    const date = new Date(currentYear - 2, i, 1);
-    const monthName = date.toLocaleString('en-US', { month: 'short', year: '2-digit' });
-    const growth = baseARR * (0.01 + Math.random() * 0.03);
-    baseARR += growth;
-
-    // Check if this month is before current month
-    const isActual = date < new Date(currentYear, currentMonth, 1);
-
-    data.push({
-      month: monthName,
-      currentARR: isActual ? Math.round(baseARR) : 0,
-      forecastedARR: 0,
-      forecastBase: 0,
-      forecastRenewals: 0,
-      forecastNewBusiness: 0,
-    });
-  }
-
-  // Forecast data (through end of 2026)
-  const lastActual = baseARR;
-  const monthsToForecast = (2026 - currentYear) * 12 + (12 - currentMonth);
-  let cumulativeRenewals = 0;
-  let cumulativeNew = 0;
-  for (let i = 0; i < monthsToForecast; i++) {
-    const date = new Date(currentYear, currentMonth + i, 1);
-    const monthName = date.toLocaleString('en-US', { month: 'short', year: '2-digit' });
-    const growth = baseARR * (0.015 + Math.random() * 0.025);
-    const renewalPortion = growth * 0.4;
-    const newPortion = growth * 0.6;
-    cumulativeRenewals += renewalPortion;
-    cumulativeNew += newPortion;
-    baseARR += growth;
-
-    data.push({
-      month: monthName,
-      currentARR: 0,
-      forecastedARR: Math.round(baseARR),
-      forecastBase: Math.round(lastActual),
-      forecastRenewals: Math.round(cumulativeRenewals),
-      forecastNewBusiness: Math.round(cumulativeNew),
-    });
-  }
-
-  return data;
-};
-
-const generateARRMovementHistory = (): ARRMovementRecord[] => {
-  const data: ARRMovementRecord[] = [];
-
-  for (let i = 0; i < 24; i++) {
-    const date = new Date(currentYear - 2, i, 1);
-    const newBusiness = Math.floor(Math.random() * 3000000) + 500000;
-    const expansion = Math.floor(Math.random() * 2000000) + 300000;
-    const scheduleChange = Math.floor(Math.random() * 400000) + 50000;  // Added (Change 8)
-    const contraction = -(Math.floor(Math.random() * 500000) + 100000);
-    const churn = -(Math.floor(Math.random() * 800000) + 200000);
-
-    data.push({
-      date: date.toISOString().split('T')[0],
-      newBusiness,
-      expansion,
-      scheduleChange,
-      contraction,
-      churn,
-      netChange: newBusiness + expansion + scheduleChange + contraction + churn,
-    });
-  }
-
-  return data;
-};
-
 // Utility function to classify platform based on Quantum/SMART rules (Change 5/6)
 const classifyPlatform = (quantumSmart: string | undefined, quantumGoLiveDate: string | undefined, snapshotMonth: string): 'Quantum' | 'SMART' => {
   if (quantumGoLiveDate) {
-    // Go-Live date takes precedence
     return snapshotMonth >= quantumGoLiveDate ? 'Quantum' : 'SMART';
   }
-  // Fall back to column value, default to SMART if undefined
   return (quantumSmart as 'Quantum' | 'SMART') || 'SMART';
 };
-
-// Initialize mock data (used as fallback)
-const MOCK_CUSTOMERS = generateCustomers();
-const MOCK_PRODUCTS = generateProducts();
-const MOCK_MONTHLY_ARR = generateMonthlyARRData();
-const MOCK_ARR_MOVEMENT = generateARRMovementHistory();
 
 // ==================== REAL DATA BUILDERS ====================
 
@@ -398,7 +147,7 @@ function formatMonthLabel(yyyyMm: string): string {
   return date.toLocaleString('en-US', { month: 'short', year: 'numeric' });
 }
 
-function buildRealCustomers(store: RealDataState): Customer[] {
+function buildRealCustomers(store: RevenueDataState): Customer[] {
   const priorMonth = getPriorMonth(); // e.g. "2026-01"
 
   // Group ARR snapshots by SOW_ID, only include months <= prior month
@@ -495,9 +244,9 @@ function buildRealCustomers(store: RealDataState): Customer[] {
 }
 
 function buildRealMonthlyARR(
-  store: RealDataState,
-  arrFilter: (row: RealDataState['arrSnapshots'][0]) => boolean,
-  pipelineFilter: (row: RealDataState['pipelineSnapshots'][0]) => boolean,
+  store: RevenueDataState,
+  arrFilter: (row: RevenueDataState['arrSnapshots'][0]) => boolean,
+  pipelineFilter: (row: RevenueDataState['pipelineSnapshots'][0]) => boolean,
 ): MonthlyARR[] {
   const priorMonth = getPriorMonth(); // Actual data cutoff (e.g. "2026-01")
 
@@ -672,7 +421,7 @@ function buildWaterfallFromTotals(
   };
 }
 
-function buildRealARRMovement(store: RealDataState): ARRMovementRecord[] {
+function buildRealARRMovement(store: RevenueDataState): ARRMovementRecord[] {
   const monthMap = new Map<string, ARRMovementRecord>();
 
   store.arrSnapshots.forEach(row => {
@@ -705,7 +454,7 @@ function buildRealARRMovement(store: RealDataState): ARRMovementRecord[] {
     }));
 }
 
-function buildRealProducts(store: RealDataState, custs: Customer[]): Product[] {
+function buildRealProducts(store: RevenueDataState, custs: Customer[]): Product[] {
   const productMap = new Map<string, { totalARR: number; customers: Set<string>; category: string }>();
 
   custs.forEach(c => {
@@ -1039,19 +788,22 @@ export default function RevenuePage() {
   // SOW Mapping store for enrichment
   const sowMappingStore = useSOWMappingStore();
 
-  // Real data store - loads actual CSV data
-  const realData = useRealDataStore();
+  // Revenue data store - loads from /revenue/data API, caches in Zustand
+  const realData = useRevenueDataStore();
+
+  useEffect(() => {
+    realData.loadData();
+  }, []);
 
   // currentARRMonthLabel is defined below after selectedARRMonth
 
-  // Build data from real CSVs or fall back to mock
   const customers = useMemo(() => {
-    if (!realData.isLoaded || realData.arrSnapshots.length === 0) return MOCK_CUSTOMERS;
+    if (!realData.isLoaded) return [];
     return buildRealCustomers(realData);
   }, [realData.isLoaded, realData.arrSnapshots, realData.sowMappingIndex, realData.arrSubCategoryBreakdown]);
 
   const arrMovementHistory = useMemo(() => {
-    if (!realData.isLoaded || realData.arrSnapshots.length === 0) return MOCK_ARR_MOVEMENT;
+    if (!realData.isLoaded) return [];
     return buildRealARRMovement(realData);
   }, [realData.isLoaded, realData.arrSnapshots]);
 
@@ -1191,9 +943,8 @@ export default function RevenuePage() {
     });
   }, [filteredCustomers, revenueTypeFilter]);
 
-  // Products built from filtered customers so global filters (Region, Vertical, Segment, Quantum/SMART) apply
   const products = useMemo(() => {
-    if (!realData.isLoaded || realData.arrSnapshots.length === 0) return MOCK_PRODUCTS;
+    if (!realData.isLoaded) return [];
     return buildRealProducts(realData, filteredCustomers);
   }, [realData.isLoaded, realData.arrSnapshots, filteredCustomers, realData.productCategoryIndex]);
 
@@ -1251,9 +1002,8 @@ export default function RevenuePage() {
     };
   }, [regionFilter, verticalFilter, segmentFilter]);
 
-  // Monthly ARR data for trend chart (must be after filter helpers)
   const monthlyARRData = useMemo(() => {
-    if (!realData.isLoaded || realData.arrSnapshots.length === 0) return MOCK_MONTHLY_ARR;
+    if (!realData.isLoaded) return [];
     return buildRealMonthlyARR(realData, arrRowPassesFilters, pipelineRowPassesFilters);
   }, [realData.isLoaded, realData.arrSnapshots, realData.pipelineSnapshots, arrRowPassesFilters, pipelineRowPassesFilters]);
 
