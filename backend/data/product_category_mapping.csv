@@ -1,0 +1,30 @@
+Product_Sub_Category,Product_Category,Description,Status
+Sourcing (Indirect),S2C,,Active
+Spend,Spend,,Active
+Contract,S2C,,Active
+Supplier,Supplier,,Active
+P2O,P2P,,Active
+A/P,P2P,,Active
+Projects,S2C,,Active
+ICM,S2C,,Active
+TPRM,TPRM,,Active
+Should Cost,Supply Chain,,Active
+Collab,Supply Chain,,Active
+Inventory,Supply Chain,,Active
+MDM item Master Gov,Supply Chain,,Active
+MDM Hist Cleansing,Supply Chain,,Active
+Qi,Qi,,Active
+Other (Pendo),Other,,Active
+Catalog Mgmt,P2P,,Active
+Sourcing (Direct),S2C,,Active
+Cat WB,S2C,,Active
+Click,Click,,Active
+Control Tower,Supply Chain,,Active
+Risk Mgmt,Supply Chain,,Active
+MDM,Supply Chain,,Active
+Warehouse,Supply Chain,,Active
+Nexxe (Other),Supply Chain,,Active
+Planning,Supply Chain,,Active
+Costdrivers,Cost Drivers,,Active
+MI,S2C,,Active
+Digital Tool,Other,,Active

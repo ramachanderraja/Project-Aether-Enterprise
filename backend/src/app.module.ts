@@ -21,6 +21,8 @@ import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { UsersModule } from './modules/users/users.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { ImportModule } from './modules/import/import.module';
+import { DataModule } from './modules/data/data.module';
+import { AgentModule } from './modules/agent/agent.module';
 
 // Infrastructure modules
 import { PrismaModule } from './database/prisma.module';
@@ -61,6 +63,9 @@ import { validate } from './config/env.validation';
     RedisModule,
     HealthModule,
 
+    // CSV Data module (file-based, no DB required)
+    DataModule,
+
     // Feature modules
     AuthModule,
     DashboardModule,
@@ -79,6 +84,7 @@ import { validate } from './config/env.validation';
     UsersModule,
     ReportsModule,
     ImportModule,
+    AgentModule,
   ],
 })
 export class AppModule {}

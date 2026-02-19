@@ -1,9 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../../database/prisma.service';
 
 @Injectable()
 export class ContextService {
-  constructor(private readonly prisma: PrismaService) {}
 
   async buildFinancialContext(context?: any) {
     // Build a comprehensive financial context for the AI

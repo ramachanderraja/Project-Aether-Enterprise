@@ -1,36 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../../database/prisma.service';
 import { GetAnomaliesDto, UpdateAnomalyDto } from '../dto';
 
 @Injectable()
 export class AnomalyService {
-  constructor(private readonly prisma: PrismaService) {}
-
   async getAnomalies(query: GetAnomaliesDto) {
     const {
       severity,
       status,
       category,
-      start_date,
-      end_date,
       page = 1,
       limit = 20,
     } = query;
 
-    // Build where clause
-    const where: any = {};
-
-    if (severity) where.severity = severity;
-    if (status) where.status = status;
-    if (category) where.category = category;
-    if (start_date || end_date) {
-      where.detectedAt = {};
-      if (start_date) where.detectedAt.gte = new Date(start_date);
-      if (end_date) where.detectedAt.lte = new Date(end_date);
-    }
-
-    // For demo, return sample anomalies
-    // In production, this would query the database
     const sampleAnomalies = [
       {
         id: 'anom_001',
@@ -116,7 +97,6 @@ export class AnomalyService {
       },
     ];
 
-    // Filter based on query
     let filtered = sampleAnomalies;
     if (status) filtered = filtered.filter((a) => a.status === status);
     if (severity) filtered = filtered.filter((a) => a.severity === severity);
@@ -140,7 +120,6 @@ export class AnomalyService {
   }
 
   async getAnomalyById(anomalyId: string) {
-    // In production, query from database
     const anomalies = await this.getAnomalies({ limit: 100 });
     const anomaly = anomalies.data.find((a: any) => a.id === anomalyId);
 
@@ -152,7 +131,6 @@ export class AnomalyService {
   }
 
   async updateAnomaly(anomalyId: string, updateDto: UpdateAnomalyDto) {
-    // In production, this would update the database
     const anomaly = await this.getAnomalyById(anomalyId);
 
     return {
@@ -165,8 +143,6 @@ export class AnomalyService {
   }
 
   async detectAnomalies(tenantId: string) {
-    // This would be called by a scheduled job to detect new anomalies
-    // Implementation would use statistical analysis and ML models
     console.log(`Running anomaly detection for tenant ${tenantId}`);
     return { detected: 0 };
   }

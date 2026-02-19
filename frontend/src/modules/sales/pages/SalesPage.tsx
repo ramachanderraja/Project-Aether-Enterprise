@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -9,13 +9,17 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
-  PieChart,
-  Pie,
   Cell,
   Legend,
   LabelList,
   ReferenceLine,
 } from 'recharts';
+import { useSOWMappingStore } from '@shared/store/sowMappingStore';
+import { usePipelineSubCategoryStore } from '@shared/store/pipelineSubCategoryStore';
+import { useARRSubCategoryStore } from '@shared/store/arrSubCategoryStore';
+import { useProductCategoryMappingStore } from '@shared/store/productCategoryMappingStore';
+import { normalizeRegion } from '@shared/store/dataTypes';
+import { useSalesDataStore, type SalesDataState } from '@shared/store/salesDataStore';
 
 // ==================== TYPE DEFINITIONS ====================
 interface Opportunity {
@@ -48,6 +52,13 @@ interface Opportunity {
   soldBy: 'Sales' | 'GD' | 'TSO';
   // SOW ID for sub-category breakdown (Change 1)
   sowId?: string;
+  // Product breakdown fields (Change 2/3)
+  productSubCategory?: string;
+  productCategory?: string;
+  subCategoryBreakdown?: { subCategory: string; pct: number }[];
+  pipelineSubCategoryBreakdown?: { subCategory: string; pct: number }[];
+  // Revenue Type from SOW Mapping (License, Implementation, Services)
+  revenueType?: string;
 }
 
 interface Salesperson {
@@ -56,7 +67,7 @@ interface Salesperson {
   region: string;
   isManager: boolean;
   managerId?: string;
-  annualTarget: number;
+  previousYearClosed: number;
   closedYTD: number;
   forecast: number;
   pipelineValue: number;
@@ -67,16 +78,16 @@ interface QuarterlyForecast {
   quarter: string;
   forecast: number;
   actual: number;
-  target: number;
+  previousYear: number;
 }
 
 interface RegionalForecast {
   region: string;
   forecast: number;
-  target: number;
+  previousYearACV: number;
   closedACV: number;
   variance: number;
-  percentToTarget: number;
+  yoyGrowth: number;
 }
 
 type SortDirection = 'asc' | 'desc';
@@ -85,8 +96,7 @@ interface SortConfig {
   direction: SortDirection;
 }
 
-// ==================== SAMPLE DATA GENERATION ====================
-// Standard filter options as per requirements document
+// ==================== FILTER OPTIONS ====================
 const REGIONS = ['North America', 'Europe', 'LATAM', 'Middle East', 'APAC'];
 const VERTICALS = [
   'Life Sciences',
@@ -104,191 +114,291 @@ const VERTICALS = [
 const SEGMENTS = ['Enterprise', 'SMB'];
 const CHANNELS = ['Direct', 'Partner', 'Reseller', 'Organic', 'Referral'];
 
-// Logo Types - Extension and Renewal are interchangeable
-const LOGO_TYPES = ['New Logo', 'Upsell', 'Cross-Sell', 'Extension', 'Renewal'];
-// Logo types that count toward License ACV (excludes Extension/Renewal)
 const LICENSE_ACV_LOGO_TYPES = ['New Logo', 'Upsell', 'Cross-Sell'];
 const STAGES = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
-const LOSS_REASONS = ['Budget Constraints', 'Competitor Selected', 'Project Cancelled', 'Timeline Delayed', 'Price Sensitivity', 'No Decision'];
-const MOVEMENT_REASONS = ['Expanded Scope', 'Reduced Scope', 'Lost to Competitor', 'Budget Cuts', 'Timeline Change', 'New Opportunity'];
 
-// Sold By classification (Change 9)
 const SOLD_BY_OPTIONS = ['Sales', 'GD', 'TSO'] as const;
+const REVENUE_TYPE_OPTIONS = ['License', 'Implementation'] as const;
 
-// Product Sub-Categories for breakdown (Change 1, 2)
-const SALESPERSON_NAMES = [
-  'Sarah Johnson', 'Mike Wilson', 'Emily Davis', 'John Smith', 'Lisa Chen',
-  'David Brown', 'Jennifer Lee', 'Robert Taylor', 'Amanda White', 'Chris Martin',
-  'Michelle Garcia', 'Kevin Anderson'
-];
+function parseDateLocal(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d || 1);
+}
 
-// Get current date info for mock data
-const now = new Date();
-const currentYear = now.getFullYear();
-const currentMonth = now.getMonth(); // 0-indexed
+// ==================== REAL DATA BUILDERS ====================
 
-// Generate 40+ opportunities with current data
-const generateOpportunities = (): Opportunity[] => {
-  const opportunities: Opportunity[] = [];
+function buildRealOpportunities(store: SalesDataState): Opportunity[] {
+  const opps: Opportunity[] = [];
+  const ACV_LOGO_TYPES = ['New Logo', 'Upsell', 'Cross-Sell'];
 
-  for (let i = 1; i <= 50; i++) {
-    const stageIndex = Math.floor(Math.random() * STAGES.length);
-    const stage = STAGES[stageIndex];
-    const isWon = stage === 'Closed Won';
-    const isLost = stage === 'Closed Lost';
-    const dealValue = Math.floor(Math.random() * 950000) + 50000; // $50K - $1M
-    const probability = isWon ? 100 : isLost ? 0 : [10, 25, 50, 75][Math.min(stageIndex, 3)];
+  // 1. Closed ACV records → Won opportunities
+  // ALL values/dates come DIRECTLY from the Closed ACV template:
+  //   - License_ACV, Implementation_Value → value columns
+  //   - Close_Date → date for time filters (year/quarter/month)
+  //   - Logo_Type → from Closed ACV template
+  // Region & Vertical come from SOW Mapping template (primary), Closed ACV template (fallback)
+  // NOTHING is picked up from Pipeline Snapshot for Won/Closed deals.
+  store.closedAcv.forEach(row => {
+    const sowMapping = store.sowMappingIndex[row.SOW_ID];
+    // SOW Mapping is primary source for Region/Vertical; Closed ACV is fallback
+    const region = (sowMapping ? normalizeRegion(sowMapping.Region) : '') || normalizeRegion(row.Region) || '';
+    const vertical = (sowMapping ? sowMapping.Vertical : '') || row.Vertical || '';
+    const segment = (sowMapping ? sowMapping.Segment_Type : '') || row.Segment || 'Enterprise';
 
-    // Split deal value into license and implementation components
-    const licenseRatio = 0.6 + Math.random() * 0.3; // 60-90% license
-    const licenseValue = Math.round(dealValue * licenseRatio);
-    const implementationValue = dealValue - licenseValue;
+    // Pick up License_ACV and Implementation_Value directly from the template columns
+    const licenseValue = row.License_ACV || 0;
+    const implementationValue = row.Implementation_Value || 0;
+    const totalValue = licenseValue + implementationValue;
 
-    // Logo type distribution
-    const logoType = LOGO_TYPES[Math.floor(Math.random() * LOGO_TYPES.length)] as Opportunity['logoType'];
-
-    // Segment
-    const segment = SEGMENTS[Math.floor(Math.random() * SEGMENTS.length)] as 'Enterprise' | 'SMB';
-
-    // For won deals, close date should be in past (before current month)
-    // For active deals, close date should be current month onwards
-    let closeDate: Date;
-    if (isWon || isLost) {
-      // Past months (actuals)
-      const pastMonth = Math.floor(Math.random() * currentMonth);
-      closeDate = new Date(currentYear, pastMonth, Math.floor(Math.random() * 28) + 1);
-    } else {
-      // Current month onwards (forecast)
-      const futureMonth = currentMonth + Math.floor(Math.random() * (12 - currentMonth));
-      closeDate = new Date(currentYear, futureMonth, Math.floor(Math.random() * 28) + 1);
-    }
-
-    const createdDate = new Date(closeDate);
-    createdDate.setDate(createdDate.getDate() - Math.floor(Math.random() * 180) - 30);
-
-    const previousValue = Math.random() > 0.5 ? dealValue * (0.7 + Math.random() * 0.6) : undefined;
-
-    // Calculate Closed ACV based on Logo Type rules:
-    // - License: only count if Logo Type in (New Logo, Upsell, Cross-Sell)
-    // - Implementation: always count regardless of Logo Type
-    const licenseCountsTowardACV = LICENSE_ACV_LOGO_TYPES.includes(logoType);
+    // Closed ACV rules: License only for New Logo/Upsell/Cross-Sell; Implementation always counts
+    const licenseCountsTowardACV = ACV_LOGO_TYPES.includes(row.Logo_Type);
     const closedACV = (licenseCountsTowardACV ? licenseValue : 0) + implementationValue;
 
-    // Sold By distribution - Sales 60%, GD 25%, TSO 15%
-    const soldByRand = Math.random();
-    const soldBy: 'Sales' | 'GD' | 'TSO' = soldByRand < 0.6 ? 'Sales' : soldByRand < 0.85 ? 'GD' : 'TSO';
+    const soldBy = (['Sales', 'GD', 'TSO'].includes(row.Sold_By) ? row.Sold_By : 'Sales') as 'Sales' | 'GD' | 'TSO';
 
-    opportunities.push({
-      id: `OPP-${String(i).padStart(4, '0')}`,
-      name: `${['Enterprise', 'Platform', 'Cloud', 'Analytics', 'Integration'][Math.floor(Math.random() * 5)]} Deal ${i}`,
-      accountName: `${['Acme', 'Global', 'Tech', 'Prime', 'Alpha'][Math.floor(Math.random() * 5)]} ${['Corp', 'Inc', 'Solutions', 'Industries', 'Group'][Math.floor(Math.random() * 5)]}`,
-      region: REGIONS[Math.floor(Math.random() * REGIONS.length)],
-      vertical: VERTICALS[Math.floor(Math.random() * VERTICALS.length)],
-      segment,
-      channel: CHANNELS[Math.floor(Math.random() * CHANNELS.length)],
-      stage,
-      probability,
-      dealValue,
+    opps.push({
+      id: row.Closed_ACV_ID,
+      name: row.Deal_Name,
+      accountName: row.Customer_Name,
+      region,
+      vertical,
+      segment: (segment === 'SMB' ? 'SMB' : 'Enterprise') as 'Enterprise' | 'SMB',
+      channel: 'Direct',
+      stage: 'Closed Won',
+      probability: 100,
+      dealValue: totalValue || row.Amount,
       licenseValue,
       implementationValue,
-      weightedValue: Math.round(dealValue * (probability / 100)),
-      expectedCloseDate: closeDate.toISOString().split('T')[0],
-      daysInStage: Math.floor(Math.random() * 120) + 5,
-      owner: SALESPERSON_NAMES[Math.floor(Math.random() * SALESPERSON_NAMES.length)],
-      status: isWon ? 'Won' : isLost ? 'Lost' : Math.random() > 0.9 ? 'Stalled' : 'Active',
-      lossReason: isLost ? LOSS_REASONS[Math.floor(Math.random() * LOSS_REASONS.length)] : undefined,
-      logoType,
-      salesCycleDays: Math.floor(Math.random() * 120) + 30,
-      createdDate: createdDate.toISOString().split('T')[0],
-      previousValue: previousValue ? Math.round(previousValue) : undefined,
-      movementReason: previousValue ? MOVEMENT_REASONS[Math.floor(Math.random() * MOVEMENT_REASONS.length)] : undefined,
-      closedACV: isWon ? closedACV : undefined,
+      weightedValue: totalValue || row.Amount,
+      expectedCloseDate: row.Close_Date,
+      daysInStage: 0,
+      owner: row.Sales_Rep,
+      status: 'Won',
+      logoType: (row.Logo_Type || 'Upsell') as Opportunity['logoType'],
+      salesCycleDays: 90,
+      createdDate: row.Close_Date,
+      closedACV,
       soldBy,
-      // SOW ID (Change 1) - only for won deals
-      sowId: isWon ? `SOW-${String(Math.floor(Math.random() * 100) + 1).padStart(5, '0')}` : undefined,
-    });
-  }
-  return opportunities;
-};
-
-// Generate salespeople with managers
-const generateSalespeople = (): Salesperson[] => {
-  const salespeople: Salesperson[] = [];
-
-  // Add managers first
-  const managers = [
-    { name: 'Sarah Johnson', region: 'North America' },
-    { name: 'David Brown', region: 'Europe' },
-  ];
-
-  managers.forEach((mgr, idx) => {
-    salespeople.push({
-      id: `SP-${String(idx + 1).padStart(3, '0')}`,
-      name: mgr.name,
-      region: mgr.region,
-      isManager: true,
-      annualTarget: 5000000,
-      closedYTD: Math.floor(Math.random() * 2000000) + 1500000,
-      forecast: Math.floor(Math.random() * 1500000) + 1000000,
-      pipelineValue: Math.floor(Math.random() * 3000000) + 2000000,
-      monthlyAttainment: Array.from({ length: 12 }, () => Math.floor(Math.random() * 50) + 50),
+      sowId: row.SOW_ID,
+      revenueType: sowMapping?.Revenue_Type || row.Value_Type || 'License',
     });
   });
 
-  // Add individual contributors
-  const icNames = SALESPERSON_NAMES.filter(n => !managers.find(m => m.name === n));
-  icNames.forEach((name, idx) => {
-    const region = REGIONS[idx % REGIONS.length];
-    const managerId = managers.find(m => m.region === region)?.name ? `SP-001` : `SP-002`;
+  // 2. Pipeline snapshots → Active/Lost/Stalled (LATEST snapshot month only)
+  // Find the latest Snapshot_Month globally
+  let latestSnapshotMonth = '';
+  store.pipelineSnapshots.forEach(row => {
+    if (row.Snapshot_Month > latestSnapshotMonth) latestSnapshotMonth = row.Snapshot_Month;
+  });
+  // Only use deals from the latest snapshot month, dedup by Pipeline_Deal_ID
+  const dealMap = new Map<string, (typeof store.pipelineSnapshots)[0]>();
+  store.pipelineSnapshots.forEach(row => {
+    if (row.Snapshot_Month.slice(0, 7) !== latestSnapshotMonth.slice(0, 7)) return;
+    dealMap.set(row.Pipeline_Deal_ID, row);
+  });
 
-    salespeople.push({
-      id: `SP-${String(idx + 3).padStart(3, '0')}`,
-      name,
-      region,
-      isManager: false,
-      managerId,
-      annualTarget: 2000000,
-      closedYTD: Math.floor(Math.random() * 1200000) + 300000,
-      forecast: Math.floor(Math.random() * 800000) + 200000,
-      pipelineValue: Math.floor(Math.random() * 1500000) + 500000,
-      monthlyAttainment: Array.from({ length: 12 }, () => Math.floor(Math.random() * 60) + 40),
+  let pipIdx = 0;
+  dealMap.forEach((row) => {
+    if (row.Current_Stage.includes('Closed Won')) return; // Covered by closed ACV
+
+    let status: 'Active' | 'Lost' | 'Stalled' = 'Active';
+    if (row.Current_Stage.includes('Closed Lost') ||
+        row.Current_Stage.includes('Closed Dead') ||
+        row.Current_Stage.includes('Closed Declined')) {
+      status = 'Lost';
+    } else if (row.Current_Stage.includes('Stalled')) {
+      status = 'Stalled';
+    }
+
+    const prob = status === 'Lost' ? 0 : row.Probability;
+
+    opps.push({
+      id: row.Pipeline_Deal_ID || `PIP-${String(++pipIdx).padStart(4, '0')}`,
+      name: row.Deal_Name,
+      accountName: row.Customer_Name,
+      region: row.Region || 'North America',
+      vertical: row.Vertical || 'Other Services',
+      segment: (row.Segment || 'Enterprise') as 'Enterprise' | 'SMB',
+      channel: 'Direct',
+      stage: status === 'Lost' ? 'Closed Lost' : (row.Deal_Stage || 'Prospecting'),
+      probability: prob,
+      // Pipeline values (License_ACV, Implementation_Value) are already probability-adjusted
+      dealValue: row.Deal_Value,
+      licenseValue: row.License_ACV,
+      implementationValue: row.Implementation_Value,
+      weightedValue: row.License_ACV + row.Implementation_Value,
+      expectedCloseDate: row.Expected_Close_Date,
+      daysInStage: 30,
+      owner: row.Sales_Rep,
+      status,
+      logoType: (row.Logo_Type || 'New Logo') as Opportunity['logoType'],
+      salesCycleDays: 90,
+      createdDate: row.Snapshot_Month,
+      soldBy: 'Sales',
+      productSubCategory: row.Product_Sub_Category || undefined,
+      revenueType: 'License',
     });
   });
 
-  return salespeople;
-};
+  return opps;
+}
 
-const opportunities = generateOpportunities();
-const salespeople = generateSalespeople();
+function buildRealSalespeople(store: SalesDataState, opps: Opportunity[], prevYearOpps: Opportunity[]): Salesperson[] {
+  const yr = new Date().getFullYear();
 
-// Quarterly forecast data - with actuals for past quarters only
-const getQuarterlyForecastData = (): QuarterlyForecast[] => {
-  const currentQuarter = Math.floor(currentMonth / 3) + 1;
+  return store.salesTeam
+    .filter(m => m.Name && m.Status === 'Active')
+    .map(member => {
+      const isManager = member.Sales_Rep_ID === member.Manager_ID;
+      const nameLower = member.Name.trim().toLowerCase();
 
-  return [
-    { quarter: 'Q1', forecast: 8500000, actual: currentQuarter > 1 ? 7800000 : 0, target: 8000000 },
-    { quarter: 'Q2', forecast: 9200000, actual: currentQuarter > 2 ? 8900000 : 0, target: 9000000 },
-    { quarter: 'Q3', forecast: 10500000, actual: currentQuarter > 3 ? 9200000 : 0, target: 10000000 },
-    { quarter: 'Q4', forecast: 12000000, actual: 0, target: 11000000 },
-  ];
-};
+      const wonDeals = opps.filter(o =>
+        o.status === 'Won' &&
+        o.owner.trim().toLowerCase() === nameLower &&
+        o.expectedCloseDate.startsWith(String(yr))
+      );
+      const closedYTD = wonDeals.reduce((sum, o) => sum + (o.closedACV || 0), 0);
 
-const quarterlyForecastData = getQuarterlyForecastData();
+      // Previous year closed for YoY comparison
+      const prevYearWon = prevYearOpps.filter(o =>
+        o.status === 'Won' &&
+        o.owner.trim().toLowerCase() === nameLower
+      );
+      const previousYearClosed = prevYearWon.reduce((sum, o) => sum + (o.closedACV || 0), 0);
 
-// Regional forecast data - using closedACV instead of actual
-const regionalForecastData: RegionalForecast[] = REGIONS.map(region => {
-  const target = Math.floor(Math.random() * 3000000) + 2000000;
-  const closedACV = Math.floor(Math.random() * target * 0.8);
-  const forecast = closedACV + Math.floor(Math.random() * 1000000);
-  return {
-    region,
-    forecast,
-    target,
-    closedACV,
-    variance: forecast - target,
-    percentToTarget: Math.round((forecast / target) * 100),
+      const activeDeals = opps.filter(o =>
+        (o.status === 'Active' || o.status === 'Stalled') &&
+        o.owner.trim().toLowerCase() === nameLower
+      );
+      const pipelineValue = activeDeals.reduce((sum, o) => sum + o.dealValue, 0);
+      const forecast = activeDeals.reduce((sum, o) => sum + o.weightedValue, 0);
+
+      const monthlyAttainment = Array.from({ length: 12 }, (_, month) => {
+        const monthDeals = wonDeals.filter(o => parseDateLocal(o.expectedCloseDate).getMonth() === month);
+        const monthClosed = monthDeals.reduce((sum, o) => sum + (o.closedACV || 0), 0);
+        const prevMonthDeals = prevYearWon.filter(o => parseDateLocal(o.expectedCloseDate).getMonth() === month);
+        const prevMonthClosed = prevMonthDeals.reduce((sum, o) => sum + (o.closedACV || 0), 0);
+        return prevMonthClosed > 0 ? Math.round((monthClosed / prevMonthClosed) * 100) : (monthClosed > 0 ? 100 : 0);
+      });
+
+      return {
+        id: member.Sales_Rep_ID,
+        name: member.Name,
+        region: member.Region,
+        isManager,
+        managerId: isManager ? undefined : member.Manager_ID,
+        previousYearClosed,
+        closedYTD,
+        forecast,
+        pipelineValue,
+        monthlyAttainment,
+      };
+    });
+}
+
+function buildQuarterlyForecast(opps: Opportunity[], prevYearOpps: Opportunity[], revenueType: string): QuarterlyForecast[] {
+  const yr = new Date().getFullYear();
+  const prevYr = yr - 1;
+  const currentQuarter = Math.floor(new Date().getMonth() / 3) + 1;
+
+  // Revenue-type-aware value getters — read column directly from template
+  const getClosedVal = (o: Opportunity): number => {
+    if (revenueType === 'Implementation') return o.implementationValue || 0;
+    if (revenueType === 'License') return o.licenseValue || 0;
+    return (o.licenseValue || 0) + (o.implementationValue || 0);
   };
-});
+  const getPipeVal = (o: Opportunity): number => {
+    if (revenueType === 'Implementation') return o.implementationValue || 0;
+    if (revenueType === 'License') return o.licenseValue || 0;
+    return (o.licenseValue || 0) + (o.implementationValue || 0);
+  };
+
+  return [1, 2, 3, 4].map(q => {
+    const qStart = new Date(yr, (q - 1) * 3, 1);
+    const qEnd = new Date(yr, q * 3, 0);
+
+    const wonInQ = opps.filter(o => {
+      if (o.status !== 'Won') return false;
+      const d = parseDateLocal(o.expectedCloseDate);
+      return d >= qStart && d <= qEnd;
+    });
+    // Actual = closed deals from Closed ACV template (using Close_Date) for current & past quarters
+    const actual = q <= currentQuarter
+      ? wonInQ.reduce((sum, o) => sum + getClosedVal(o), 0)
+      : 0;
+
+    const activeInQ = opps.filter(o => {
+      if (o.status !== 'Active' && o.status !== 'Stalled') return false;
+      const d = parseDateLocal(o.expectedCloseDate);
+      return d >= qStart && d <= qEnd;
+    });
+    const weightedPipeline = activeInQ.reduce((sum, o) => sum + getPipeVal(o), 0);
+    const forecast = actual + weightedPipeline;
+
+    // Previous year same quarter actuals
+    const prevQStart = new Date(prevYr, (q - 1) * 3, 1);
+    const prevQEnd = new Date(prevYr, q * 3, 0);
+    const prevYearWonInQ = prevYearOpps.filter(o => {
+      if (o.status !== 'Won') return false;
+      const d = parseDateLocal(o.expectedCloseDate);
+      return d >= prevQStart && d <= prevQEnd;
+    });
+    const previousYear = prevYearWonInQ.reduce((sum, o) => sum + getClosedVal(o), 0);
+
+    return { quarter: `Q${q}`, forecast, actual, previousYear };
+  });
+}
+
+function buildRegionalForecast(opps: Opportunity[], prevYearOpps: Opportunity[], revenueType: string): RegionalForecast[] {
+  const yr = new Date().getFullYear();
+
+  // Revenue-type-aware value getters — read column directly from template
+  const getClosedVal = (o: Opportunity): number => {
+    if (revenueType === 'Implementation') return o.implementationValue || 0;
+    if (revenueType === 'License') return o.licenseValue || 0;
+    return (o.licenseValue || 0) + (o.implementationValue || 0);
+  };
+  const getPipeVal = (o: Opportunity): number => {
+    if (revenueType === 'Implementation') return o.implementationValue || 0;
+    if (revenueType === 'License') return o.licenseValue || 0;
+    return (o.licenseValue || 0) + (o.implementationValue || 0);
+  };
+
+  return REGIONS.map(region => {
+    const regionWon = opps.filter(o =>
+      o.status === 'Won' && o.region === region && o.expectedCloseDate.startsWith(String(yr))
+    );
+    const closedACV = regionWon.reduce((sum, o) => sum + getClosedVal(o), 0);
+
+    const regionActive = opps.filter(o =>
+      (o.status === 'Active' || o.status === 'Stalled') && o.region === region
+    );
+    const weightedPipeline = regionActive.reduce((sum, o) => sum + getPipeVal(o), 0);
+    const forecast = closedACV + weightedPipeline;
+
+    // Previous year closed ACV for same region
+    const prevRegionWon = prevYearOpps.filter(o =>
+      o.status === 'Won' && o.region === region
+    );
+    const previousYearACV = prevRegionWon.reduce((sum, o) => sum + getClosedVal(o), 0);
+
+    // Previous year forecast = previous year closed + previous year pipeline
+    const prevRegionActive = prevYearOpps.filter(o =>
+      (o.status === 'Active' || o.status === 'Stalled') && o.region === region
+    );
+    const prevYearPipeline = prevRegionActive.reduce((sum, o) => sum + getPipeVal(o), 0);
+    const previousYearForecast = previousYearACV + prevYearPipeline;
+
+    return {
+      region,
+      forecast,
+      previousYearACV: previousYearForecast,
+      closedACV,
+      variance: forecast - previousYearForecast,
+      yoyGrowth: previousYearForecast > 0 ? Math.round(((forecast - previousYearForecast) / previousYearForecast) * 100) : 0,
+    };
+  });
+}
 
 // ==================== UTILITY FUNCTIONS ====================
 const formatCurrency = (value: number) => {
@@ -312,8 +422,6 @@ const COLORS = {
   pink: '#ec4899',
   gray: '#64748b',
 };
-
-const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 // Note: Sub-category breakdown utility functions available for future implementation:
 // - calculateDealSubCategoryBreakdown(deal, contributions) - for Closed ACV breakdown
@@ -604,8 +712,26 @@ const ChartWrapper: React.FC<ChartWrapperProps> = ({ title, subtitle, children, 
 
 // ==================== MAIN COMPONENT ====================
 export default function SalesPage() {
-  // Filters - now with multi-select support
-  const [yearFilter, setYearFilter] = useState<string[]>([String(currentYear)]);
+  // Stores for enrichment
+  const sowMappingStore = useSOWMappingStore();
+  const pipelineSubCategoryStore = usePipelineSubCategoryStore();
+  const arrSubCategoryStore = useARRSubCategoryStore();
+  const productCategoryMappingStore = useProductCategoryMappingStore();
+
+  // Sales data store - loads from /sales/data API, caches in Zustand
+  const realData = useSalesDataStore();
+
+  useEffect(() => {
+    realData.loadData();
+  }, []);
+
+  const opportunities = useMemo(() => {
+    if (!realData.isLoaded) return [];
+    return buildRealOpportunities(realData);
+  }, [realData.isLoaded, realData.closedAcv, realData.pipelineSnapshots, realData.sowMappingIndex]);
+
+  // Filters - default to 2026
+  const [yearFilter, setYearFilter] = useState<string[]>(['2026']);
   const [quarterFilter, setQuarterFilter] = useState<string[]>([]);
   const [monthFilter, setMonthFilter] = useState<string[]>([]);
   const [regionFilter, setRegionFilter] = useState<string[]>([]);
@@ -614,12 +740,23 @@ export default function SalesPage() {
   const [channelFilter, setChannelFilter] = useState<string[]>([]);
   const [logoTypeFilter, setLogoTypeFilter] = useState<string[]>([]);
   const [soldByFilter, setSoldByFilter] = useState<string>('All');  // Sold By filter (Change 9)
+  const [revenueTypeFilter, setRevenueTypeFilter] = useState<string>('License');  // Revenue Type filter - default License
+  const [productCategoryFilter, setProductCategoryFilter] = useState<string[]>([]);
+  const [productSubCategoryFilter, setProductSubCategoryFilter] = useState<string[]>([]);
+
+  // Expandable rows for Closed ACV table
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const toggleRowExpansion = (id: string) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   // Tabs
   const [activeTab, setActiveTab] = useState<'overview' | 'forecast' | 'pipeline' | 'quota'>('overview');
-
-  // Pipeline Movement
-  const [lookbackPeriod, setLookbackPeriod] = useState<'1' | '3' | '6' | '12'>('1');
 
   // Sorting
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
@@ -640,9 +777,64 @@ export default function SalesPage() {
     }));
   };
 
+  // Enrich opportunities with SOW Mapping + sub-category data when available
+  const enrichedOpportunities = useMemo(() => {
+    return opportunities.map(opp => {
+      let enriched = { ...opp };
+
+      // Enrich from SOW Mapping (primary source for Region/Vertical)
+      if (opp.sowId && sowMappingStore.mappings.length > 0) {
+        const mapping = sowMappingStore.getMappingBySOWId(opp.sowId);
+        if (mapping) {
+          enriched = {
+            ...enriched,
+            vertical: mapping.Vertical || opp.vertical,
+            region: normalizeRegion(mapping.Region) || opp.region,
+            segment: (mapping.Segment_Type as 'Enterprise' | 'SMB') || opp.segment,
+          };
+        }
+      }
+
+      // For won deals with sowId: attach ARR sub-category breakdown
+      if (opp.status === 'Won' && opp.sowId && arrSubCategoryStore.records.length > 0) {
+        const year = parseDateLocal(opp.expectedCloseDate).getFullYear().toString();
+        const contributions = arrSubCategoryStore.getContributionForSOWAndYear(opp.sowId, year);
+        if (contributions.length > 0) {
+          enriched.subCategoryBreakdown = contributions;
+          // Use the highest pct sub-category as primary
+          const primary = contributions.sort((a, b) => b.pct - a.pct)[0];
+          enriched.productSubCategory = primary.subCategory;
+          enriched.productCategory = productCategoryMappingStore.getCategoryForSubCategory(primary.subCategory) || 'Unallocated';
+        }
+      }
+
+      // For active deals: attach pipeline sub-category breakdown
+      if (opp.status === 'Active' && pipelineSubCategoryStore.records.length > 0) {
+        const breakdown = pipelineSubCategoryStore.getLatestBreakdownForDeal(opp.id);
+        if (breakdown.length > 0) {
+          enriched.pipelineSubCategoryBreakdown = breakdown.map(b => ({
+            subCategory: b.Product_Sub_Category,
+            pct: b.Contribution_Pct,
+          }));
+          const primary = breakdown.sort((a, b) => b.Contribution_Pct - a.Contribution_Pct)[0];
+          enriched.productSubCategory = primary.Product_Sub_Category;
+          enriched.productCategory = productCategoryMappingStore.getCategoryForSubCategory(primary.Product_Sub_Category) || 'Unallocated';
+        }
+      }
+
+      // Default to Unallocated if no product data
+      if (!enriched.productSubCategory) {
+        enriched.productSubCategory = 'Unallocated';
+        enriched.productCategory = 'Unallocated';
+      }
+
+      return enriched;
+    });
+  }, [opportunities, sowMappingStore.mappings, arrSubCategoryStore.records, pipelineSubCategoryStore.records, productCategoryMappingStore.records]);
+
   // Filter opportunities based on selected filters (multi-select)
   const filteredOpportunities = useMemo(() => {
-    return opportunities.filter(opp => {
+    return enrichedOpportunities.filter(opp => {
       // Region filter (multi-select)
       if (regionFilter.length > 0 && !regionFilter.includes(opp.region)) return false;
 
@@ -669,20 +861,20 @@ export default function SalesPage() {
 
       // Year filter (multi-select)
       if (yearFilter.length > 0) {
-        const oppYear = new Date(opp.expectedCloseDate).getFullYear().toString();
+        const oppYear = parseDateLocal(opp.expectedCloseDate).getFullYear().toString();
         if (!yearFilter.includes(oppYear)) return false;
       }
 
       // Quarter filter (multi-select)
       if (quarterFilter.length > 0) {
-        const oppMonth = new Date(opp.expectedCloseDate).getMonth();
+        const oppMonth = parseDateLocal(opp.expectedCloseDate).getMonth();
         const oppQuarter = `Q${Math.floor(oppMonth / 3) + 1}`;
         if (!quarterFilter.includes(oppQuarter)) return false;
       }
 
       // Month filter (multi-select)
       if (monthFilter.length > 0) {
-        const oppMonth = new Date(opp.expectedCloseDate).getMonth();
+        const oppMonth = parseDateLocal(opp.expectedCloseDate).getMonth();
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         if (!monthFilter.includes(monthNames[oppMonth])) return false;
       }
@@ -690,27 +882,137 @@ export default function SalesPage() {
       // Sold By filter (Change 9)
       if (soldByFilter !== 'All' && opp.soldBy !== soldByFilter) return false;
 
+      // Revenue Type filter — NO row filtering for closed deals.
+      // All closed deals have both License_ACV and Implementation_Value columns;
+      // the metrics computation picks the right column based on the filter.
+
+      // Product Category filter
+      if (productCategoryFilter.length > 0 && opp.productCategory && !productCategoryFilter.includes(opp.productCategory)) return false;
+
+      // Product Sub-Category filter
+      if (productSubCategoryFilter.length > 0 && opp.productSubCategory && !productSubCategoryFilter.includes(opp.productSubCategory)) return false;
+
       return true;
     });
-  }, [yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter, segmentFilter, channelFilter, logoTypeFilter, soldByFilter]);
+  }, [enrichedOpportunities, yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter, segmentFilter, channelFilter, logoTypeFilter, soldByFilter, revenueTypeFilter, productCategoryFilter, productSubCategoryFilter]);
+
+  // Previous year opportunities for YoY comparison (same filters except year shifted back by 1)
+  const previousYearOpportunities = useMemo(() => {
+    const currentYears = yearFilter.length > 0
+      ? yearFilter.map(y => parseInt(y))
+      : [new Date().getFullYear()];
+    const prevYears = currentYears.map(y => y - 1);
+
+    return enrichedOpportunities.filter(opp => {
+      const oppYear = parseDateLocal(opp.expectedCloseDate).getFullYear();
+      if (!prevYears.includes(oppYear)) return false;
+
+      if (regionFilter.length > 0 && !regionFilter.includes(opp.region)) return false;
+      if (verticalFilter.length > 0 && !verticalFilter.includes(opp.vertical)) return false;
+      if (segmentFilter.length > 0 && !segmentFilter.includes(opp.segment)) return false;
+      if (channelFilter.length > 0 && !channelFilter.includes(opp.channel)) return false;
+      if (logoTypeFilter.length > 0) {
+        const normalizedLogoType = (opp.logoType === 'Renewal' || opp.logoType === 'Extension')
+          ? 'Extension/Renewal' : opp.logoType;
+        const normalizedFilters = logoTypeFilter.map(lt =>
+          (lt === 'Extension' || lt === 'Renewal') ? 'Extension/Renewal' : lt
+        );
+        if (!normalizedFilters.includes(normalizedLogoType) && !logoTypeFilter.includes(opp.logoType)) return false;
+      }
+      if (quarterFilter.length > 0) {
+        const oppMonth = parseDateLocal(opp.expectedCloseDate).getMonth();
+        const oppQuarter = `Q${Math.floor(oppMonth / 3) + 1}`;
+        if (!quarterFilter.includes(oppQuarter)) return false;
+      }
+      if (monthFilter.length > 0) {
+        const oppMonth = parseDateLocal(opp.expectedCloseDate).getMonth();
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        if (!monthFilter.includes(monthNames[oppMonth])) return false;
+      }
+      if (soldByFilter !== 'All' && opp.soldBy !== soldByFilter) return false;
+      // Revenue Type — no row filtering; metrics pick the right column
+      if (productCategoryFilter.length > 0 && opp.productCategory && !productCategoryFilter.includes(opp.productCategory)) return false;
+      if (productSubCategoryFilter.length > 0 && opp.productSubCategory && !productSubCategoryFilter.includes(opp.productSubCategory)) return false;
+
+      return true;
+    });
+  }, [enrichedOpportunities, yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter, segmentFilter, channelFilter, logoTypeFilter, soldByFilter, revenueTypeFilter, productCategoryFilter, productSubCategoryFilter]);
+
+  const salespeople = useMemo(() => {
+    if (!realData.isLoaded) return [];
+    return buildRealSalespeople(realData, filteredOpportunities, previousYearOpportunities);
+  }, [realData.isLoaded, realData.salesTeam, filteredOpportunities, previousYearOpportunities]);
+
+  const quarterlyForecastData = useMemo(() => {
+    if (!realData.isLoaded) return [];
+    return buildQuarterlyForecast(filteredOpportunities, previousYearOpportunities, revenueTypeFilter);
+  }, [realData.isLoaded, filteredOpportunities, previousYearOpportunities, revenueTypeFilter]);
+
+  const regionalForecastData = useMemo(() => {
+    if (!realData.isLoaded) return [];
+    return buildRegionalForecast(filteredOpportunities, previousYearOpportunities, revenueTypeFilter);
+  }, [realData.isLoaded, filteredOpportunities, previousYearOpportunities, revenueTypeFilter]);
+
+  const ownerNames = useMemo(() => {
+    return [...new Set(opportunities.map(o => o.owner).filter(Boolean))].sort();
+  }, [opportunities]);
+
+  const salespersonNames = useMemo(() => {
+    return [...new Set(salespeople.map(s => s.name).filter(Boolean))].sort();
+  }, [salespeople]);
 
   // Calculate metrics with proper Closed ACV rules
   const metrics = useMemo(() => {
+    // Helper: get the relevant ACV value from a closed deal based on Revenue Type filter
+    // Reads the column directly — License_ACV or Implementation_Value from Closed_ACV_Template
+    const getClosedValue = (deal: Opportunity): number => {
+      if (revenueTypeFilter === 'Implementation') return deal.implementationValue || 0;
+      if (revenueTypeFilter === 'License') return deal.licenseValue || 0;
+      return (deal.licenseValue || 0) + (deal.implementationValue || 0);
+    };
+
+    const getPipelineValue = (deal: Opportunity): number => {
+      if (revenueTypeFilter === 'Implementation') return deal.implementationValue || 0;
+      if (revenueTypeFilter === 'License') return deal.licenseValue || 0;
+      return (deal.licenseValue || 0) + (deal.implementationValue || 0);
+    };
+
+    // Won deals come ONLY from Closed ACV template (Close_Date, License_ACV, Implementation_Value, Logo_Type)
+    // Pipeline snapshot "Closed Won" deals are excluded in buildRealOpportunities — no pipeline data here.
     const closedWon = filteredOpportunities.filter(o => o.status === 'Won');
     const closedLost = filteredOpportunities.filter(o => o.status === 'Lost');
     const allClosed = [...closedWon, ...closedLost];
     const activeDeals = filteredOpportunities.filter(o => o.status === 'Active' || o.status === 'Stalled');
 
-    // Calculate Closed ACV using business rules:
-    // - License: only count if Logo Type in (New Logo, Upsell, Cross-Sell)
-    // - Implementation: always count regardless of Logo Type
-    // - Extension = Renewal (both excluded from license ACV)
-    const calculateDealClosedACV = (deal: Opportunity): number => {
-      const licenseCountsTowardACV = LICENSE_ACV_LOGO_TYPES.includes(deal.logoType);
-      return (licenseCountsTowardACV ? deal.licenseValue : 0) + deal.implementationValue;
-    };
+    // Closed ACV — reads License_ACV / Implementation_Value directly from Closed ACV template
+    const totalClosedACV = closedWon.reduce((sum, o) => sum + getClosedValue(o), 0);
 
-    const totalClosedACV = closedWon.reduce((sum, o) => sum + calculateDealClosedACV(o), 0);
+    // Debug: help identify $0 issues
+    if (closedWon.length > 0 && totalClosedACV === 0) {
+      console.warn('[SalesPage Metrics] closedWon has', closedWon.length, 'deals but totalClosedACV=0. revenueTypeFilter=', revenueTypeFilter,
+        'Sample deal:', closedWon[0]?.id, 'logoType:', closedWon[0]?.logoType,
+        'licenseValue:', closedWon[0]?.licenseValue, 'implValue:', closedWon[0]?.implementationValue,
+        'revenueType:', closedWon[0]?.revenueType);
+    }
+
+    // Weighted Pipeline ACV — picks the right column from the pipeline snapshot
+    // License filter → License_ACV, Implementation filter → Implementation_Value
+    const weightedPipelineACV = activeDeals.reduce((sum, o) => sum + getPipelineValue(o), 0);
+
+    // Forecast ACV = Closed ACV + Weighted Pipeline ACV
+    const forecastACV = totalClosedACV + weightedPipelineACV;
+
+    // Previous year: compute same metrics for YoY comparison against Forecast ACV
+    const prevYearWon = previousYearOpportunities.filter(o => o.status === 'Won');
+    const previousYearClosedACV = prevYearWon.reduce((sum, o) => sum + getClosedValue(o), 0);
+    const prevYearActive = previousYearOpportunities.filter(o => o.status === 'Active' || o.status === 'Stalled');
+    const previousYearPipelineACV = prevYearActive.reduce((sum, o) => sum + getPipelineValue(o), 0);
+    const previousYearForecastACV = previousYearClosedACV + previousYearPipelineACV;
+
+    // YoY Growth % is against Forecast ACV (Closed + Pipeline)
+    const yoyGrowth = previousYearForecastACV > 0
+      ? ((forecastACV - previousYearForecastACV) / previousYearForecastACV) * 100
+      : 0;
 
     // Breakdown by component
     const newBusinessLicenseACV = closedWon
@@ -723,19 +1025,11 @@ export default function SalesPage() {
       .filter(o => o.logoType === 'Extension' || o.logoType === 'Renewal')
       .reduce((sum, o) => sum + o.licenseValue, 0);
 
-    const weightedForecast = activeDeals.reduce((sum, o) => sum + o.weightedValue, 0);
     const totalPipelineValue = activeDeals.reduce((sum, o) => sum + o.dealValue, 0);
-
-    // Forecast ACV = weighted forecast from active deals
-    const forecastACV = weightedForecast;
 
     const conversionRate = allClosed.length > 0
       ? (closedWon.length / allClosed.length) * 100
       : 0;
-
-    const annualTarget = 40000000; // $40M target
-    const gapToTarget = annualTarget - (totalClosedACV + weightedForecast);
-    const pipelineCoverage = gapToTarget > 0 ? totalPipelineValue / gapToTarget : 0;
 
     const avgSalesCycle = activeDeals.length > 0
       ? activeDeals.reduce((sum, o) => sum + o.salesCycleDays, 0) / activeDeals.length
@@ -747,67 +1041,74 @@ export default function SalesPage() {
 
     return {
       conversionRate,
-      pipelineCoverage,
       salesVelocity,
-      gapToTarget,
       totalClosedACV,
+      weightedPipelineACV,
+      forecastACV,
+      previousYearClosedACV,
+      previousYearForecastACV,
+      yoyGrowth,
       newBusinessLicenseACV,
       implementationACV,
       extensionRenewalLicense,
-      forecastACV,
-      weightedForecast,
       totalPipelineValue,
       avgDealSize: closedWon.length > 0 ? totalClosedACV / closedWon.length : 0,
       closedWonCount: closedWon.length,
       closedLostCount: closedLost.length,
       activeDealsCount: activeDeals.length,
     };
-  }, [filteredOpportunities]);
+  }, [filteredOpportunities, previousYearOpportunities, revenueTypeFilter]);
 
-  // Funnel data - ensure all stages have data
+  // Funnel data - dynamically built from actual Deal_Stage values in the data
   const funnelData = useMemo(() => {
     const activeOpps = filteredOpportunities.filter(o => o.status === 'Active' || o.status === 'Stalled');
-    const stages = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation'];
 
-    // Calculate actual data from opportunities
-    const actualData = stages.map(stage => {
-      const stageOpps = activeOpps.filter(o => o.stage === stage);
-      return {
-        stage,
-        count: stageOpps.length,
-        value: stageOpps.reduce((sum, o) => sum + o.dealValue, 0),
-      };
+    // Revenue-type-aware value getter for pipeline deals
+    const getPipeVal = (o: Opportunity): number => {
+      if (revenueTypeFilter === 'Implementation') return o.implementationValue || 0;
+      if (revenueTypeFilter === 'License') return o.licenseValue || 0;
+      return (o.licenseValue || 0) + (o.implementationValue || 0);
+    };
+
+    // Collect unique stages from active opportunities (excluding Closed stages)
+    const stageMap = new Map<string, { count: number; value: number }>();
+    activeOpps.forEach(o => {
+      if (o.stage.includes('Closed')) return;
+      const entry = stageMap.get(o.stage) || { count: 0, value: 0 };
+      entry.count += 1;
+      entry.value += getPipeVal(o);
+      stageMap.set(o.stage, entry);
     });
 
-    // If any stage has zero data, generate mock data for visualization
-    const hasEmptyStages = actualData.some(d => d.count === 0);
-    if (hasEmptyStages) {
-      // Generate realistic funnel data with decreasing counts
-      const baseValues = [
+    if (stageMap.size === 0) {
+      // Fallback mock data when no active deals
+      return [
         { stage: 'Prospecting', count: 18, value: 4500000 },
         { stage: 'Qualification', count: 12, value: 3200000 },
         { stage: 'Proposal', count: 8, value: 2400000 },
         { stage: 'Negotiation', count: 5, value: 1800000 },
       ];
-
-      return baseValues.map((base, index) => {
-        const actual = actualData[index];
-        return {
-          stage: base.stage,
-          count: actual.count > 0 ? actual.count : base.count,
-          value: actual.value > 0 ? actual.value : base.value,
-        };
-      });
     }
 
-    return actualData;
-  }, [filteredOpportunities]);
+    return Array.from(stageMap.entries())
+      .map(([stage, data]) => ({ stage, count: data.count, value: data.value }))
+      .sort((a, b) => b.value - a.value);
+  }, [filteredOpportunities, revenueTypeFilter]);
 
-  // Key deals (top 10 by value)
+  // Key deals (top 10 by value) - show UNWEIGHTED fee (weighted value / probability)
   const keyDeals = useMemo(() => {
+    // Unweighted value = weighted value / (probability / 100)
+    // Pipeline values are already probability-adjusted, so divide by probability to get unweighted
+    const getUnweightedVal = (o: Opportunity): number => {
+      const prob = o.probability > 0 ? o.probability / 100 : 1;
+      if (revenueTypeFilter === 'Implementation') return (o.implementationValue || 0) / prob;
+      if (revenueTypeFilter === 'License') return (o.licenseValue || 0) / prob;
+      return ((o.licenseValue || 0) + (o.implementationValue || 0)) / prob;
+    };
+
     let deals = filteredOpportunities
       .filter(o => o.status === 'Active')
-      .sort((a, b) => b.dealValue - a.dealValue);
+      .sort((a, b) => getUnweightedVal(b) - getUnweightedVal(a));
 
     if (sortConfig) {
       deals = deals.sort((a: any, b: any) => {
@@ -819,220 +1120,393 @@ export default function SalesPage() {
     }
 
     return deals.slice(0, 10);
-  }, [filteredOpportunities, sortConfig]);
+  }, [filteredOpportunities, sortConfig, revenueTypeFilter]);
 
-  // Pipeline movement data - TRUE floating waterfall chart
-  const pipelineMovementWaterfall = useMemo(() => {
-    const oppsWithMovement = filteredOpportunities.filter(o => o.previousValue !== undefined);
+  // ====== Pipeline Movement: Month-over-Month Snapshot Comparison ======
+  // Determine the target month from filters to compare previous vs current snapshot.
+  const snapshotComparison = useMemo(() => {
+    const snapshots = realData.pipelineSnapshots;
+    if (!realData.isLoaded || snapshots.length === 0) return null;
 
-    const newDeals = filteredOpportunities.filter(o => {
-      const createdDate = new Date(o.createdDate);
-      const cutoffDate = new Date();
-      cutoffDate.setMonth(cutoffDate.getMonth() - parseInt(lookbackPeriod));
-      return createdDate >= cutoffDate && o.status !== 'Lost';
-    });
+    // Get all unique snapshot months sorted ascending (YYYY-MM-DD format)
+    const allMonths = Array.from(new Set(snapshots.map(s => s.Snapshot_Month.slice(0, 7)))).sort();
+    if (allMonths.length < 2) return null;
 
-    const lostDeals = filteredOpportunities.filter(o => o.status === 'Lost');
+    // Determine the "current" snapshot month based on filters
+    let targetYYYYMM = allMonths[allMonths.length - 1]; // default: latest
+    if (yearFilter.length > 0) {
+      const filteredMonths = allMonths.filter(m => yearFilter.includes(m.slice(0, 4)));
+      if (filteredMonths.length > 0) {
+        if (monthFilter.length === 1) {
+          // Single month selected — find matching YYYY-MM
+          const monthIdx = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].indexOf(monthFilter[0]);
+          if (monthIdx >= 0) {
+            const mm = String(monthIdx + 1).padStart(2, '0');
+            const match = filteredMonths.find(m => m.endsWith(`-${mm}`));
+            if (match) targetYYYYMM = match;
+            else targetYYYYMM = filteredMonths[filteredMonths.length - 1];
+          }
+        } else if (quarterFilter.length === 1) {
+          // Single quarter — use the last month of that quarter within the filtered year
+          const qNum = parseInt(quarterFilter[0].replace('Q', ''));
+          const qMonths = [(qNum - 1) * 3 + 1, (qNum - 1) * 3 + 2, (qNum - 1) * 3 + 3]
+            .map(m => String(m).padStart(2, '0'));
+          const qMatches = filteredMonths.filter(m => qMonths.some(mm => m.endsWith(`-${mm}`)));
+          if (qMatches.length > 0) targetYYYYMM = qMatches[qMatches.length - 1];
+          else targetYYYYMM = filteredMonths[filteredMonths.length - 1];
+        } else {
+          targetYYYYMM = filteredMonths[filteredMonths.length - 1];
+        }
+      }
+    }
 
-    // Calculate starting pipeline
-    const startingPipeline = filteredOpportunities
-      .filter(o => o.status === 'Active' || o.status === 'Won')
-      .reduce((sum, o) => sum + (o.previousValue || o.dealValue), 0);
+    // Find the previous month in the data
+    const targetIdx = allMonths.indexOf(targetYYYYMM);
+    if (targetIdx <= 0) return null; // No previous month available
+    const prevYYYYMM = allMonths[targetIdx - 1];
 
-    // New deals added
-    const newDealsValue = newDeals.reduce((sum, o) => sum + o.dealValue, 0);
+    // Deal type for comparison between months
+    type SnapDeal = {
+      licenseACV: number; implValue: number; currentStage: string;
+      dealName: string; customerName: string; salesRep: string;
+      dealStage: string; probability: number; logoType: string;
+      pipelineDealId: string;
+    };
 
-    // Deals increased
-    const increasedValue = oppsWithMovement
-      .filter(o => o.dealValue > (o.previousValue || 0))
-      .reduce((sum, o) => sum + (o.dealValue - (o.previousValue || 0)), 0);
+    // Individual deal movement detail
+    type DealMovement = {
+      id: string; dealName: string; customerName: string;
+      prevValue: number; currValue: number; change: number;
+      category: 'New' | 'Increased' | 'Decreased' | 'Won' | 'Lost';
+      stage: string; salesRep: string;
+    };
 
-    // Deals decreased
-    const decreasedValue = oppsWithMovement
-      .filter(o => o.dealValue < (o.previousValue || 0) && o.status !== 'Lost')
-      .reduce((sum, o) => sum + ((o.previousValue || 0) - o.dealValue), 0);
+    // Apply global filters
+    const passesFilters = (row: typeof snapshots[0]): boolean => {
+      if (regionFilter.length > 0 && !regionFilter.includes(row.Region)) return false;
+      if (verticalFilter.length > 0 && !verticalFilter.includes(row.Vertical)) return false;
+      if (segmentFilter.length > 0 && !segmentFilter.includes(row.Segment)) return false;
+      if (logoTypeFilter.length > 0) {
+        const normalizedLogoType = (row.Logo_Type === 'Renewal' || row.Logo_Type === 'Extension')
+          ? 'Extension/Renewal' : row.Logo_Type;
+        const normalizedFilters = logoTypeFilter.map(lt =>
+          (lt === 'Extension' || lt === 'Renewal') ? 'Extension/Renewal' : lt
+        );
+        if (!normalizedFilters.includes(normalizedLogoType) && !logoTypeFilter.includes(row.Logo_Type)) return false;
+      }
+      return true;
+    };
 
-    // Lost deals
-    const lostValue = lostDeals.reduce((sum, o) => sum + o.dealValue, 0);
-
-    // Closed won
-    const closedWonValue = filteredOpportunities
-      .filter(o => o.status === 'Won')
-      .reduce((sum, o) => sum + o.dealValue, 0);
-
-    // Build waterfall data with proper floating columns
-    // Each bar needs: bottom (invisible spacer), value (visible bar), and type (initial/increase/decrease/final)
-    let runningTotal = startingPipeline;
-
-    const data: Array<{
-      name: string;
-      bottom: number;      // Invisible spacer height (where bar starts)
-      value: number;       // Visible bar height
-      displayValue: number; // Value to display on label
-      fill: string;
-      type: 'initial' | 'increase' | 'decrease' | 'final';
-      connectTo?: number;  // Y value to connect to next bar
-    }> = [];
-
-    // Starting Pipeline - anchored to axis
-    data.push({
-      name: 'Starting\nPipeline',
-      bottom: 0,
-      value: startingPipeline,
-      displayValue: startingPipeline,
-      fill: COLORS.gray,
-      type: 'initial',
-      connectTo: startingPipeline
-    });
-
-    // New Deals - positive, floats from running total
-    data.push({
-      name: 'New\nDeals',
-      bottom: runningTotal,
-      value: newDealsValue,
-      displayValue: newDealsValue,
-      fill: COLORS.success,
-      type: 'increase',
-      connectTo: runningTotal + newDealsValue
-    });
-    runningTotal += newDealsValue;
-
-    // Value Increased - positive, floats from running total
-    data.push({
-      name: 'Value\nIncreased',
-      bottom: runningTotal - increasedValue,
-      value: increasedValue,
-      displayValue: increasedValue,
-      fill: COLORS.primary,
-      type: 'increase',
-      connectTo: runningTotal
-    });
-    // Note: runningTotal already includes this since we add increasedValue above the previous total
-
-    data.push({
-      name: 'Value\nDecreased',
-      bottom: runningTotal - decreasedValue,
-      value: decreasedValue,
-      displayValue: -decreasedValue,
-      fill: COLORS.warning,
-      type: 'decrease',
-      connectTo: runningTotal - decreasedValue
-    });
-    runningTotal -= decreasedValue;
-
-    // Lost Deals - negative, hangs down from running total
-    data.push({
-      name: 'Lost\nDeals',
-      bottom: runningTotal - lostValue,
-      value: lostValue,
-      displayValue: -lostValue,
-      fill: COLORS.danger,
-      type: 'decrease',
-      connectTo: runningTotal - lostValue
-    });
-    runningTotal -= lostValue;
-
-    // Closed Won - negative (removed from pipeline), hangs down
-    data.push({
-      name: 'Closed\nWon',
-      bottom: runningTotal - closedWonValue,
-      value: closedWonValue,
-      displayValue: -closedWonValue,
-      fill: COLORS.purple,
-      type: 'decrease',
-      connectTo: runningTotal - closedWonValue
-    });
-    runningTotal -= closedWonValue;
-
-    // Ending Pipeline - anchored to axis
-    data.push({
-      name: 'Ending\nPipeline',
-      bottom: 0,
-      value: runningTotal,
-      displayValue: runningTotal,
-      fill: COLORS.gray,
-      type: 'final'
-    });
-
-    return data;
-  }, [filteredOpportunities, lookbackPeriod]);
-
-  // Pipeline movement legacy data for cards/tables
-  const pipelineMovement = useMemo(() => {
-    const oppsWithMovement = filteredOpportunities.filter(o => o.previousValue !== undefined);
-
-    const newDeals = filteredOpportunities.filter(o => {
-      const createdDate = new Date(o.createdDate);
-      const cutoffDate = new Date();
-      cutoffDate.setMonth(cutoffDate.getMonth() - parseInt(lookbackPeriod));
-      return createdDate >= cutoffDate;
-    });
-
-    const lostDeals = filteredOpportunities.filter(o => o.status === 'Lost');
-
-    const totalChange = oppsWithMovement.reduce((sum, o) => {
-      return sum + (o.dealValue - (o.previousValue || 0));
-    }, 0);
-
-    const movedOut = oppsWithMovement.filter(o => o.dealValue < (o.previousValue || 0));
-    const increased = oppsWithMovement.filter(o => o.dealValue > (o.previousValue || 0));
-
-    // Group by reason
-    const reasonCounts: Record<string, number> = {};
-    oppsWithMovement.forEach(o => {
-      if (o.movementReason) {
-        reasonCounts[o.movementReason] = (reasonCounts[o.movementReason] || 0) + 1;
+    // Build maps using Pipeline_Deal_ID as key (IDs are now proper 12-digit numbers)
+    const prevMap = new Map<string, SnapDeal>();
+    const currMap = new Map<string, SnapDeal>();
+    snapshots.forEach(row => {
+      if (!passesFilters(row)) return;
+      const ym = row.Snapshot_Month.slice(0, 7);
+      const key = row.Pipeline_Deal_ID;
+      const deal: SnapDeal = {
+        licenseACV: row.License_ACV || 0,
+        implValue: row.Implementation_Value || 0,
+        currentStage: row.Current_Stage || '',
+        dealName: row.Deal_Name || '',
+        customerName: row.Customer_Name || '',
+        salesRep: row.Sales_Rep || '',
+        dealStage: row.Deal_Stage || '',
+        probability: row.Probability || 0,
+        logoType: row.Logo_Type || '',
+        pipelineDealId: row.Pipeline_Deal_ID,
+      };
+      if (ym === prevYYYYMM) {
+        prevMap.set(key, deal);
+      } else if (ym === targetYYYYMM) {
+        currMap.set(key, deal);
       }
     });
 
-    const reasonData = Object.entries(reasonCounts).map(([name, value]) => ({ name, value }));
+    // Revenue-type-aware value getter
+    const getVal = (d: SnapDeal): number => {
+      if (revenueTypeFilter === 'Implementation') return d.implValue;
+      if (revenueTypeFilter === 'License') return d.licenseACV;
+      return d.licenseACV + d.implValue;
+    };
+
+    // Starting Pipeline = sum of all deals in previous month
+    let startingPipeline = 0;
+    prevMap.forEach(d => { startingPipeline += getVal(d); });
+
+    // Ending Pipeline = sum of all deals in current month
+    let endingPipeline = 0;
+    currMap.forEach(d => { endingPipeline += getVal(d); });
+
+    // Compare deals between months — track both aggregates and individual deal details
+    let newDealsValue = 0;
+    let newDealsCount = 0;
+    let increasedValue = 0;
+    let increasedCount = 0;
+    let decreasedValue = 0;
+    let decreasedCount = 0;
+    let wonValue = 0;
+    let wonCount = 0;
+    let lostValue = 0;
+    let lostCount = 0;
+    const dealDetails: DealMovement[] = [];
+
+    // Deals in current but NOT in previous → New Deals
+    currMap.forEach((currDeal, key) => {
+      if (!prevMap.has(key)) {
+        const val = getVal(currDeal);
+        newDealsValue += val;
+        newDealsCount++;
+        dealDetails.push({
+          id: key, dealName: currDeal.dealName, customerName: currDeal.customerName,
+          prevValue: 0, currValue: val, change: val,
+          category: 'New', stage: currDeal.dealStage, salesRep: currDeal.salesRep,
+        });
+      }
+    });
+
+    // Deals in both → Value Increase / Decrease
+    currMap.forEach((currDeal, key) => {
+      const prevDeal = prevMap.get(key);
+      if (prevDeal) {
+        const currVal = getVal(currDeal);
+        const prevVal = getVal(prevDeal);
+        if (currVal > prevVal) {
+          increasedValue += currVal - prevVal;
+          increasedCount++;
+          dealDetails.push({
+            id: key, dealName: currDeal.dealName, customerName: currDeal.customerName,
+            prevValue: prevVal, currValue: currVal, change: currVal - prevVal,
+            category: 'Increased', stage: currDeal.dealStage, salesRep: currDeal.salesRep,
+          });
+        } else if (currVal < prevVal) {
+          decreasedValue += prevVal - currVal;
+          decreasedCount++;
+          dealDetails.push({
+            id: key, dealName: currDeal.dealName, customerName: currDeal.customerName,
+            prevValue: prevVal, currValue: currVal, change: currVal - prevVal,
+            category: 'Decreased', stage: currDeal.dealStage, salesRep: currDeal.salesRep,
+          });
+        }
+      }
+    });
+
+    // Deals in previous but NOT in current → check Current_Stage for Won/Lost
+    // Stage 7 = Won, Stages 8/10/11/12 = Lost
+    prevMap.forEach((prevDeal, key) => {
+      if (!currMap.has(key)) {
+        const stage = prevDeal.currentStage;
+        const val = getVal(prevDeal);
+        if (stage.startsWith('Stage 7')) {
+          wonValue += val;
+          wonCount++;
+          dealDetails.push({
+            id: key, dealName: prevDeal.dealName, customerName: prevDeal.customerName,
+            prevValue: val, currValue: 0, change: -val,
+            category: 'Won', stage: prevDeal.currentStage, salesRep: prevDeal.salesRep,
+          });
+        } else if (stage.startsWith('Stage 8') || stage.startsWith('Stage 10') ||
+                   stage.startsWith('Stage 11') || stage.startsWith('Stage 12')) {
+          lostValue += val;
+          lostCount++;
+          dealDetails.push({
+            id: key, dealName: prevDeal.dealName, customerName: prevDeal.customerName,
+            prevValue: val, currValue: 0, change: -val,
+            category: 'Lost', stage: prevDeal.currentStage, salesRep: prevDeal.salesRep,
+          });
+        } else {
+          lostValue += val;
+          lostCount++;
+          dealDetails.push({
+            id: key, dealName: prevDeal.dealName, customerName: prevDeal.customerName,
+            prevValue: val, currValue: 0, change: -val,
+            category: 'Lost', stage: prevDeal.currentStage || 'Unknown', salesRep: prevDeal.salesRep,
+          });
+        }
+      }
+    });
+
+    // Format month labels
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const prevMM = parseInt(prevYYYYMM.slice(5, 7), 10);
+    const currMM = parseInt(targetYYYYMM.slice(5, 7), 10);
+    const prevLabel = `${monthNames[prevMM - 1]}'${prevYYYYMM.slice(2, 4)}`;
+    const currLabel = `${monthNames[currMM - 1]}'${targetYYYYMM.slice(2, 4)}`;
 
     return {
-      totalChange,
-      newDealsCount: newDeals.length,
-      newDealsValue: newDeals.reduce((sum, o) => sum + o.dealValue, 0),
-      movedOutCount: movedOut.length,
-      movedOutValue: movedOut.reduce((sum, o) => sum + ((o.previousValue || 0) - o.dealValue), 0),
-      lostDealsCount: lostDeals.length,
-      lostDealsValue: lostDeals.reduce((sum, o) => sum + o.dealValue, 0),
-      increasedCount: increased.length,
-      oppsWithMovement,
-      lostDeals,
-      reasonData,
+      prevLabel, currLabel,
+      startingPipeline, endingPipeline,
+      newDealsValue, newDealsCount,
+      increasedValue, increasedCount,
+      decreasedValue, decreasedCount,
+      wonValue, wonCount,
+      lostValue, lostCount,
+      totalChange: endingPipeline - startingPipeline,
+      dealDetails,
     };
-  }, [filteredOpportunities, lookbackPeriod]);
+  }, [realData.isLoaded, realData.pipelineSnapshots, yearFilter, monthFilter, quarterFilter,
+      regionFilter, verticalFilter, segmentFilter, logoTypeFilter, revenueTypeFilter]);
+
+  // Pipeline movement waterfall chart data — built from snapshot comparison
+  const pipelineMovementWaterfall = useMemo(() => {
+    if (!snapshotComparison) {
+      // Fallback when no snapshot data available
+      return [
+        { name: 'Starting\nPipeline', bottom: 0, value: 0, displayValue: 0, fill: COLORS.gray, type: 'initial' as const },
+        { name: 'Ending\nPipeline', bottom: 0, value: 0, displayValue: 0, fill: COLORS.gray, type: 'final' as const },
+      ];
+    }
+
+    const sc = snapshotComparison;
+    let runningTotal = sc.startingPipeline;
+
+    const data: Array<{
+      name: string;
+      bottom: number;
+      value: number;
+      displayValue: number;
+      fill: string;
+      type: 'initial' | 'increase' | 'decrease' | 'final';
+      connectTo?: number;
+    }> = [];
+
+    // Starting Pipeline
+    data.push({
+      name: `${sc.prevLabel}\nPipeline`,
+      bottom: 0, value: sc.startingPipeline, displayValue: sc.startingPipeline,
+      fill: COLORS.gray, type: 'initial', connectTo: sc.startingPipeline,
+    });
+
+    // New Deals (+)
+    data.push({
+      name: 'New\nDeals',
+      bottom: runningTotal, value: sc.newDealsValue, displayValue: sc.newDealsValue,
+      fill: COLORS.success, type: 'increase', connectTo: runningTotal + sc.newDealsValue,
+    });
+    runningTotal += sc.newDealsValue;
+
+    // Value Increased (+)
+    data.push({
+      name: 'Value\nIncreased',
+      bottom: runningTotal, value: sc.increasedValue, displayValue: sc.increasedValue,
+      fill: COLORS.primary, type: 'increase', connectTo: runningTotal + sc.increasedValue,
+    });
+    runningTotal += sc.increasedValue;
+
+    // Value Decreased (-)
+    data.push({
+      name: 'Value\nDecreased',
+      bottom: runningTotal - sc.decreasedValue, value: sc.decreasedValue, displayValue: -sc.decreasedValue,
+      fill: COLORS.warning, type: 'decrease', connectTo: runningTotal - sc.decreasedValue,
+    });
+    runningTotal -= sc.decreasedValue;
+
+    // Won (removed from pipeline) (-)
+    data.push({
+      name: 'Closed\nWon',
+      bottom: runningTotal - sc.wonValue, value: sc.wonValue, displayValue: -sc.wonValue,
+      fill: COLORS.purple, type: 'decrease', connectTo: runningTotal - sc.wonValue,
+    });
+    runningTotal -= sc.wonValue;
+
+    // Lost (-)
+    data.push({
+      name: 'Lost\nDeals',
+      bottom: runningTotal - sc.lostValue, value: sc.lostValue, displayValue: -sc.lostValue,
+      fill: COLORS.danger, type: 'decrease', connectTo: runningTotal - sc.lostValue,
+    });
+    runningTotal -= sc.lostValue;
+
+    // Ending Pipeline
+    data.push({
+      name: `${sc.currLabel}\nPipeline`,
+      bottom: 0, value: sc.endingPipeline, displayValue: sc.endingPipeline,
+      fill: COLORS.gray, type: 'final',
+    });
+
+    return data;
+  }, [snapshotComparison]);
+
+  // Pipeline movement summary data for cards
+  type DealMovementDetail = {
+    id: string; dealName: string; customerName: string;
+    prevValue: number; currValue: number; change: number;
+    category: 'New' | 'Increased' | 'Decreased' | 'Won' | 'Lost';
+    stage: string; salesRep: string;
+  };
+
+  const pipelineMovement = useMemo(() => {
+    const emptyDetails: DealMovementDetail[] = [];
+    if (!snapshotComparison) {
+      return {
+        totalChange: 0, newDealsCount: 0, newDealsValue: 0,
+        movedOutCount: 0, movedOutValue: 0,
+        lostDealsCount: 0, lostDealsValue: 0,
+        increasedCount: 0, wonCount: 0, wonValue: 0,
+        dealDetails: emptyDetails,
+        lostDeals: emptyDetails,
+        topMovers: emptyDetails,
+      };
+    }
+    const sc = snapshotComparison;
+    const details = sc.dealDetails || [];
+    const lostDeals = details.filter(d => d.category === 'Lost').sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
+    const topMovers = [...details].sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
+    return {
+      totalChange: sc.totalChange,
+      newDealsCount: sc.newDealsCount,
+      newDealsValue: sc.newDealsValue,
+      movedOutCount: sc.decreasedCount,
+      movedOutValue: sc.decreasedValue,
+      lostDealsCount: sc.lostCount,
+      lostDealsValue: sc.lostValue,
+      increasedCount: sc.increasedCount,
+      wonCount: sc.wonCount,
+      wonValue: sc.wonValue,
+      dealDetails: details,
+      lostDeals,
+      topMovers,
+    };
+  }, [snapshotComparison]);
 
 
   // Render tabs
   const renderOverviewTab = () => (
     <div className="space-y-6">
-      {/* KPI Cards - Reordered: Closed ACV, Forecast ACV, Gap to Target, Conversion, Sales Velocity */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      {/* KPI Cards - Closed ACV, Weighted Pipeline, Forecast ACV, YoY Growth, Conversion, Sales Velocity */}
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <div className="card p-5">
-          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Closed ACV (YTD)</p>
-          <p className="text-3xl font-bold text-green-500">{formatCurrency(metrics.totalClosedACV)}</p>
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Closed ACV (YTD){revenueTypeFilter !== 'All' ? ` - ${revenueTypeFilter}` : ''}</p>
+          <p className="text-2xl font-bold text-green-500">{formatCurrency(metrics.totalClosedACV)}</p>
           <p className="text-xs text-secondary-400 mt-1">{metrics.closedWonCount} deals</p>
         </div>
         <div className="card p-5">
-          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Forecast ACV</p>
-          <p className="text-3xl font-bold text-blue-500">{formatCurrency(metrics.forecastACV)}</p>
-          <p className="text-xs text-secondary-400 mt-1">Weighted pipeline</p>
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Weighted Pipeline ACV{revenueTypeFilter !== 'All' ? ` - ${revenueTypeFilter}` : ''}</p>
+          <p className="text-2xl font-bold text-orange-500">{formatCurrency(metrics.weightedPipelineACV)}</p>
+          <p className="text-xs text-secondary-400 mt-1">{metrics.activeDealsCount} active deals</p>
         </div>
         <div className="card p-5">
-          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Gap to Target</p>
-          <p className={`text-3xl font-bold ${metrics.gapToTarget > 0 ? 'text-red-500' : 'text-green-500'}`}>
-            {formatCurrency(Math.abs(metrics.gapToTarget))}
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">
+            Forecast ACV{yearFilter.length === 1 ? ` (${monthFilter.length > 0 ? monthFilter.join(', ') + ' ' : quarterFilter.length > 0 ? quarterFilter.join(', ') + ' ' : ''}${yearFilter[0]})` : ''}
           </p>
-          <p className="text-xs text-secondary-400 mt-1">{metrics.gapToTarget > 0 ? 'remaining' : 'exceeded'}</p>
+          <p className="text-2xl font-bold text-blue-500">{formatCurrency(metrics.forecastACV)}</p>
+          <p className="text-xs text-secondary-400 mt-1">Closed + Pipeline</p>
+        </div>
+        <div className="card p-5">
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">YoY Growth</p>
+          <p className={`text-2xl font-bold ${metrics.yoyGrowth >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+            {metrics.yoyGrowth >= 0 ? '+' : ''}{metrics.yoyGrowth.toFixed(1)}%
+          </p>
+          <p className="text-xs text-secondary-400 mt-1">vs {formatCurrency(metrics.previousYearForecastACV)} prev yr forecast</p>
         </div>
         <div className="card p-5">
           <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Conversion Rate</p>
-          <p className="text-3xl font-bold text-purple-500">{formatPercent(metrics.conversionRate)}</p>
+          <p className="text-2xl font-bold text-purple-500">{formatPercent(metrics.conversionRate)}</p>
           <p className="text-xs text-secondary-400 mt-1">Won / All Closed</p>
         </div>
         <div className="card p-5">
           <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Sales Velocity</p>
-          <p className="text-3xl font-bold text-secondary-900">{formatCurrency(metrics.salesVelocity)}</p>
+          <p className="text-2xl font-bold text-secondary-900">{formatCurrency(metrics.salesVelocity)}</p>
           <p className="text-xs text-secondary-400 mt-1">per day</p>
         </div>
       </div>
@@ -1042,7 +1516,7 @@ export default function SalesPage() {
         {/* Forecast by Quarter - with $ values on forecast bars */}
         <ChartWrapper
           title="Forecast by Quarter"
-          subtitle="Quarterly performance vs target"
+          subtitle="Quarterly performance vs previous year"
           data={quarterlyForecastData}
           filename="forecast_by_quarter"
         >
@@ -1066,7 +1540,7 @@ export default function SalesPage() {
                     style={{ fontSize: 10, fill: '#3b82f6', fontWeight: 600 }}
                   />
                 </Bar>
-                <Bar dataKey="target" name="Target" fill={COLORS.gray} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="previousYear" name="Previous Year" fill={COLORS.gray} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1079,22 +1553,29 @@ export default function SalesPage() {
           data={funnelData}
           filename="sales_funnel"
         >
-          <div className="h-64">
+          <div style={{ height: Math.max(280, funnelData.length * 50 + 40) }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 layout="vertical"
                 data={funnelData}
-                margin={{ top: 10, right: 30, left: 100, bottom: 0 }}
+                margin={{ top: 10, right: 80, left: 20, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(v) => formatCurrency(v)} />
-                <YAxis dataKey="stage" type="category" tick={{ fontSize: 12, fill: '#64748b' }} width={90} />
+                <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={(v) => formatCurrency(v)} />
+                <YAxis
+                  dataKey="stage"
+                  type="category"
+                  tick={{ fontSize: 11, fill: '#374151' }}
+                  width={220}
+                  tickFormatter={(v: string) => v.length > 35 ? v.slice(0, 35) + '...' : v}
+                />
                 <Tooltip
                   formatter={(value: number, name: string) => [
                     name === 'value' ? formatCurrency(value) : value,
                     name === 'value' ? 'Value' : 'Count'
                   ]}
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                  labelFormatter={(label: string) => label}
                 />
                 <Bar dataKey="value" name="value" fill={COLORS.primary} radius={[0, 4, 4, 0]}>
                   <LabelList
@@ -1133,11 +1614,11 @@ export default function SalesPage() {
               <tr>
                 <SortableHeader label="Deal Name" sortKey="name" currentSort={sortConfig} onSort={handleSort} />
                 <SortableHeader label="Account" sortKey="accountName" currentSort={sortConfig} onSort={handleSort} />
-                <SortableHeader label="Value" sortKey="dealValue" currentSort={sortConfig} onSort={handleSort} />
+                <SortableHeader label="Unweighted Fee" sortKey="dealValue" currentSort={sortConfig} onSort={handleSort} />
                 <SortableHeader label="Stage" sortKey="stage" currentSort={sortConfig} onSort={handleSort} filterOptions={STAGES.filter(s => !s.includes('Closed'))} />
                 <SortableHeader label="Close Date" sortKey="expectedCloseDate" currentSort={sortConfig} onSort={handleSort} />
                 <SortableHeader label="Probability" sortKey="probability" currentSort={sortConfig} onSort={handleSort} />
-                <SortableHeader label="Owner" sortKey="owner" currentSort={sortConfig} onSort={handleSort} filterOptions={SALESPERSON_NAMES} />
+                <SortableHeader label="Owner" sortKey="owner" currentSort={sortConfig} onSort={handleSort} filterOptions={ownerNames} />
               </tr>
             </thead>
             <tbody className="divide-y divide-secondary-100">
@@ -1145,14 +1626,21 @@ export default function SalesPage() {
                 <tr key={deal.id} className="hover:bg-secondary-50">
                   <td className="px-5 py-4 font-medium text-secondary-900">{deal.name}</td>
                   <td className="px-5 py-4 text-secondary-600">{deal.accountName}</td>
-                  <td className="px-5 py-4 font-medium text-secondary-900">{formatCurrency(deal.dealValue)}</td>
+                  <td className="px-5 py-4 font-medium text-secondary-900">{formatCurrency(
+                    (() => {
+                      const prob = deal.probability > 0 ? deal.probability / 100 : 1;
+                      if (revenueTypeFilter === 'Implementation') return (deal.implementationValue || 0) / prob;
+                      if (revenueTypeFilter === 'License') return (deal.licenseValue || 0) / prob;
+                      return ((deal.licenseValue || 0) + (deal.implementationValue || 0)) / prob;
+                    })()
+                  )}</td>
                   <td className="px-5 py-4">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                       {deal.stage}
                     </span>
                   </td>
                   <td className="px-5 py-4 text-secondary-600">
-                    {new Date(deal.expectedCloseDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {parseDateLocal(deal.expectedCloseDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2">
@@ -1172,23 +1660,193 @@ export default function SalesPage() {
           </table>
         </div>
       </div>
+
+      {/* Closed ACV Deals Table with Expandable Sub-Category Breakdown */}
+      {(() => {
+        // Revenue-type-aware closed deal value for sorting and display
+        const getClosedDealVal = (d: Opportunity): number => {
+          if (revenueTypeFilter === 'Implementation') return d.implementationValue || 0;
+          if (revenueTypeFilter === 'License') return d.licenseValue || 0;
+          return (d.licenseValue || 0) + (d.implementationValue || 0);
+        };
+        const closedWonDeals = filteredOpportunities
+          .filter(o => o.status === 'Won')
+          .sort((a, b) => getClosedDealVal(b) - getClosedDealVal(a));
+
+        if (closedWonDeals.length === 0) return null;
+
+        return (
+          <div className="card overflow-hidden">
+            <div className="p-5 border-b border-secondary-200 flex justify-between items-center">
+              <div>
+                <h2 className="text-lg font-semibold text-secondary-900">Closed ACV Deals</h2>
+                <p className="text-sm text-secondary-500">Won deals with sub-category breakdown (click to expand)</p>
+              </div>
+              <button
+                onClick={() => exportToCSV(closedWonDeals.map(d => ({
+                  dealName: d.name,
+                  account: d.accountName,
+                  logoType: d.logoType,
+                  licenseValue: d.licenseValue,
+                  implValue: d.implementationValue,
+                  closedACV: d.closedACV,
+                  sowId: d.sowId || '',
+                  closeDate: d.expectedCloseDate,
+                  productSubCategory: d.productSubCategory || 'Unallocated',
+                })), 'closed_acv_deals')}
+                className="px-3 py-1.5 text-sm border border-secondary-200 rounded-lg hover:bg-secondary-50 flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-secondary-50">
+                  <tr>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-secondary-500 uppercase w-8"></th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Deal Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Account</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Logo Type</th>
+                    {(revenueTypeFilter === 'All' || revenueTypeFilter === 'License') && (
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">License ACV</th>
+                    )}
+                    {(revenueTypeFilter === 'All' || revenueTypeFilter === 'Implementation') && (
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Impl ACV</th>
+                    )}
+                    {revenueTypeFilter === 'All' && (
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Closed ACV</th>
+                    )}
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">SOW ID</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Close Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-secondary-100">
+                  {closedWonDeals.slice(0, 20).map((deal) => {
+                    const hasBreakdown = deal.subCategoryBreakdown && deal.subCategoryBreakdown.length > 0;
+                    const isExpanded = expandedRows.has(deal.id);
+                    const licenseCountsToACV = LICENSE_ACV_LOGO_TYPES.includes(deal.logoType);
+
+                    return (
+                      <React.Fragment key={deal.id}>
+                        <tr
+                          className={`hover:bg-secondary-50 ${hasBreakdown ? 'cursor-pointer' : ''} ${isExpanded ? 'bg-primary-50' : ''}`}
+                          onClick={() => hasBreakdown && toggleRowExpansion(deal.id)}
+                        >
+                          <td className="px-3 py-3 text-center">
+                            {hasBreakdown ? (
+                              <span className={`text-secondary-400 transition-transform inline-block ${isExpanded ? 'rotate-90' : ''}`}>
+                                &#9654;
+                              </span>
+                            ) : (
+                              <span className="text-secondary-200">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 font-medium text-secondary-900 text-sm">{deal.name}</td>
+                          <td className="px-4 py-3 text-secondary-600 text-sm">{deal.accountName}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                              licenseCountsToACV ? 'bg-green-100 text-green-800' : 'bg-secondary-100 text-secondary-600'
+                            }`}>
+                              {deal.logoType}
+                            </span>
+                          </td>
+                          {(revenueTypeFilter === 'All' || revenueTypeFilter === 'License') && (
+                            <td className="px-4 py-3 text-right text-sm font-medium">
+                              {formatCurrency(deal.licenseValue)}
+                            </td>
+                          )}
+                          {(revenueTypeFilter === 'All' || revenueTypeFilter === 'Implementation') && (
+                            <td className="px-4 py-3 text-right text-sm font-medium">{formatCurrency(deal.implementationValue)}</td>
+                          )}
+                          {revenueTypeFilter === 'All' && (
+                            <td className="px-4 py-3 text-right text-sm font-bold text-green-600">{formatCurrency(getClosedDealVal(deal))}</td>
+                          )}
+                          <td className="px-4 py-3 text-sm text-secondary-600 font-mono">{deal.sowId || '-'}</td>
+                          <td className="px-4 py-3 text-sm text-secondary-600">
+                            {parseDateLocal(deal.expectedCloseDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </td>
+                        </tr>
+                        {isExpanded && hasBreakdown && deal.subCategoryBreakdown!.map((sc, idx) => (
+                          <tr key={`${deal.id}-sc-${idx}`} className="bg-blue-50">
+                            <td className="px-3 py-2"></td>
+                            <td colSpan={2} className="px-4 py-2 text-sm text-secondary-700">
+                              <span className="text-secondary-400 mr-2">{idx < deal.subCategoryBreakdown!.length - 1 ? '├──' : '└──'}</span>
+                              {sc.subCategory}
+                              {productCategoryMappingStore.getCategoryForSubCategory(sc.subCategory) && (
+                                <span className="text-xs text-secondary-400 ml-2">({productCategoryMappingStore.getCategoryForSubCategory(sc.subCategory)})</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2 text-right text-sm text-secondary-600">
+                              {sc.pct.toFixed(0)}%
+                            </td>
+                            {(revenueTypeFilter === 'All' || revenueTypeFilter === 'License') && (
+                              <td className="px-4 py-2 text-right text-sm text-secondary-600">
+                                {formatCurrency(deal.licenseValue * (sc.pct / 100))}
+                              </td>
+                            )}
+                            {(revenueTypeFilter === 'All' || revenueTypeFilter === 'Implementation') && (
+                              <td className="px-4 py-2 text-right text-sm text-secondary-600">
+                                {formatCurrency(deal.implementationValue * (sc.pct / 100))}
+                              </td>
+                            )}
+                            {revenueTypeFilter === 'All' && (
+                              <td className="px-4 py-2 text-right text-sm font-medium text-blue-600">
+                                {formatCurrency(getClosedDealVal(deal) * (sc.pct / 100))}
+                              </td>
+                            )}
+                            <td colSpan={2}></td>
+                          </tr>
+                        ))}
+                        {isExpanded && !hasBreakdown && (
+                          <tr className="bg-secondary-50">
+                            <td className="px-3 py-2"></td>
+                            <td colSpan={revenueTypeFilter === 'All' ? 8 : 6} className="px-4 py-2 text-sm text-secondary-400 italic">
+                              No sub-category breakdown available for this deal
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 
   const renderForecastTab = () => {
-    const weightedForecastValue = filteredOpportunities
-      .filter(o => o.status === 'Active')
-      .reduce((sum, o) => sum + o.weightedValue, 0);
-
     return (
       <div className="space-y-6">
-        {/* Weighted Forecast Card */}
+        {/* Forecast Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="card p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+            <p className="text-sm font-medium text-green-600 uppercase tracking-wider">Closed ACV{revenueTypeFilter !== 'All' ? ` (${revenueTypeFilter})` : ''}</p>
+            <p className="text-3xl font-bold text-green-900 mt-2">{formatCurrency(metrics.totalClosedACV)}</p>
+            <p className="text-sm text-green-600 mt-1">{revenueTypeFilter !== 'All' ? `${revenueTypeFilter} only` : 'License + Implementation'} (YTD)</p>
+          </div>
+          <div className="card p-6 bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200">
+            <p className="text-sm font-medium text-orange-600 uppercase tracking-wider">Weighted Pipeline ACV{revenueTypeFilter !== 'All' ? ` (${revenueTypeFilter})` : ''}</p>
+            <p className="text-3xl font-bold text-orange-900 mt-2">{formatCurrency(metrics.weightedPipelineACV)}</p>
+            <p className="text-sm text-orange-600 mt-1">{revenueTypeFilter !== 'All' ? `${revenueTypeFilter} only` : 'License + Implementation'} (probability-adjusted)</p>
+          </div>
+          <div className="card p-6 bg-gradient-to-r from-primary-50 to-blue-50 border-primary-200">
+            <p className="text-sm font-medium text-primary-600 uppercase tracking-wider">Forecast ACV</p>
+            <p className="text-3xl font-bold text-primary-900 mt-2">{formatCurrency(metrics.forecastACV)}</p>
+            <p className="text-sm text-primary-600 mt-1">Closed + Weighted Pipeline</p>
+          </div>
+        </div>
         <div className="card p-6 bg-gradient-to-r from-primary-50 to-blue-50 border-primary-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-primary-600 uppercase tracking-wider">Weighted Forecast Value</p>
-              <p className="text-4xl font-bold text-primary-900 mt-2">{formatCurrency(weightedForecastValue)}</p>
-              <p className="text-sm text-primary-600 mt-1">Sum of (Deal Value x Probability)</p>
+              <p className="text-sm font-medium text-primary-600 uppercase tracking-wider">Forecast ACV Breakdown</p>
+              <p className="text-4xl font-bold text-primary-900 mt-2">{formatCurrency(metrics.forecastACV)}</p>
+              <p className="text-sm text-primary-600 mt-1">Closed ACV ({formatCurrency(metrics.totalClosedACV)}) + Weighted Pipeline ({formatCurrency(metrics.weightedPipelineACV)})</p>
             </div>
             <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center">
               <svg className="w-10 h-10 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1198,9 +1856,9 @@ export default function SalesPage() {
           </div>
         </div>
 
-        {/* Regional Forecast vs Target */}
+        {/* Regional Performance vs Previous Year */}
         <ChartWrapper
-          title="Regional Forecast vs Target"
+          title="Regional Performance vs Previous Year"
           data={regionalForecastData}
           filename="regional_forecast"
         >
@@ -1211,10 +1869,10 @@ export default function SalesPage() {
                   <SortableHeader label="Region" sortKey="region" currentSort={sortConfig} onSort={handleSort} />
                   <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase tracking-wider">Closed ACV</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase tracking-wider">Forecast</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase tracking-wider">Target</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase tracking-wider">Previous Year</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase tracking-wider">Variance</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase tracking-wider">% to Target</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase tracking-wider">YoY Growth</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase tracking-wider">Trend</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-secondary-100">
@@ -1223,28 +1881,22 @@ export default function SalesPage() {
                     <td className="px-4 py-4 font-medium text-secondary-900">{region.region}</td>
                     <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(region.closedACV)}</td>
                     <td className="px-4 py-4 text-right font-medium text-secondary-900">{formatCurrency(region.forecast)}</td>
-                    <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(region.target)}</td>
+                    <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(region.previousYearACV)}</td>
                     <td className={`px-4 py-4 text-right font-medium ${region.variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {region.variance >= 0 ? '+' : ''}{formatCurrency(region.variance)}
                     </td>
                     <td className="px-4 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <div className="w-20 h-2 bg-secondary-100 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${region.percentToTarget >= 100 ? 'bg-green-500' : region.percentToTarget >= 80 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                            style={{ width: `${Math.min(region.percentToTarget, 100)}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-medium">{region.percentToTarget}%</span>
-                      </div>
+                      <span className={`font-medium ${region.yoyGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {region.yoyGrowth >= 0 ? '+' : ''}{region.yoyGrowth}%
+                      </span>
                     </td>
                     <td className="px-4 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        region.percentToTarget >= 100 ? 'bg-green-100 text-green-800' :
-                        region.percentToTarget >= 80 ? 'bg-yellow-100 text-yellow-800' :
+                        region.yoyGrowth >= 10 ? 'bg-green-100 text-green-800' :
+                        region.yoyGrowth >= 0 ? 'bg-yellow-100 text-yellow-800' :
                         'bg-red-100 text-red-800'
                       }`}>
-                        {region.percentToTarget >= 100 ? 'On Track' : region.percentToTarget >= 80 ? 'At Risk' : 'Behind'}
+                        {region.yoyGrowth >= 10 ? 'Growing' : region.yoyGrowth >= 0 ? 'Flat' : 'Declining'}
                       </span>
                     </td>
                   </tr>
@@ -1254,30 +1906,58 @@ export default function SalesPage() {
           </div>
         </ChartWrapper>
 
-        {/* Forecast Trend */}
+        {/* Forecast Trend - built from filtered opportunities */}
+        {(() => {
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          // Revenue-type-aware value getters
+          const getClosedVal = (o: Opportunity): number => {
+            if (revenueTypeFilter === 'Implementation') return o.implementationValue || 0;
+            if (revenueTypeFilter === 'License') return o.licenseValue || 0;
+            return (o.licenseValue || 0) + (o.implementationValue || 0);
+          };
+          const getPipeVal = (o: Opportunity): number => {
+            if (revenueTypeFilter === 'Implementation') return o.implementationValue || 0;
+            if (revenueTypeFilter === 'License') return o.licenseValue || 0;
+            return (o.licenseValue || 0) + (o.implementationValue || 0);
+          };
+          // Cumulative closed won by month + weighted pipeline by expected close month
+          const wonDeals = filteredOpportunities.filter(o => o.status === 'Won');
+          const activeDeals = filteredOpportunities.filter(o => o.status === 'Active' || o.status === 'Stalled');
+          const monthlyWon: Record<string, number> = {};
+          const monthlyPipeline: Record<string, number> = {};
+          wonDeals.forEach(d => {
+            const m = monthNames[parseDateLocal(d.expectedCloseDate).getMonth()];
+            monthlyWon[m] = (monthlyWon[m] || 0) + getClosedVal(d);
+          });
+          activeDeals.forEach(d => {
+            const m = monthNames[parseDateLocal(d.expectedCloseDate).getMonth()];
+            monthlyPipeline[m] = (monthlyPipeline[m] || 0) + getPipeVal(d);
+          });
+          // Build cumulative forecast trend with previous year comparison
+          let cumulative = 0;
+          // Previous year cumulative closed ACV by month
+          const prevYearWonDeals = previousYearOpportunities.filter(o => o.status === 'Won');
+          const monthlyPrevYear: Record<string, number> = {};
+          prevYearWonDeals.forEach(d => {
+            const m = monthNames[parseDateLocal(d.expectedCloseDate).getMonth()];
+            monthlyPrevYear[m] = (monthlyPrevYear[m] || 0) + getClosedVal(d);
+          });
+          let cumulativePrevYear = 0;
+          const forecastTrendData = monthNames.map(m => {
+            cumulative += (monthlyWon[m] || 0) + (monthlyPipeline[m] || 0);
+            cumulativePrevYear += (monthlyPrevYear[m] || 0);
+            return { month: m, forecast: Math.round(cumulative), previousYear: Math.round(cumulativePrevYear) };
+          }).filter(d => d.forecast > 0 || d.previousYear > 0);
+          return (
         <ChartWrapper
           title="Forecast Trend"
-          data={[
-            { month: 'Jan', forecast: 35000000, target: 40000000 },
-            { month: 'Feb', forecast: 36500000, target: 40000000 },
-            { month: 'Mar', forecast: 37200000, target: 40000000 },
-            { month: 'Apr', forecast: 38100000, target: 40000000 },
-            { month: 'May', forecast: 38800000, target: 40000000 },
-            { month: 'Jun', forecast: 39500000, target: 40000000 },
-          ]}
+          data={forecastTrendData}
           filename="forecast_trend"
         >
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
-                data={[
-                  { month: 'Jan', forecast: 35000000, target: 40000000 },
-                  { month: 'Feb', forecast: 36500000, target: 40000000 },
-                  { month: 'Mar', forecast: 37200000, target: 40000000 },
-                  { month: 'Apr', forecast: 38100000, target: 40000000 },
-                  { month: 'May', forecast: 38800000, target: 40000000 },
-                  { month: 'Jun', forecast: 39500000, target: 40000000 },
-                ]}
+                data={forecastTrendData}
                 margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -1289,39 +1969,105 @@ export default function SalesPage() {
                 />
                 <Legend />
                 <Line type="monotone" dataKey="forecast" name="Forecast" stroke={COLORS.primary} strokeWidth={2} dot={{ r: 4 }} />
-                <Line type="monotone" dataKey="target" name="Target" stroke={COLORS.danger} strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                <Line type="monotone" dataKey="previousYear" name="Previous Year" stroke={COLORS.gray} strokeWidth={2} strokeDasharray="5 5" dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </ChartWrapper>
+          );
+        })()}
+
+        {/* Forecast by Sub-Category */}
+        {(() => {
+          const activeDeals = filteredOpportunities.filter(o => o.status === 'Active');
+          const subCatMap = new Map<string, { weighted: number; count: number }>();
+
+          activeDeals.forEach(deal => {
+            if (deal.pipelineSubCategoryBreakdown && deal.pipelineSubCategoryBreakdown.length > 0) {
+              deal.pipelineSubCategoryBreakdown.forEach(sc => {
+                const key = sc.subCategory;
+                const entry = subCatMap.get(key) || { weighted: 0, count: 0 };
+                entry.weighted += deal.weightedValue * sc.pct;
+                entry.count += 1;
+                subCatMap.set(key, entry);
+              });
+            } else {
+              const key = deal.productSubCategory || 'Unallocated';
+              const entry = subCatMap.get(key) || { weighted: 0, count: 0 };
+              entry.weighted += deal.weightedValue;
+              entry.count += 1;
+              subCatMap.set(key, entry);
+            }
+          });
+
+          const subCatData = Array.from(subCatMap.entries())
+            .map(([subCategory, data]) => ({
+              subCategory,
+              category: productCategoryMappingStore.getCategoryForSubCategory(subCategory) || 'Unallocated',
+              weightedForecast: data.weighted,
+              dealCount: data.count,
+            }))
+            .sort((a, b) => b.weightedForecast - a.weightedForecast);
+
+          if (subCatData.length <= 1 && subCatData[0]?.subCategory === 'Unallocated') return null;
+
+          return (
+            <div className="card p-6">
+              <h3 className="text-lg font-semibold text-secondary-900 mb-1">Forecast by Sub-Category</h3>
+              <p className="text-sm text-secondary-500 mb-4">Weighted forecast values allocated by sub-category</p>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-secondary-200">
+                      <th className="px-3 py-2 text-left font-semibold text-secondary-700">Sub-Category</th>
+                      <th className="px-3 py-2 text-left font-semibold text-secondary-700">Category</th>
+                      <th className="px-3 py-2 text-right font-semibold text-secondary-700">Weighted Forecast</th>
+                      <th className="px-3 py-2 text-right font-semibold text-secondary-700">% of Total</th>
+                      <th className="px-3 py-2 text-right font-semibold text-secondary-700">Deals</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-secondary-100">
+                    {subCatData.map(sc => {
+                      const totalWeighted = subCatData.reduce((s, d) => s + d.weightedForecast, 0);
+                      return (
+                        <tr key={sc.subCategory} className="hover:bg-secondary-50">
+                          <td className="px-3 py-2 font-medium text-secondary-900">{sc.subCategory}</td>
+                          <td className="px-3 py-2 text-secondary-600">{sc.category}</td>
+                          <td className="px-3 py-2 text-right font-medium text-blue-600">{formatCurrency(sc.weightedForecast)}</td>
+                          <td className="px-3 py-2 text-right text-secondary-700">
+                            {totalWeighted > 0 ? ((sc.weightedForecast / totalWeighted) * 100).toFixed(1) : '0.0'}%
+                          </td>
+                          <td className="px-3 py-2 text-right text-secondary-700">{sc.dealCount}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     );
   };
 
   const renderPipelineTab = () => (
     <div className="space-y-6">
-      {/* Time Period Selector */}
-      <div className="card p-4">
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-secondary-700">Compare to:</span>
-          {(['1', '3', '6', '12'] as const).map((period) => (
-            <button
-              key={period}
-              onClick={() => setLookbackPeriod(period)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                lookbackPeriod === period
-                  ? 'bg-primary-500 text-white'
-                  : 'bg-secondary-100 text-secondary-600 hover:bg-secondary-200'
-              }`}
-            >
-              {period} month{period !== '1' ? 's' : ''} back
-            </button>
-          ))}
+      {/* Month-over-Month Comparison Info */}
+      {snapshotComparison && (
+        <div className="card p-4">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-secondary-700">Comparing:</span>
+            <span className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-primary-100 text-primary-700">
+              {snapshotComparison.prevLabel} → {snapshotComparison.currLabel}
+            </span>
+            <span className="text-xs text-secondary-400">Use month/year filters to change the comparison period</span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="card p-5">
           <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Pipeline Change</p>
           <p className={`text-3xl font-bold ${pipelineMovement.totalChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
@@ -1334,9 +2080,14 @@ export default function SalesPage() {
           <p className="text-xs text-secondary-400 mt-1">{formatCurrency(pipelineMovement.newDealsValue)}</p>
         </div>
         <div className="card p-5">
-          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Deals Moved Out</p>
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Value Decreased</p>
           <p className="text-3xl font-bold text-orange-500">{pipelineMovement.movedOutCount}</p>
           <p className="text-xs text-secondary-400 mt-1">{formatCurrency(pipelineMovement.movedOutValue)}</p>
+        </div>
+        <div className="card p-5">
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Closed Won</p>
+          <p className="text-3xl font-bold text-purple-500">{pipelineMovement.wonCount}</p>
+          <p className="text-xs text-secondary-400 mt-1">{formatCurrency(pipelineMovement.wonValue)}</p>
         </div>
         <div className="card p-5">
           <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Deals Lost</p>
@@ -1348,7 +2099,7 @@ export default function SalesPage() {
       {/* Pipeline Movement Floating Waterfall Chart */}
       <ChartWrapper
         title="Pipeline Movement"
-        subtitle="Floating waterfall showing $ value changes in pipeline"
+        subtitle={snapshotComparison ? `${snapshotComparison.prevLabel} snapshot → ${snapshotComparison.currLabel} snapshot` : 'Month-over-month pipeline comparison'}
         data={pipelineMovementWaterfall}
         filename="pipeline_movement"
       >
@@ -1470,18 +2221,18 @@ export default function SalesPage() {
         {/* Waterfall explanation */}
         <div className="mt-4 p-3 bg-secondary-50 rounded-lg">
           <p className="text-xs text-secondary-500 text-center">
-            <strong>How to read:</strong> Starting Pipeline + New Deals + Increases - Decreases - Lost - Closed Won = Ending Pipeline
+            <strong>How to read:</strong> Previous Month Pipeline + New Deals + Value Increased - Value Decreased - Closed Won - Lost = Current Month Pipeline
           </p>
         </div>
       </ChartWrapper>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Key Deal Movement Table */}
+        {/* Key Deal Movement Table — top movers by absolute change */}
         <div className="card overflow-hidden">
           <div className="p-5 border-b border-secondary-200 flex justify-between items-center">
             <h2 className="text-lg font-semibold text-secondary-900">Key Deal Movement</h2>
             <button
-              onClick={() => exportToCSV(pipelineMovement.oppsWithMovement, 'deal_movement')}
+              onClick={() => exportToCSV(pipelineMovement.topMovers, 'deal_movement')}
               className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
             >
               Export
@@ -1492,130 +2243,269 @@ export default function SalesPage() {
               <thead className="bg-secondary-50 sticky top-0">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Deal</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Account</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Previous</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Current</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Change</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Reason</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Category</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-secondary-100">
-                {pipelineMovement.oppsWithMovement.slice(0, 10).map((deal) => {
-                  const change = deal.dealValue - (deal.previousValue || 0);
-                  const changePercent = deal.previousValue ? ((change / deal.previousValue) * 100).toFixed(0) : 0;
-                  return (
-                    <tr key={deal.id} className={`${change > 0 ? 'bg-green-50' : change < 0 ? 'bg-red-50' : ''}`}>
-                      <td className="px-4 py-3 font-medium text-secondary-900">{deal.name}</td>
-                      <td className="px-4 py-3 text-right text-secondary-600">{formatCurrency(deal.previousValue || 0)}</td>
-                      <td className="px-4 py-3 text-right font-medium text-secondary-900">{formatCurrency(deal.dealValue)}</td>
-                      <td className={`px-4 py-3 text-right font-medium ${change > 0 ? 'text-green-600' : change < 0 ? 'text-red-600' : 'text-secondary-400'}`}>
-                        {change > 0 ? '+' : ''}{formatCurrency(change)} ({changePercent}%)
-                      </td>
-                      <td className="px-4 py-3 text-secondary-600">{deal.movementReason || '-'}</td>
-                    </tr>
-                  );
-                })}
+                {pipelineMovement.topMovers.slice(0, 10).map((deal) => (
+                  <tr key={deal.id} className={`${deal.change > 0 ? 'bg-green-50' : deal.change < 0 ? 'bg-red-50' : ''}`}>
+                    <td className="px-4 py-3 font-medium text-secondary-900">{deal.dealName}</td>
+                    <td className="px-4 py-3 text-secondary-600">{deal.customerName}</td>
+                    <td className="px-4 py-3 text-right text-secondary-600">{formatCurrency(deal.prevValue)}</td>
+                    <td className="px-4 py-3 text-right font-medium text-secondary-900">{formatCurrency(deal.currValue)}</td>
+                    <td className={`px-4 py-3 text-right font-medium ${deal.change > 0 ? 'text-green-600' : deal.change < 0 ? 'text-red-600' : 'text-secondary-400'}`}>
+                      {deal.change > 0 ? '+' : ''}{formatCurrency(deal.change)}
+                      {deal.prevValue > 0 ? ` (${((deal.change / deal.prevValue) * 100).toFixed(0)}%)` : ''}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        deal.category === 'New' ? 'bg-blue-100 text-blue-800' :
+                        deal.category === 'Increased' ? 'bg-green-100 text-green-800' :
+                        deal.category === 'Decreased' ? 'bg-amber-100 text-amber-800' :
+                        deal.category === 'Won' ? 'bg-emerald-100 text-emerald-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {deal.category}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Reasons for Pipeline Movement - Kept as Pie Chart per original */}
-        <ChartWrapper
-          title="Reasons for Pipeline Movement"
-          data={pipelineMovement.reasonData}
-          filename="movement_reasons"
-        >
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pipelineMovement.reasonData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {pipelineMovement.reasonData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+        {/* Lost Deals Analysis */}
+        <div className="card overflow-hidden">
+          <div className="p-5 border-b border-secondary-200 flex justify-between items-center">
+            <h2 className="text-lg font-semibold text-secondary-900">Lost Deals Analysis</h2>
+            <button
+              onClick={() => exportToCSV(pipelineMovement.lostDeals, 'lost_deals')}
+              className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
+            >
+              Export
+            </button>
           </div>
-        </ChartWrapper>
+          <div className="overflow-x-auto max-h-80">
+            <table className="w-full">
+              <thead className="bg-secondary-50 sticky top-0">
+                <tr>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Deal Name</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Account</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Value</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Stage Lost At</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Owner</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-secondary-100">
+                {pipelineMovement.lostDeals.length === 0 ? (
+                  <tr><td colSpan={5} className="px-5 py-8 text-center text-secondary-400">No lost deals in this period</td></tr>
+                ) : pipelineMovement.lostDeals.map((deal) => (
+                  <tr key={deal.id} className="hover:bg-secondary-50">
+                    <td className="px-5 py-4 font-medium text-secondary-900">{deal.dealName}</td>
+                    <td className="px-5 py-4 text-secondary-600">{deal.customerName}</td>
+                    <td className="px-5 py-4 text-right font-medium text-red-600">{formatCurrency(Math.abs(deal.prevValue))}</td>
+                    <td className="px-5 py-4 text-secondary-600">{deal.stage}</td>
+                    <td className="px-5 py-4 text-secondary-600">{deal.salesRep}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
-      {/* Lost Deals Analysis */}
+      {/* All Deal Movement Table — searchable by deal name */}
       <div className="card overflow-hidden">
         <div className="p-5 border-b border-secondary-200 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-secondary-900">Lost Deals Analysis</h2>
-          <button
-            onClick={() => exportToCSV(pipelineMovement.lostDeals, 'lost_deals')}
-            className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
-          >
-            Export
-          </button>
+          <div>
+            <h2 className="text-lg font-semibold text-secondary-900">All Deal Movement</h2>
+            <p className="text-sm text-secondary-500">
+              {snapshotComparison ? `${snapshotComparison.prevLabel} → ${snapshotComparison.currLabel}` : 'Month-over-month deal changes'}
+              {' — '}{pipelineMovement.dealDetails.length} deals with movement
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="text"
+              placeholder="Filter by deal name..."
+              className="px-3 py-1.5 text-sm border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              onChange={(e) => {
+                const el = e.target.closest('.card')?.querySelector('[data-deal-filter]');
+                if (el) (el as HTMLElement).dataset.dealFilter = e.target.value.toLowerCase();
+                e.target.closest('.card')?.querySelectorAll('[data-deal-row]').forEach((row) => {
+                  const name = (row as HTMLElement).dataset.dealRow || '';
+                  (row as HTMLElement).style.display = name.includes(e.target.value.toLowerCase()) ? '' : 'none';
+                });
+              }}
+            />
+            <button
+              onClick={() => exportToCSV(pipelineMovement.dealDetails, 'all_deal_movement')}
+              className="px-3 py-1.5 text-sm border border-secondary-200 rounded-lg hover:bg-secondary-50 flex items-center gap-2"
+            >
+              Export
+            </button>
+          </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-96">
           <table className="w-full">
-            <thead className="bg-secondary-50">
+            <thead className="bg-secondary-50 sticky top-0">
               <tr>
-                <SortableHeader label="Deal Name" sortKey="name" currentSort={sortConfig} onSort={handleSort} />
-                <SortableHeader label="Account" sortKey="accountName" currentSort={sortConfig} onSort={handleSort} />
-                <SortableHeader label="Value" sortKey="dealValue" currentSort={sortConfig} onSort={handleSort} />
-                <SortableHeader label="Loss Reason" sortKey="lossReason" currentSort={sortConfig} onSort={handleSort} filterOptions={LOSS_REASONS} />
-                <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Stage Lost At</th>
-                <SortableHeader label="Owner" sortKey="owner" currentSort={sortConfig} onSort={handleSort} />
+                <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Deal Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Account</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Category</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Previous Value</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Current Value</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Change</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Stage</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Owner</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-secondary-100">
-              {pipelineMovement.lostDeals.slice(0, 10).map((deal) => (
-                <tr key={deal.id} className="hover:bg-secondary-50">
-                  <td className="px-5 py-4 font-medium text-secondary-900">{deal.name}</td>
-                  <td className="px-5 py-4 text-secondary-600">{deal.accountName}</td>
-                  <td className="px-5 py-4 text-right font-medium text-red-600">{formatCurrency(deal.dealValue)}</td>
-                  <td className="px-5 py-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                      {deal.lossReason}
+              {pipelineMovement.dealDetails.length === 0 ? (
+                <tr><td colSpan={8} className="px-5 py-8 text-center text-secondary-400">No deal movement in this period</td></tr>
+              ) : pipelineMovement.dealDetails
+                .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
+                .map((deal) => (
+                <tr key={deal.id} data-deal-row={deal.dealName.toLowerCase()} className={`hover:bg-secondary-50 ${
+                  deal.category === 'Won' ? 'bg-emerald-50/50' :
+                  deal.category === 'Lost' ? 'bg-red-50/50' :
+                  deal.change > 0 ? 'bg-green-50/50' :
+                  deal.change < 0 ? 'bg-red-50/30' : ''
+                }`}>
+                  <td className="px-4 py-3 font-medium text-secondary-900">{deal.dealName}</td>
+                  <td className="px-4 py-3 text-secondary-600">{deal.customerName}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                      deal.category === 'New' ? 'bg-blue-100 text-blue-800' :
+                      deal.category === 'Increased' ? 'bg-green-100 text-green-800' :
+                      deal.category === 'Decreased' ? 'bg-amber-100 text-amber-800' :
+                      deal.category === 'Won' ? 'bg-emerald-100 text-emerald-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {deal.category}
                     </span>
                   </td>
-                  <td className="px-5 py-4 text-secondary-600">{deal.stage}</td>
-                  <td className="px-5 py-4 text-secondary-600">{deal.owner}</td>
+                  <td className="px-4 py-3 text-right text-secondary-600">{formatCurrency(deal.prevValue)}</td>
+                  <td className="px-4 py-3 text-right font-medium text-secondary-900">{formatCurrency(deal.currValue)}</td>
+                  <td className={`px-4 py-3 text-right font-medium ${deal.change > 0 ? 'text-green-600' : deal.change < 0 ? 'text-red-600' : 'text-secondary-400'}`}>
+                    {deal.change > 0 ? '+' : ''}{formatCurrency(deal.change)}
+                  </td>
+                  <td className="px-4 py-3 text-secondary-600">{deal.stage}</td>
+                  <td className="px-4 py-3 text-secondary-600">{deal.salesRep}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Pipeline by Sub-Category */}
+      {(() => {
+        const activeDeals = filteredOpportunities.filter(o => o.status === 'Active');
+        const subCatMap = new Map<string, { totalWeighted: number; totalPipeline: number; count: number }>();
+
+        activeDeals.forEach(deal => {
+          if (deal.pipelineSubCategoryBreakdown && deal.pipelineSubCategoryBreakdown.length > 0) {
+            deal.pipelineSubCategoryBreakdown.forEach(sc => {
+              const key = sc.subCategory;
+              const entry = subCatMap.get(key) || { totalWeighted: 0, totalPipeline: 0, count: 0 };
+              entry.totalWeighted += deal.weightedValue * sc.pct;
+              entry.totalPipeline += deal.dealValue * sc.pct;
+              entry.count += 1;
+              subCatMap.set(key, entry);
+            });
+          } else {
+            const key = deal.productSubCategory || 'Unallocated';
+            const entry = subCatMap.get(key) || { totalWeighted: 0, totalPipeline: 0, count: 0 };
+            entry.totalWeighted += deal.weightedValue;
+            entry.totalPipeline += deal.dealValue;
+            entry.count += 1;
+            subCatMap.set(key, entry);
+          }
+        });
+
+        const subCatData = Array.from(subCatMap.entries())
+          .map(([subCategory, data]) => ({
+            subCategory,
+            category: productCategoryMappingStore.getCategoryForSubCategory(subCategory) || 'Unallocated',
+            totalPipeline: data.totalPipeline,
+            weightedValue: data.totalWeighted,
+            dealCount: data.count,
+          }))
+          .sort((a, b) => b.weightedValue - a.weightedValue);
+
+        if (subCatData.length <= 1 && subCatData[0]?.subCategory === 'Unallocated') return null;
+
+        return (
+          <div className="card p-6">
+            <h3 className="text-lg font-semibold text-secondary-900 mb-1">Pipeline by Sub-Category</h3>
+            <p className="text-sm text-secondary-500 mb-4">Weighted pipeline values allocated by sub-category</p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={subCatData.slice(0, 8)} margin={{ top: 10, right: 30, left: 0, bottom: 40 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                    <XAxis dataKey="subCategory" tick={{ fontSize: 10, fill: '#64748b' }} angle={-45} textAnchor="end" height={60} />
+                    <YAxis tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(v) => formatCurrency(v)} />
+                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                    <Bar dataKey="weightedValue" name="Weighted Pipeline" fill={COLORS.primary} radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-secondary-200">
+                      <th className="px-3 py-2 text-left font-semibold text-secondary-700">Sub-Category</th>
+                      <th className="px-3 py-2 text-left font-semibold text-secondary-700">Category</th>
+                      <th className="px-3 py-2 text-right font-semibold text-secondary-700">Pipeline</th>
+                      <th className="px-3 py-2 text-right font-semibold text-secondary-700">Weighted</th>
+                      <th className="px-3 py-2 text-right font-semibold text-secondary-700">Deals</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-secondary-100">
+                    {subCatData.map(sc => (
+                      <tr key={sc.subCategory} className="hover:bg-secondary-50">
+                        <td className="px-3 py-2 font-medium text-secondary-900">{sc.subCategory}</td>
+                        <td className="px-3 py-2 text-secondary-600">{sc.category}</td>
+                        <td className="px-3 py-2 text-right text-secondary-700">{formatCurrency(sc.totalPipeline)}</td>
+                        <td className="px-3 py-2 text-right font-medium text-blue-600">{formatCurrency(sc.weightedValue)}</td>
+                        <td className="px-3 py-2 text-right text-secondary-700">{sc.dealCount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 
   // Sorted salespeople data - moved outside render function for proper reactivity
   const sortedSalespeople = useMemo(() => {
-    // Calculate totals for managers and derived fields
+    // Calculate totals for managers and derived fields (using previous year for comparison)
     const salespeopleWithTotals = salespeople.map(sp => {
-      const remainingTarget = sp.annualTarget - sp.closedYTD;
-      const pipelineCoverage = remainingTarget > 0 ? sp.pipelineValue / remainingTarget : 0;
-      const forecastAttainment = ((sp.closedYTD + sp.forecast) / sp.annualTarget) * 100;
-      const ytdAttainment = (sp.closedYTD / sp.annualTarget) * 100;
+      const prevYear = sp.previousYearClosed || 1; // avoid division by zero
+      const pipelineCoverage = sp.previousYearClosed > 0 ? sp.pipelineValue / sp.previousYearClosed : 0;
+      const forecastAttainment = sp.previousYearClosed > 0 ? ((sp.closedYTD + sp.forecast) / sp.previousYearClosed) * 100 : 0;
+      const ytdAttainment = sp.previousYearClosed > 0 ? (sp.closedYTD / sp.previousYearClosed) * 100 : 0;
 
       if (sp.isManager) {
         const teamMembers = salespeople.filter(s => s.managerId === sp.id);
         const teamClosed = teamMembers.reduce((sum, s) => sum + s.closedYTD, 0) + sp.closedYTD;
         const teamForecast = teamMembers.reduce((sum, s) => sum + s.forecast, 0) + sp.forecast;
         const teamPipeline = teamMembers.reduce((sum, s) => sum + s.pipelineValue, 0) + sp.pipelineValue;
-        // Change 10: Manager's quota is their OWN assigned quota, NOT aggregated from team
-        // The teamTarget is the aggregated amount (for display/reference only)
-        // But attainment calculations use the manager's individual quota (sp.annualTarget)
-        const teamTarget = teamMembers.reduce((sum, s) => sum + s.annualTarget, 0) + sp.annualTarget;
-        // Manager's attainment is based on their OWN quota, not team aggregate
-        const managerYtdAttainment = (teamClosed / sp.annualTarget) * 100;
-        const managerForecastAttainment = ((teamClosed + teamForecast) / sp.annualTarget) * 100;
-        return { ...sp, teamClosed, teamForecast, teamPipeline, teamTarget, pipelineCoverage,
+        const teamPrevYear = teamMembers.reduce((sum, s) => sum + s.previousYearClosed, 0) + sp.previousYearClosed;
+        const managerYtdAttainment = sp.previousYearClosed > 0 ? (teamClosed / sp.previousYearClosed) * 100 : 0;
+        const managerForecastAttainment = sp.previousYearClosed > 0 ? ((teamClosed + teamForecast) / sp.previousYearClosed) * 100 : 0;
+        return { ...sp, teamClosed, teamForecast, teamPipeline, teamPrevYear, pipelineCoverage,
           forecastAttainment: managerForecastAttainment, ytdAttainment: managerYtdAttainment };
       }
       return { ...sp, pipelineCoverage, forecastAttainment, ytdAttainment };
@@ -1658,7 +2548,7 @@ export default function SalesPage() {
     }
 
     return { filteredSalespeople, salespeopleWithTotals };
-  }, [tableColumnFilters, sortConfig]);
+  }, [salespeople, tableColumnFilters, sortConfig]);
 
   const renderQuotaTab = () => {
     const { filteredSalespeople, salespeopleWithTotals } = sortedSalespeople;
@@ -1693,10 +2583,10 @@ export default function SalesPage() {
                   ClosedYTD: sp.closedYTD,
                   Forecast: sp.forecast,
                   Pipeline: sp.pipelineValue,
-                  Target: sp.annualTarget,
+                  PreviousYear: sp.previousYearClosed,
                   Coverage: sp.pipelineCoverage.toFixed(2),
-                  YTDAttainment: sp.ytdAttainment.toFixed(1),
-                  ForecastAttainment: sp.forecastAttainment.toFixed(1),
+                  YTDvsPrevYear: sp.ytdAttainment.toFixed(1),
+                  ForecastvsPrevYear: sp.forecastAttainment.toFixed(1),
                 })), 'sales_rep_performance')}
                 className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
               >
@@ -1714,7 +2604,7 @@ export default function SalesPage() {
                     currentSort={sortConfig}
                     onSort={handleSort}
                     onFilter={handleTableFilter}
-                    filterOptions={SALESPERSON_NAMES}
+                    filterOptions={salespersonNames}
                     activeFilters={tableColumnFilters.name || []}
                   />
                   <SortableHeader
@@ -1745,8 +2635,8 @@ export default function SalesPage() {
                     onSort={handleSort}
                   />
                   <SortableHeader
-                    label="Target"
-                    sortKey="annualTarget"
+                    label="Prev Year"
+                    sortKey="previousYearClosed"
                     currentSort={sortConfig}
                     onSort={handleSort}
                   />
@@ -1757,13 +2647,13 @@ export default function SalesPage() {
                     onSort={handleSort}
                   />
                   <SortableHeader
-                    label="YTD Att."
+                    label="YTD vs PY"
                     sortKey="ytdAttainment"
                     currentSort={sortConfig}
                     onSort={handleSort}
                   />
                   <SortableHeader
-                    label="Forecast Att."
+                    label="Forecast vs PY"
                     sortKey="forecastAttainment"
                     currentSort={sortConfig}
                     onSort={handleSort}
@@ -1787,9 +2677,9 @@ export default function SalesPage() {
                     <td className="px-4 py-4 text-right text-green-600">{formatCurrency(sp.closedYTD)}</td>
                     <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(sp.forecast)}</td>
                     <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(sp.pipelineValue)}</td>
-                    <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(sp.annualTarget)}</td>
+                    <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(sp.previousYearClosed)}</td>
                     <td className="px-4 py-4 text-right">
-                      <span className={`font-medium ${sp.pipelineCoverage >= 3 ? 'text-green-600' : sp.pipelineCoverage >= 2 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      <span className={`font-medium ${sp.pipelineCoverage >= 1.5 ? 'text-green-600' : sp.pipelineCoverage >= 1 ? 'text-yellow-600' : 'text-red-600'}`}>
                         {sp.pipelineCoverage.toFixed(1)}x
                       </span>
                     </td>
@@ -1861,12 +2751,12 @@ export default function SalesPage() {
 
           {/* Top Performers */}
           <ChartWrapper
-            title="Top Performers by Forecast Attainment"
+            title="Top Performers vs Previous Year"
             data={salespeople
               .filter(sp => !sp.isManager)
               .map(sp => ({
                 name: sp.name.split(' ')[0],
-                attainment: Math.round(((sp.closedYTD + sp.forecast) / sp.annualTarget) * 100),
+                attainment: sp.previousYearClosed > 0 ? Math.round(((sp.closedYTD + sp.forecast) / sp.previousYearClosed) * 100) : 0,
               }))
               .sort((a, b) => b.attainment - a.attainment)
               .slice(0, 8)
@@ -1881,7 +2771,7 @@ export default function SalesPage() {
                     .filter(sp => !sp.isManager)
                     .map(sp => ({
                       name: sp.name.split(' ')[0],
-                      attainment: Math.round(((sp.closedYTD + sp.forecast) / sp.annualTarget) * 100),
+                      attainment: sp.previousYearClosed > 0 ? Math.round(((sp.closedYTD + sp.forecast) / sp.previousYearClosed) * 100) : 0,
                     }))
                     .sort((a, b) => b.attainment - a.attainment)
                     .slice(0, 8)
@@ -1889,36 +2779,34 @@ export default function SalesPage() {
                   margin={{ top: 0, right: 30, left: 60, bottom: 0 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 12, fill: '#64748b' }} domain={[0, 150]} tickFormatter={(v) => `${v}%`} />
+                  <XAxis type="number" tick={{ fontSize: 12, fill: '#64748b' }} domain={[0, 200]} tickFormatter={(v) => `${v}%`} />
                   <YAxis dataKey="name" type="category" tick={{ fontSize: 12, fill: '#64748b' }} width={55} />
-                  <Tooltip formatter={(value: number) => [`${value}%`, 'Attainment']} />
+                  <Tooltip formatter={(value: number) => [`${value}%`, 'vs Previous Year']} />
                   <Bar dataKey="attainment" fill={COLORS.primary} radius={[0, 4, 4, 0]}>
-                    {salespeople.map((_, index) => (
+                    {salespeople.filter(sp => !sp.isManager).slice(0, 8).map((_, index) => (
                       <Cell
                         key={`cell-${index}`}
                         fill={index < 3 ? COLORS.success : COLORS.primary}
                       />
                     ))}
                   </Bar>
+                  <ReferenceLine x={100} stroke={COLORS.gray} strokeWidth={2} strokeDasharray="5 5" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </ChartWrapper>
         </div>
 
-        {/* Pipeline Coverage Distribution */}
+        {/* Pipeline Coverage vs Previous Year */}
         <ChartWrapper
           title="Pipeline Coverage by Rep"
-          subtitle="Recommended coverage: 3x (shown as dashed line)"
+          subtitle="Pipeline as multiple of previous year closed (1x line shown)"
           data={salespeople
             .filter(sp => !sp.isManager)
-            .map(sp => {
-              const remaining = sp.annualTarget - sp.closedYTD;
-              return {
-                name: sp.name.split(' ')[0],
-                coverage: remaining > 0 ? parseFloat((sp.pipelineValue / remaining).toFixed(1)) : 0,
-              };
-            })
+            .map(sp => ({
+              name: sp.name.split(' ')[0],
+              coverage: sp.previousYearClosed > 0 ? parseFloat((sp.pipelineValue / sp.previousYearClosed).toFixed(1)) : 0,
+            }))
           }
           filename="pipeline_coverage"
         >
@@ -1927,33 +2815,29 @@ export default function SalesPage() {
               <BarChart
                 data={salespeople
                   .filter(sp => !sp.isManager)
-                  .map(sp => {
-                    const remaining = sp.annualTarget - sp.closedYTD;
-                    return {
-                      name: sp.name.split(' ')[0],
-                      coverage: remaining > 0 ? parseFloat((sp.pipelineValue / remaining).toFixed(1)) : 0,
-                    };
-                  })
+                  .map(sp => ({
+                    name: sp.name.split(' ')[0],
+                    coverage: sp.previousYearClosed > 0 ? parseFloat((sp.pipelineValue / sp.previousYearClosed).toFixed(1)) : 0,
+                  }))
                 }
                 margin={{ top: 10, right: 30, left: 0, bottom: 30 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} angle={-45} textAnchor="end" height={60} />
                 <YAxis tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(v) => `${v}x`} />
-                <Tooltip formatter={(value: number) => [`${value}x`, 'Coverage']} />
+                <Tooltip formatter={(value: number) => [`${value}x`, 'vs Prev Year']} />
                 <Bar dataKey="coverage" fill={COLORS.purple} radius={[4, 4, 0, 0]}>
                   {salespeople.filter(sp => !sp.isManager).map((sp, index) => {
-                    const remaining = sp.annualTarget - sp.closedYTD;
-                    const coverage = remaining > 0 ? sp.pipelineValue / remaining : 0;
+                    const coverage = sp.previousYearClosed > 0 ? sp.pipelineValue / sp.previousYearClosed : 0;
                     return (
                       <Cell
                         key={`cell-${index}`}
-                        fill={coverage >= 3 ? COLORS.success : coverage >= 2 ? COLORS.warning : COLORS.danger}
+                        fill={coverage >= 1.5 ? COLORS.success : coverage >= 1 ? COLORS.warning : COLORS.danger}
                       />
                     );
                   })}
                 </Bar>
-                <ReferenceLine y={3} stroke={COLORS.danger} strokeWidth={2} strokeDasharray="5 5" />
+                <ReferenceLine y={1} stroke={COLORS.gray} strokeWidth={2} strokeDasharray="5 5" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -2044,6 +2928,41 @@ export default function SalesPage() {
             placeholder="All Channels"
           />
 
+          {/* Category / Sub-Category Filters */}
+          {(() => {
+            const allCategories = productCategoryMappingStore.getAllCategories();
+            if (allCategories.length === 0) return null;
+            return (
+              <>
+                <MultiSelectDropdown
+                  label="Category"
+                  options={allCategories}
+                  selected={productCategoryFilter}
+                  onChange={(vals) => {
+                    setProductCategoryFilter(vals);
+                    // Clear sub-category filter if categories changed
+                    if (vals.length > 0) {
+                      const validSubCats = vals.flatMap(c => productCategoryMappingStore.getSubCategoriesForCategory(c));
+                      setProductSubCategoryFilter(prev => prev.filter(sc => validSubCats.includes(sc)));
+                    }
+                  }}
+                  placeholder="All Categories"
+                />
+                <MultiSelectDropdown
+                  label="Sub-Category"
+                  options={
+                    productCategoryFilter.length > 0
+                      ? productCategoryFilter.flatMap(c => productCategoryMappingStore.getSubCategoriesForCategory(c))
+                      : productCategoryMappingStore.records.map(r => r.Product_Sub_Category).sort()
+                  }
+                  selected={productSubCategoryFilter}
+                  onChange={setProductSubCategoryFilter}
+                  placeholder="All Sub-Categories"
+                />
+              </>
+            );
+          })()}
+
           {/* Sold By Filter (Change 9) */}
           <div className="flex items-center gap-2">
             <label className="text-sm text-secondary-600">Sold By:</label>
@@ -2059,11 +2978,26 @@ export default function SalesPage() {
             </select>
           </div>
 
+          {/* Revenue Type Filter */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-secondary-600">Revenue Type:</label>
+            <select
+              value={revenueTypeFilter}
+              onChange={(e) => setRevenueTypeFilter(e.target.value)}
+              className="px-3 py-2 text-sm border border-secondary-200 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="All">All</option>
+              {REVENUE_TYPE_OPTIONS.map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Clear All Filters Button */}
-          {(yearFilter.length > 0 || quarterFilter.length > 0 || monthFilter.length > 0 || regionFilter.length > 0 || verticalFilter.length > 0 || segmentFilter.length > 0 || logoTypeFilter.length > 0 || channelFilter.length > 0 || soldByFilter !== 'All') && (
+          {((yearFilter.length !== 1 || yearFilter[0] !== '2026') || quarterFilter.length > 0 || monthFilter.length > 0 || regionFilter.length > 0 || verticalFilter.length > 0 || segmentFilter.length > 0 || logoTypeFilter.length > 0 || channelFilter.length > 0 || soldByFilter !== 'All' || revenueTypeFilter !== 'License' || productCategoryFilter.length > 0 || productSubCategoryFilter.length > 0) && (
             <button
               onClick={() => {
-                setYearFilter([]);
+                setYearFilter(['2026']);
                 setQuarterFilter([]);
                 setMonthFilter([]);
                 setRegionFilter([]);
@@ -2072,6 +3006,9 @@ export default function SalesPage() {
                 setLogoTypeFilter([]);
                 setChannelFilter([]);
                 setSoldByFilter('All');
+                setRevenueTypeFilter('License');
+                setProductCategoryFilter([]);
+                setProductSubCategoryFilter([]);
               }}
               className="px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg"
             >
@@ -2088,7 +3025,7 @@ export default function SalesPage() {
             { id: 'overview', label: 'Overview' },
             { id: 'forecast', label: 'Forecast Deep Dive' },
             { id: 'pipeline', label: 'Pipeline Movement' },
-            { id: 'quota', label: 'Quota Attainment' },
+            { id: 'quota', label: 'YoY Performance' },
           ].map((tab) => (
             <button
               key={tab.id}

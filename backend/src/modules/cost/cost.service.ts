@@ -1,10 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../database/prisma.service';
 import { GetCostDto } from './dto';
 
 @Injectable()
 export class CostService {
-  constructor(private readonly prisma: PrismaService) {}
 
   async getCostOverview(query: GetCostDto) {
     return {

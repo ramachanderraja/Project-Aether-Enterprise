@@ -1,8 +1,7 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
-import { PrismaService } from '../../database/prisma.service';
 import { LoginDto, RegisterDto, RefreshTokenDto } from './dto';
 
 export interface TokenPayload {
@@ -20,97 +19,83 @@ export interface AuthTokens {
   expires_in: number;
 }
 
+// In-memory demo users (no database required)
+interface InMemoryUser {
+  id: string;
+  email: string;
+  passwordHash: string;
+  firstName: string;
+  lastName: string;
+  isActive: boolean;
+  tenantId: string;
+  tenantName: string;
+  roles: string[];
+  permissions: string[];
+  avatarUrl: string | null;
+  lastLoginAt: Date | null;
+  mfaEnabled: boolean;
+}
+
+// Pre-hashed password for Demo@2024
+const DEMO_PASSWORD_HASH = bcrypt.hashSync('Demo@2024', 10);
+
+const IN_MEMORY_USERS: InMemoryUser[] = [
+  {
+    id: 'usr_admin_001',
+    email: 'admin@demo.com',
+    passwordHash: DEMO_PASSWORD_HASH,
+    firstName: 'Demo',
+    lastName: 'Admin',
+    isActive: true,
+    tenantId: 'tenant_demo_001',
+    tenantName: 'Demo Organization',
+    roles: ['admin'],
+    permissions: ['*'],
+    avatarUrl: null,
+    lastLoginAt: null,
+    mfaEnabled: false,
+  },
+];
+
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
-    try {
-      const user = await this.prisma.user.findUnique({
-        where: { email },
-        include: {
-          tenant: true,
-          roles: {
-            include: {
-              role: {
-                include: {
-                  permissions: {
-                    include: {
-                      permission: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      });
+    const user = IN_MEMORY_USERS.find(u => u.email === email);
 
-      if (!user) {
-        throw new UnauthorizedException('Invalid credentials');
-      }
-
-      if (!user.isActive) {
-        throw new UnauthorizedException('User account is deactivated');
-      }
-
-      if (!user.passwordHash) {
-        throw new UnauthorizedException('Invalid credentials - no password set');
-      }
-
-      const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-      if (!isPasswordValid) {
-        throw new UnauthorizedException('Invalid credentials');
-      }
-
-      // Update last login
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: { lastLoginAt: new Date() },
-      });
-
-      return user;
-    } catch (error) {
-      if (error instanceof UnauthorizedException) {
-        throw error;
-      }
-      console.error('validateUser error:', error);
-      throw new UnauthorizedException('Authentication failed');
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
     }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException('User account is deactivated');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Update last login in memory
+    user.lastLoginAt = new Date();
+
+    return user;
   }
 
   async login(user: any): Promise<AuthTokens & { user: any }> {
-    const roles = user.roles.map((ur: any) => ur.role.name);
-    const permissions = [
-      ...new Set(
-        user.roles.flatMap((ur: any) =>
-          ur.role.permissions.map((rp: any) => rp.permission.name),
-        ),
-      ),
-    ];
-
     const payload: TokenPayload = {
       sub: user.id,
       email: user.email,
       tenant_id: user.tenantId,
-      roles,
-      permissions: permissions as string[],
+      roles: user.roles,
+      permissions: user.permissions,
     };
 
     const tokens = await this.generateTokens(payload);
-
-    // Store refresh token hash
-    await this.prisma.refreshToken.create({
-      data: {
-        userId: user.id,
-        tokenHash: await bcrypt.hash(tokens.refresh_token, 10),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-      },
-    });
 
     return {
       ...tokens,
@@ -118,8 +103,8 @@ export class AuthService {
         id: user.id,
         email: user.email,
         name: `${user.firstName} ${user.lastName}`,
-        roles,
-        permissions,
+        roles: user.roles,
+        permissions: user.permissions,
         tenant_id: user.tenantId,
       },
     };
@@ -133,136 +118,49 @@ export class AuthService {
         secret: this.configService.get<string>('jwt.secret'),
       });
 
-      const storedToken = await this.prisma.refreshToken.findFirst({
-        where: {
-          userId: decoded.sub,
-          revokedAt: null,
-          expiresAt: { gt: new Date() },
-        },
-        include: {
-          user: {
-            include: {
-              roles: {
-                include: {
-                  role: {
-                    include: {
-                      permissions: { include: { permission: true } },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      });
-
-      if (!storedToken) {
+      const user = IN_MEMORY_USERS.find(u => u.id === decoded.sub);
+      if (!user) {
         throw new UnauthorizedException('Invalid refresh token');
       }
-
-      // Validate the token hash
-      const isValid = await bcrypt.compare(refresh_token, storedToken.tokenHash);
-      if (!isValid) {
-        throw new UnauthorizedException('Invalid refresh token');
-      }
-
-      // Revoke old token
-      await this.prisma.refreshToken.update({
-        where: { id: storedToken.id },
-        data: { revokedAt: new Date() },
-      });
-
-      // Generate new tokens
-      const user = storedToken.user;
-      const roles = user.roles.map((ur: any) => ur.role.name);
-      const permissions = [
-        ...new Set(
-          user.roles.flatMap((ur: any) =>
-            ur.role.permissions.map((rp: any) => rp.permission.name),
-          ),
-        ),
-      ];
 
       const payload: TokenPayload = {
         sub: user.id,
         email: user.email,
         tenant_id: user.tenantId,
-        roles,
-        permissions: permissions as string[],
+        roles: user.roles,
+        permissions: user.permissions,
       };
 
-      const tokens = await this.generateTokens(payload);
-
-      // Store new refresh token
-      await this.prisma.refreshToken.create({
-        data: {
-          userId: user.id,
-          tokenHash: await bcrypt.hash(tokens.refresh_token, 10),
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        },
-      });
-
-      return tokens;
+      return this.generateTokens(payload);
     } catch (error) {
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
 
   async logout(userId: string, refreshToken?: string): Promise<void> {
-    // Revoke all refresh tokens for the user
-    await this.prisma.refreshToken.updateMany({
-      where: {
-        userId,
-        revokedAt: null,
-      },
-      data: { revokedAt: new Date() },
-    });
+    // No-op in file-based mode (tokens expire naturally)
   }
 
   async getCurrentUser(userId: string): Promise<any> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        tenant: true,
-        roles: {
-          include: {
-            role: {
-              include: {
-                permissions: { include: { permission: true } },
-              },
-            },
-          },
-        },
-        preferences: true,
-      },
-    });
+    const user = IN_MEMORY_USERS.find(u => u.id === userId);
 
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
-
-    const roles = user.roles.map((ur: any) => ur.role.name);
-    const permissions = [
-      ...new Set(
-        user.roles.flatMap((ur: any) =>
-          ur.role.permissions.map((rp: any) => rp.permission.name),
-        ),
-      ),
-    ];
 
     return {
       id: user.id,
       email: user.email,
       name: `${user.firstName} ${user.lastName}`,
       avatar_url: user.avatarUrl,
-      roles,
-      permissions,
+      roles: user.roles,
+      permissions: user.permissions,
       tenant: {
-        id: user.tenant.id,
-        name: user.tenant.name,
-        plan: user.tenant.plan,
+        id: user.tenantId,
+        name: user.tenantName,
+        plan: 'enterprise',
       },
-      preferences: user.preferences || {
+      preferences: {
         theme: 'light',
         locale: 'en-US',
         timezone: 'America/New_York',
@@ -275,10 +173,12 @@ export class AuthService {
   private async generateTokens(payload: TokenPayload): Promise<AuthTokens> {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
-        expiresIn: this.configService.get<string>('jwt.accessTokenExpiry') || '1h',
+        expiresIn:
+          this.configService.get<string>('jwt.accessTokenExpiry') || '1h',
       }),
       this.jwtService.signAsync(payload, {
-        expiresIn: this.configService.get<string>('jwt.refreshTokenExpiry') || '7d',
+        expiresIn:
+          this.configService.get<string>('jwt.refreshTokenExpiry') || '7d',
       }),
     ]);
 
@@ -286,7 +186,7 @@ export class AuthService {
       access_token: accessToken,
       refresh_token: refreshToken,
       token_type: 'Bearer',
-      expires_in: 3600, // 1 hour in seconds
+      expires_in: 3600,
     };
   }
 }

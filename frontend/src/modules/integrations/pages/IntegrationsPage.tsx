@@ -52,19 +52,104 @@ const mockApiKeys: ApiKey[] = [
   { id: 'key_003', name: 'Deprecated Key', prefix: 'ak_live_xyz', permissions: ['read:all'], lastUsed: '2024-01-15T08:00:00Z', expiresAt: null, isActive: false },
 ];
 
-const getIntegrationIcon = (type: string) => {
-  const icons: Record<string, string> = {
-    salesforce: '☁️',
-    hubspot: '🔶',
-    netsuite: '📊',
-    sap: '💼',
-    workday: '👥',
-    slack: '💬',
-    teams: '💻',
-    jira: '📋',
-  };
-  return icons[type] || '🔗';
+const BRAND_COLORS: Record<string, { bg: string; text: string; accent: string; hover: string; hex: string }> = {
+  salesforce:  { bg: 'bg-[#00A1E0]/10', text: 'text-[#00A1E0]', accent: 'bg-[#00A1E0]', hover: 'hover:bg-[#0090c7]', hex: '#00A1E0' },
+  hubspot:     { bg: 'bg-[#FF7A59]/10', text: 'text-[#FF7A59]', accent: 'bg-[#FF7A59]', hover: 'hover:bg-[#e8694a]', hex: '#FF7A59' },
+  netsuite:    { bg: 'bg-[#1B5E92]/10', text: 'text-[#1B5E92]', accent: 'bg-[#1B5E92]', hover: 'hover:bg-[#164d78]', hex: '#1B5E92' },
+  sap:         { bg: 'bg-[#0FAAFF]/10', text: 'text-[#0FAAFF]', accent: 'bg-[#0FAAFF]', hover: 'hover:bg-[#0d95e0]', hex: '#0FAAFF' },
+  workday:     { bg: 'bg-[#F68D2E]/10', text: 'text-[#F68D2E]', accent: 'bg-[#F68D2E]', hover: 'hover:bg-[#dd7d28]', hex: '#F68D2E' },
+  slack:       { bg: 'bg-[#4A154B]/10', text: 'text-[#4A154B]', accent: 'bg-[#4A154B]', hover: 'hover:bg-[#3b1139]', hex: '#4A154B' },
+  teams:       { bg: 'bg-[#6264A7]/10', text: 'text-[#6264A7]', accent: 'bg-[#6264A7]', hover: 'hover:bg-[#555793]', hex: '#6264A7' },
+  jira:        { bg: 'bg-[#0052CC]/10', text: 'text-[#0052CC]', accent: 'bg-[#0052CC]', hover: 'hover:bg-[#0047b3]', hex: '#0052CC' },
 };
+
+function IntegrationLogo({ type, size = 40 }: { type: string; size?: number }) {
+  const s = size;
+  const common = { width: s, height: s, viewBox: '0 0 48 48', fill: 'none', xmlns: 'http://www.w3.org/2000/svg' };
+
+  switch (type) {
+    case 'salesforce':
+      return (
+        <svg {...common}>
+          <rect width="48" height="48" rx="10" fill="#00A1E0" />
+          <path d="M20 16c2.2-2.2 5.3-2.6 7.8-1.2a6.5 6.5 0 0 1 8.2 6c2.5.5 4 2.7 4 5.2 0 3-2.5 5.5-5.5 5.5H15c-3.3 0-6-2.7-6-6 0-2.8 1.9-5.1 4.5-5.7A6.5 6.5 0 0 1 20 16z" fill="#fff" />
+        </svg>
+      );
+    case 'hubspot':
+      return (
+        <svg {...common}>
+          <rect width="48" height="48" rx="10" fill="#FF7A59" />
+          <circle cx="24" cy="22" r="4" stroke="#fff" strokeWidth="2.5" fill="none" />
+          <path d="M24 26v5m-6-9l4.5 3M30 22l-4.5 3M18 31a3 3 0 1 0 0-6m12 6a3 3 0 1 0 0-6" stroke="#fff" strokeWidth="2" strokeLinecap="round" fill="none" />
+          <circle cx="24" cy="33" r="2" fill="#fff" />
+        </svg>
+      );
+    case 'netsuite':
+      return (
+        <svg {...common}>
+          <rect width="48" height="48" rx="10" fill="#1B5E92" />
+          <text x="24" y="30" textAnchor="middle" fill="#fff" fontSize="18" fontWeight="bold" fontFamily="Arial, sans-serif">N</text>
+        </svg>
+      );
+    case 'sap':
+      return (
+        <svg {...common}>
+          <rect width="48" height="48" rx="10" fill="#0FAAFF" />
+          <text x="24" y="31" textAnchor="middle" fill="#fff" fontSize="16" fontWeight="bold" fontFamily="Arial, sans-serif">SAP</text>
+        </svg>
+      );
+    case 'workday':
+      return (
+        <svg {...common}>
+          <rect width="48" height="48" rx="10" fill="#F68D2E" />
+          <circle cx="24" cy="18" r="5" fill="#fff" />
+          <path d="M14 34c0-5.5 4.5-10 10-10s10 4.5 10 10" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+        </svg>
+      );
+    case 'slack':
+      return (
+        <svg {...common}>
+          <rect width="48" height="48" rx="10" fill="#4A154B" />
+          <g transform="translate(12, 12)">
+            <rect x="1" y="9" width="5" height="12" rx="2.5" fill="#E01E5A" />
+            <rect x="9" y="1" width="5" height="12" rx="2.5" fill="#36C5F0" />
+            <rect x="9" y="17" width="12" height="5" rx="2.5" fill="#2EB67D" />
+            <rect x="1" y="9" width="12" height="5" rx="2.5" fill="#ECB22E" />
+            <circle cx="19" cy="4" r="2.5" fill="#36C5F0" />
+            <circle cx="4" cy="20" r="2.5" fill="#2EB67D" />
+            <circle cx="20" cy="20" r="2.5" fill="#E01E5A" />
+            <circle cx="4" cy="4" r="2.5" fill="#ECB22E" />
+          </g>
+        </svg>
+      );
+    case 'teams':
+      return (
+        <svg {...common}>
+          <rect width="48" height="48" rx="10" fill="#6264A7" />
+          <rect x="11" y="14" width="20" height="18" rx="2" fill="#fff" />
+          <circle cx="33" cy="16" r="5" fill="#7B83EB" stroke="#fff" strokeWidth="1.5" />
+          <path d="M30 23h8a3 3 0 0 1 3 3v5h-8" fill="#7B83EB" />
+          <circle cx="21" cy="19" r="3" fill="#6264A7" />
+          <path d="M15 29c0-3.3 2.7-6 6-6s6 2.7 6 6v2H15v-2z" fill="#6264A7" />
+        </svg>
+      );
+    case 'jira':
+      return (
+        <svg {...common}>
+          <rect width="48" height="48" rx="10" fill="#0052CC" />
+          <path d="M35 24L24 35 18 29l6-6-6-6 6-6z" fill="#fff" />
+          <path d="M24 13l-6 6 6 6" fill="#B3D4FF" fillOpacity="0.6" />
+        </svg>
+      );
+    default:
+      return (
+        <svg {...common}>
+          <rect width="48" height="48" rx="10" fill="#6b7280" />
+          <path d="M18 24h12M24 18v12" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
+      );
+  }
+}
 
 export default function IntegrationsPage() {
   const [activeTab, setActiveTab] = useState<'connected' | 'available' | 'webhooks' | 'api-keys'>('connected');
@@ -126,44 +211,47 @@ export default function IntegrationsPage() {
 
       {activeTab === 'connected' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {mockIntegrations.map((integration) => (
-            <div key={integration.id} className="card p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{getIntegrationIcon(integration.type)}</span>
-                  <div>
-                    <h3 className="font-medium text-secondary-900">{integration.name}</h3>
-                    <p className="text-sm text-secondary-500">{integration.description}</p>
+          {mockIntegrations.map((integration) => {
+            const brand = BRAND_COLORS[integration.type];
+            return (
+              <div key={integration.id} className="card p-5 border-l-4" style={{ borderLeftColor: brand?.hex || '#6b7280' }}>
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <IntegrationLogo type={integration.type} size={40} />
+                    <div>
+                      <h3 className="font-semibold text-secondary-900">{integration.name}</h3>
+                      <p className="text-sm text-secondary-500">{integration.description}</p>
+                    </div>
                   </div>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(integration.status)}`}>
+                    {integration.status}
+                  </span>
                 </div>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(integration.status)}`}>
-                  {integration.status}
-                </span>
-              </div>
 
-              <div className="text-sm text-secondary-600 mb-4">
-                {integration.lastSync ? (
-                  <span>Last sync: {new Date(integration.lastSync).toLocaleString()}</span>
-                ) : (
-                  <span>No sync data</span>
-                )}
-              </div>
+                <div className="text-sm text-secondary-600 mb-4">
+                  {integration.lastSync ? (
+                    <span>Last sync: {new Date(integration.lastSync).toLocaleString()}</span>
+                  ) : (
+                    <span>No sync data</span>
+                  )}
+                </div>
 
-              <div className="flex gap-2">
-                <button className="flex-1 px-3 py-2 border border-secondary-200 text-secondary-600 rounded-lg text-sm hover:bg-secondary-50">
-                  Configure
-                </button>
-                <button className="flex-1 px-3 py-2 border border-secondary-200 text-secondary-600 rounded-lg text-sm hover:bg-secondary-50">
-                  Test Connection
-                </button>
-                {integration.status === 'error' && (
-                  <button className="px-3 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700">
-                    Reconnect
+                <div className="flex gap-2">
+                  <button className="flex-1 px-3 py-2 border border-secondary-200 text-secondary-600 rounded-lg text-sm hover:bg-secondary-50 transition-colors">
+                    Configure
                   </button>
-                )}
+                  <button className="flex-1 px-3 py-2 border border-secondary-200 text-secondary-600 rounded-lg text-sm hover:bg-secondary-50 transition-colors">
+                    Test Connection
+                  </button>
+                  {integration.status === 'error' && (
+                    <button className={`px-4 py-2 ${brand?.accent || 'bg-primary-600'} text-white rounded-lg text-sm ${brand?.hover || 'hover:bg-primary-700'} transition-colors`}>
+                      Reconnect
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -188,32 +276,33 @@ export default function IntegrationsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredAvailable.map((integration) => {
               const isConnected = mockIntegrations.some(i => i.type === integration.type);
+              const brand = BRAND_COLORS[integration.type];
               return (
-                <div key={integration.type} className="card p-4">
+                <div key={integration.type} className="card p-5 hover:shadow-md transition-shadow">
                   <div className="flex items-center gap-3 mb-3">
-                    <span className="text-2xl">{getIntegrationIcon(integration.type)}</span>
+                    <IntegrationLogo type={integration.type} size={44} />
                     <div>
-                      <h3 className="font-medium text-secondary-900">{integration.name}</h3>
+                      <h3 className="font-semibold text-secondary-900">{integration.name}</h3>
                       <p className="text-xs text-secondary-500">{integration.category}</p>
                     </div>
                   </div>
                   <p className="text-sm text-secondary-600 mb-3">{integration.description}</p>
-                  <div className="flex flex-wrap gap-1 mb-4">
+                  <div className="flex flex-wrap gap-1.5 mb-4">
                     {integration.features.map((feature) => (
-                      <span key={feature} className="px-2 py-0.5 bg-secondary-100 text-secondary-600 rounded text-xs">
+                      <span key={feature} className={`px-2 py-0.5 rounded text-xs font-medium ${brand?.bg || 'bg-secondary-100'} ${brand?.text || 'text-secondary-600'}`}>
                         {feature}
                       </span>
                     ))}
                   </div>
                   <button
-                    className={`w-full py-2 rounded-lg text-sm font-medium ${
+                    className={`w-full py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       isConnected
-                        ? 'bg-secondary-100 text-secondary-500 cursor-not-allowed'
-                        : 'bg-primary-600 text-white hover:bg-primary-700'
+                        ? 'bg-green-50 text-green-600 border border-green-200 cursor-default'
+                        : `${brand?.accent || 'bg-primary-600'} text-white ${brand?.hover || 'hover:bg-primary-700'}`
                     }`}
                     disabled={isConnected}
                   >
-                    {isConnected ? 'Already Connected' : 'Connect'}
+                    {isConnected ? '✓ Connected' : 'Connect'}
                   </button>
                 </div>
               );
@@ -241,12 +330,17 @@ export default function IntegrationsPage() {
               </thead>
               <tbody className="divide-y divide-secondary-100">
                 {[
-                  { id: 'wh_001', name: 'Opportunity Updates', integration: 'Salesforce', events: ['created', 'updated', 'closed'], status: 'active' },
-                  { id: 'wh_002', name: 'Invoice Events', integration: 'NetSuite', events: ['created', 'paid', 'overdue'], status: 'active' },
-                  { id: 'wh_003', name: 'Alert Notifications', integration: 'Slack', events: ['anomaly', 'threshold', 'approval'], status: 'active' },
+                  { id: 'wh_001', name: 'Opportunity Updates', type: 'salesforce', integration: 'Salesforce', events: ['created', 'updated', 'closed'], status: 'active' },
+                  { id: 'wh_002', name: 'Invoice Events', type: 'netsuite', integration: 'NetSuite', events: ['created', 'paid', 'overdue'], status: 'active' },
+                  { id: 'wh_003', name: 'Alert Notifications', type: 'slack', integration: 'Slack', events: ['anomaly', 'threshold', 'approval'], status: 'active' },
                 ].map((webhook) => (
                   <tr key={webhook.id} className="hover:bg-secondary-50">
-                    <td className="px-4 py-4 font-medium text-secondary-900">{webhook.name}</td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-2">
+                        <IntegrationLogo type={webhook.type} size={24} />
+                        <span className="font-medium text-secondary-900">{webhook.name}</span>
+                      </div>
+                    </td>
                     <td className="px-4 py-4 text-secondary-600">{webhook.integration}</td>
                     <td className="px-4 py-4">
                       <div className="flex flex-wrap gap-1">
@@ -363,7 +457,6 @@ export default function IntegrationsPage() {
         </div>
       )}
 
-      {/* New API Key Modal (simplified) */}
       {showNewKeyModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
