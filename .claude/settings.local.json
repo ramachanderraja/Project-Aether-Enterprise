@@ -6,7 +6,8 @@
       "Bash(node ./node_modules/typescript/bin/tsc:*)",
       "Bash(node:*)",
       "Bash(xxd:*)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(python3:*)"
     ]
   }
 }

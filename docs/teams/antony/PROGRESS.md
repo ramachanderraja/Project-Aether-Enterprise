@@ -7,6 +7,46 @@
 
 <!-- Add entries below in reverse chronological order (newest first) -->
 
+## 2026-02-18 - Schedule Change in NRR/GRR + Pipeline-Forecast Full-Year Retention
+**Task:** (1) Add Schedule_Change to both monthly and full-year NRR/GRR formulas. (2) For forecast years (2026+), supplement full-year NRR/GRR with pipeline snapshot by logo type: Renewal/Extension for GRR, Renewal/Extension + Upsell/Cross-Sell for NRR.
+**Changes:**
+- `frontend/src/modules/revenue/pages/RevenuePage.tsx`:
+  - **`snapshotMonthlyRetention` useMemo**: Added `scheduleChange` (net sum of `Schedule_Change` column for selected month — can be positive or negative).
+  - **`metrics` useMemo — monthly NRR/GRR formulas updated**:
+    - `scheduleChange = snapshotMonthlyRetention.scheduleChange` when real data loaded
+    - `NRR = (prevARR + expansion + scheduleChange − contraction − churn) / prevARR × 100`
+    - `GRR = (prevARR + scheduleChange − contraction − churn) / prevARR × 100`
+  - **`fullYearRetention` useMemo — major rewrite**:
+    - Added `actualScheduleChange` (net Schedule_Change across all actual months in year)
+    - Past/complete years: uses only snapshot actuals (expansion + scheduleChange − contraction − churn)
+    - Forecast years (Dec not yet in actuals): supplements with pipeline:
+      - `forecastRenewalExt` (Renewal + Extension Logo_Type) → added to **both GRR and NRR**
+      - `forecastUpsellCrossSell` (Upsell + Cross-Sell Logo_Type) → added to **NRR only**
+      - Pipeline filtered to: latest snapshot month, open stages only, close date in forecast period (after priorMonth, within filteredYear), passes region/vertical/segment filters
+    - Updated deps: added `realData.pipelineSnapshots`, `pipelineRowPassesFilters`
+  - **Full-Year formulas**:
+    - `NRR = (janARR + actualExpansion + actualScheduleChange + forecastRenewalExt + forecastUpsellCrossSell − actualContraction − actualChurn) / janARR × 100`
+    - `GRR = (janARR + actualScheduleChange + forecastRenewalExt − actualContraction − actualChurn) / janARR × 100`
+**Status:** Complete
+**Branch:** `antony-branch-changes`
+
+## 2026-02-18 - Snapshot-Driven Monthly NRR/GRR + Full-Year Retention Cards
+**Task:** Fix monthly NRR/GRR to use snapshot data for the selected month (not stale filteredCustomers). Add Full-Year NRR and Full-Year GRR cards showing Jan → Dec ARR for the filtered year.
+**Changes:**
+- `frontend/src/modules/revenue/pages/RevenuePage.tsx`:
+  - **`snapshotMonthlyRetention` useMemo** (new): Reads `Expansion_ARR`, `Contraction_ARR`, `Churn_ARR` directly from ARR snapshot rows for `selectedARRMonth` (with filters applied). Replaces the stale `filteredCustomers`-based computation.
+  - **`fullYearRetention` useMemo** (new): Computes full-year NRR and GRR for `filteredYear`. Starting ARR = Jan of year Ending_ARR from snapshot. Aggregates expansion/contraction/churn across all months in year. Ending ARR = `forecastARR` (actual Dec for past years, forecast for current/future).
+  - **`metrics` useMemo**: Monthly expansion/contraction/churn now uses `snapshotMonthlyRetention` when real data is loaded (falls back to mock-customer computation otherwise). Added `snapshotMonthlyRetention` to dependency array.
+  - **Monthly NRR/GRR KPI cards**: Labels updated to "Monthly NRR (Jan 2026)" / "Monthly GRR (Jan 2026)" with "vs prior month ARR" subtitle.
+  - **Full-Year Retention cards** (new row): Two wide cards below the main KPI grid. Each shows the % metric (green/yellow/red), then a Jan {year} → Dec {year} breakdown with the actual ARR values. Past years show "Dec {year} ARR"; current/future show "Dec {year} (Forecast)".
+**Formulas:**
+  - Monthly NRR = (prevMonthARR + expansion - contraction - churn) / prevMonthARR × 100
+  - Monthly GRR = (prevMonthARR - contraction - churn) / prevMonthARR × 100
+  - Full-Year NRR = (janARR + yearExpansion - yearContraction - yearChurn) / janARR × 100
+  - Full-Year GRR = (janARR - yearContraction - yearChurn) / janARR × 100
+**Status:** Complete
+**Branch:** `antony-branch-changes`
+
 ## 2026-02-18 - Pipeline Movement: Deal-Level Tables + Lost Deals + All Deal Movement
 **Task:** Populate Key Deal Movement and Lost Deal Analysis tables with real data from snapshot comparison. Add new "All Deal Movement" table with deal name filter. Remove reasons columns and pie chart.
 **Changes:**

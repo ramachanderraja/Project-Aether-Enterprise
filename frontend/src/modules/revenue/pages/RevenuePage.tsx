@@ -1286,6 +1286,25 @@ export default function RevenuePage() {
     return Math.round(total);
   }, [realData.isLoaded, realData.arrSnapshots, selectedARRMonth, arrRowPassesFilters]);
 
+  // Snapshot-driven retention components for the selected month
+  // Reads Expansion_ARR / Contraction_ARR / Churn_ARR / Schedule_Change directly from snapshot rows
+  const snapshotMonthlyRetention = useMemo(() => {
+    if (!realData.isLoaded || realData.arrSnapshots.length === 0) {
+      return { expansion: 0, contraction: 0, churn: 0, scheduleChange: 0 };
+    }
+    let expansion = 0, contraction = 0, churn = 0, scheduleChange = 0;
+    realData.arrSnapshots.forEach(row => {
+      const rowMonth = row.Snapshot_Month.slice(0, 7);
+      if (rowMonth === selectedARRMonth && arrRowPassesFilters(row)) {
+        expansion      += row.Expansion_ARR;
+        contraction    += Math.abs(row.Contraction_ARR); // negative in CSV
+        churn          += Math.abs(row.Churn_ARR);       // negative in CSV
+        scheduleChange += row.Schedule_Change;            // net — can be positive or negative
+      }
+    });
+    return { expansion, contraction, churn, scheduleChange };
+  }, [realData.isLoaded, realData.arrSnapshots, selectedARRMonth, arrRowPassesFilters]);
+
   // Forecast ARR = Dec Ending ARR of filtered year
   // If year is past → Dec of that year from snapshot
   // If year is current/future → last actual ARR + cumulative pipeline through Dec of filtered year
@@ -1398,6 +1417,78 @@ export default function RevenuePage() {
   const currentCalendarYear = String(new Date().getFullYear());
   const isFilteredYearPast = parseInt(filteredYear) < parseInt(currentCalendarYear);
 
+  // Full-year GRR and NRR: Jan of filteredYear → Dec of filteredYear (actual or forecast)
+  // For past/complete years: uses snapshot actuals only.
+  // For current/future years (Dec not yet reached): supplements actuals with pipeline forecast:
+  //   GRR  += Renewal + Extension pipeline (retention deals)
+  //   NRR  += Renewal + Extension + Upsell + Cross-Sell pipeline (retention + expansion)
+  const fullYearRetention = useMemo(() => {
+    if (!realData.isLoaded || realData.arrSnapshots.length === 0) {
+      return { startARR: 0, endARR: 0, nrr: 0, grr: 0 };
+    }
+    const yr = filteredYear;
+    const janOfYear = `${yr}-01`;
+    const priorMonth = getPriorMonth();
+    const isForecastYear = `${yr}-12` > priorMonth; // Dec not yet in actuals
+
+    // Starting ARR = Jan of filteredYear Ending_ARR (from snapshot)
+    let startARR = 0;
+    realData.arrSnapshots.forEach(row => {
+      const rowMonth = row.Snapshot_Month.slice(0, 7);
+      if (rowMonth === janOfYear && arrRowPassesFilters(row)) startARR += row.Ending_ARR;
+    });
+
+    // Actual movement from snapshot — only months with real data (≤ priorMonth)
+    let actualExpansion = 0, actualScheduleChange = 0, actualContraction = 0, actualChurn = 0;
+    realData.arrSnapshots.forEach(row => {
+      const rowMonth = row.Snapshot_Month.slice(0, 7);
+      if (rowMonth.startsWith(yr) && rowMonth <= priorMonth && arrRowPassesFilters(row)) {
+        actualExpansion      += row.Expansion_ARR;
+        actualScheduleChange += row.Schedule_Change;           // net — positive or negative
+        actualContraction    += Math.abs(row.Contraction_ARR);
+        actualChurn          += Math.abs(row.Churn_ARR);
+      }
+    });
+
+    // Pipeline forecast for remaining months of the year (only when year is not yet complete)
+    // GRR: Renewal + Extension License_ACV  (these deals represent retained revenue)
+    // NRR: additionally Upsell + Cross-Sell License_ACV  (expansion on top of renewals)
+    let forecastRenewalExt = 0;      // contributes to both GRR and NRR
+    let forecastUpsellCrossSell = 0; // contributes to NRR only
+    if (isForecastYear) {
+      let latestSnapshotMonth = '';
+      realData.pipelineSnapshots.forEach(row => {
+        if (row.Snapshot_Month > latestSnapshotMonth) latestSnapshotMonth = row.Snapshot_Month;
+      });
+      realData.pipelineSnapshots.forEach(row => {
+        if (row.Snapshot_Month !== latestSnapshotMonth) return;
+        if (row.Current_Stage.includes('Closed Won') || row.Current_Stage.includes('Closed Lost') ||
+            row.Current_Stage.includes('Closed Dead') || row.Current_Stage.includes('Closed Declined')) return;
+        if (!pipelineRowPassesFilters(row)) return;
+        const closeMonth = row.Expected_Close_Date.slice(0, 7);
+        // Only forecast period: after last actual month and within the filtered year
+        if (closeMonth <= priorMonth || !closeMonth.startsWith(yr)) return;
+        const logoType = row.Logo_Type.trim();
+        if (logoType === 'Renewal' || logoType === 'Extension') {
+          forecastRenewalExt += row.License_ACV;
+        } else if (logoType === 'Upsell' || logoType === 'Cross-Sell') {
+          forecastUpsellCrossSell += row.License_ACV;
+        }
+      });
+    }
+
+    // Full-Year NRR: retained + expansion + schedule change + forecast renewals + forecast upsell/XS - losses
+    const nrr = startARR > 0
+      ? ((startARR + actualExpansion + actualScheduleChange + forecastRenewalExt + forecastUpsellCrossSell - actualContraction - actualChurn) / startARR) * 100
+      : 0;
+    // Full-Year GRR: retained + schedule change + forecast renewals (no expansion/upsell) - losses
+    const grr = startARR > 0
+      ? ((startARR + actualScheduleChange + forecastRenewalExt - actualContraction - actualChurn) / startARR) * 100
+      : 0;
+
+    return { startARR: Math.round(startARR), endARR: forecastARR, nrr, grr };
+  }, [realData.isLoaded, realData.arrSnapshots, realData.pipelineSnapshots, filteredYear, forecastARR, arrRowPassesFilters, pipelineRowPassesFilters]);
+
   // Calculate metrics
   const metrics = useMemo(() => {
     const useRealARR = realData.isLoaded && realData.arrSnapshots.length > 0 && snapshotCurrentARR > 0;
@@ -1413,19 +1504,24 @@ export default function RevenuePage() {
     const monthForecast = useRealARR ? monthForecastARR : currentARR * 1.05;
     const monthForecastGrowth = currentARR > 0 ? ((monthForecast - currentARR) / currentARR) * 100 : 0;
 
-    // NRR and GRR
-    const expansion = filteredCustomers
-      .filter(c => c.movementType === 'Expansion')
-      .reduce((sum, c) => sum + (c.currentARR - c.previousARR), 0);
-    const contraction = filteredCustomers
-      .filter(c => c.movementType === 'Contraction')
-      .reduce((sum, c) => sum + (c.previousARR - c.currentARR), 0);
-    const churn = filteredCustomers
-      .filter(c => c.movementType === 'Churn')
-      .reduce((sum, c) => sum + c.previousARR, 0);
+    // Monthly NRR and GRR — snapshot-driven so they correctly reflect the selected month
+    // When real data is loaded: reads all movement columns directly from the snapshot rows
+    // for selectedARRMonth. Denominator = prior month Ending_ARR (snapshotPreviousARR).
+    const expansion = useRealARR ? snapshotMonthlyRetention.expansion
+      : filteredCustomers.filter(c => c.movementType === 'Expansion')
+          .reduce((sum, c) => sum + (c.currentARR - c.previousARR), 0);
+    const contraction = useRealARR ? snapshotMonthlyRetention.contraction
+      : filteredCustomers.filter(c => c.movementType === 'Contraction')
+          .reduce((sum, c) => sum + (c.previousARR - c.currentARR), 0);
+    const churn = useRealARR ? snapshotMonthlyRetention.churn
+      : filteredCustomers.filter(c => c.movementType === 'Churn')
+          .reduce((sum, c) => sum + c.previousARR, 0);
+    // Schedule change is net (positive = ARR pulled forward, negative = deferred)
+    const scheduleChange = useRealARR ? snapshotMonthlyRetention.scheduleChange : 0;
 
-    const nrr = previousARR > 0 ? ((previousARR + expansion - contraction - churn) / previousARR) * 100 : 0;
-    const grr = previousARR > 0 ? ((previousARR - contraction - churn) / previousARR) * 100 : 0;
+    // NRR includes expansion + schedule change; GRR excludes expansion but keeps schedule change
+    const nrr = previousARR > 0 ? ((previousARR + expansion + scheduleChange - contraction - churn) / previousARR) * 100 : 0;
+    const grr = previousARR > 0 ? ((previousARR + scheduleChange - contraction - churn) / previousARR) * 100 : 0;
 
     return {
       currentARR,
@@ -1438,7 +1534,7 @@ export default function RevenuePage() {
       grr,
       customerCount: filteredCustomers.filter(c => c.currentARR > 0).length,
     };
-  }, [filteredCustomers, snapshotCurrentARR, snapshotPreviousARR, forecastARR, monthForecastARR, realData.isLoaded, realData.arrSnapshots]);
+  }, [filteredCustomers, snapshotCurrentARR, snapshotPreviousARR, snapshotMonthlyRetention, forecastARR, monthForecastARR, realData.isLoaded, realData.arrSnapshots]);
 
   // ARR by Region
   const arrByRegion = useMemo(() => {
@@ -2074,16 +2170,74 @@ export default function RevenuePage() {
           <p className="text-sm text-purple-500 mt-1">{formatPercent(metrics.monthForecastGrowth)} vs current</p>
         </div>
         <div className="card p-5">
-          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Net Revenue Retention</p>
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">
+            Monthly NRR{currentARRMonthLabel ? ` (${currentARRMonthLabel})` : ''}
+          </p>
           <p className={`text-3xl font-bold ${metrics.nrr >= 100 ? 'text-green-600' : 'text-red-600'}`}>
             {metrics.nrr.toFixed(1)}%
           </p>
+          <p className="text-sm text-secondary-400 mt-1">vs prior month ARR</p>
         </div>
         <div className="card p-5">
-          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Gross Retention</p>
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">
+            Monthly GRR{currentARRMonthLabel ? ` (${currentARRMonthLabel})` : ''}
+          </p>
           <p className={`text-3xl font-bold ${metrics.grr >= 90 ? 'text-green-600' : metrics.grr >= 80 ? 'text-yellow-600' : 'text-red-600'}`}>
             {metrics.grr.toFixed(1)}%
           </p>
+          <p className="text-sm text-secondary-400 mt-1">vs prior month ARR</p>
+        </div>
+      </div>
+
+      {/* Full-Year Retention Cards — Jan of filteredYear → Dec of filteredYear */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="card p-5">
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-1">
+            Full-Year NRR ({filteredYear})
+          </p>
+          <p className="text-xs text-secondary-400 mb-3">
+            Including expansion from existing customers
+          </p>
+          <p className={`text-3xl font-bold ${fullYearRetention.nrr >= 100 ? 'text-green-600' : 'text-red-600'}`}>
+            {fullYearRetention.nrr.toFixed(1)}%
+          </p>
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-secondary-100">
+            <div>
+              <p className="text-xs text-secondary-400">Jan {filteredYear} ARR</p>
+              <p className="text-sm font-semibold text-secondary-700">{formatCurrency(fullYearRetention.startARR)}</p>
+            </div>
+            <div className="text-secondary-300 text-lg">→</div>
+            <div className="text-right">
+              <p className="text-xs text-secondary-400">
+                {isFilteredYearPast ? `Dec ${filteredYear} ARR` : `Dec ${filteredYear} (Forecast)`}
+              </p>
+              <p className="text-sm font-semibold text-secondary-700">{formatCurrency(fullYearRetention.endARR)}</p>
+            </div>
+          </div>
+        </div>
+        <div className="card p-5">
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-1">
+            Full-Year GRR ({filteredYear})
+          </p>
+          <p className="text-xs text-secondary-400 mb-3">
+            Excluding expansion, contraction + churn only
+          </p>
+          <p className={`text-3xl font-bold ${fullYearRetention.grr >= 90 ? 'text-green-600' : fullYearRetention.grr >= 80 ? 'text-yellow-600' : 'text-red-600'}`}>
+            {fullYearRetention.grr.toFixed(1)}%
+          </p>
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-secondary-100">
+            <div>
+              <p className="text-xs text-secondary-400">Jan {filteredYear} ARR</p>
+              <p className="text-sm font-semibold text-secondary-700">{formatCurrency(fullYearRetention.startARR)}</p>
+            </div>
+            <div className="text-secondary-300 text-lg">→</div>
+            <div className="text-right">
+              <p className="text-xs text-secondary-400">
+                {isFilteredYearPast ? `Dec ${filteredYear} ARR` : `Dec ${filteredYear} (Forecast)`}
+              </p>
+              <p className="text-sm font-semibold text-secondary-700">{formatCurrency(fullYearRetention.endARR)}</p>
+            </div>
+          </div>
         </div>
       </div>
 
