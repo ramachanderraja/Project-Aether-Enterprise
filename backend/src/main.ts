@@ -21,7 +21,15 @@ async function bootstrap() {
 
   // Security middleware
   app.use(helmet());
-  app.use(compression());
+  app.use(
+    compression({
+      // Disable compression for streaming NDJSON responses
+      filter: (req: any, res: any) => {
+        if (req.url?.includes('/chat/stream')) return false;
+        return compression.filter(req, res);
+      },
+    }),
+  );
   app.use(cookieParser());
 
   // CORS configuration

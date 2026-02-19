@@ -56,6 +56,34 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   CORS_ORIGINS: string = 'http://localhost:3000';
+
+  @IsString()
+  @IsOptional()
+  OPENAI_API_KEY: string;
+
+  @IsString()
+  @IsOptional()
+  OPENAI_MODEL: string = 'o4-mini';
+
+  @IsString()
+  @IsOptional()
+  AZURE_OPENAI_BASE_PATH: string;
+
+  @IsString()
+  @IsOptional()
+  AZURE_OPENAI_API_KEY: string;
+
+  @IsString()
+  @IsOptional()
+  AZURE_OPENAI_API_DEPLOYMENT_NAME: string;
+
+  @IsString()
+  @IsOptional()
+  AZURE_OPENAI_API_VERSION: string;
+
+  @IsString()
+  @IsOptional()
+  AZURE_OPENAI_API_INSTANCE_NAME: string;
 }
 
 export function validate(config: Record<string, unknown>) {

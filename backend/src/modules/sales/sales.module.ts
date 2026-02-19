@@ -8,6 +8,6 @@ import { ForecastService } from './services/forecast.service';
   imports: [],
   controllers: [SalesController],
   providers: [SalesService, DealService, ForecastService],
-  exports: [SalesService],
+  exports: [SalesService, DealService, ForecastService],
 })
 export class SalesModule {}

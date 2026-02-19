@@ -8,7 +8,9 @@
       "Bash(xxd:*)",
       "Bash(awk:*)",
       "Bash(python3:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

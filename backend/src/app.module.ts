@@ -22,6 +22,7 @@ import { UsersModule } from './modules/users/users.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { ImportModule } from './modules/import/import.module';
 import { DataModule } from './modules/data/data.module';
+import { AgentModule } from './modules/agent/agent.module';
 
 // Infrastructure modules
 import { PrismaModule } from './database/prisma.module';
@@ -83,6 +84,7 @@ import { validate } from './config/env.validation';
     UsersModule,
     ReportsModule,
     ImportModule,
+    AgentModule,
   ],
 })
 export class AppModule {}
