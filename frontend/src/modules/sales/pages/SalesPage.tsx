@@ -1114,13 +1114,9 @@ export default function SalesPage() {
       ? activeDeals.reduce((sum, o) => sum + o.salesCycleDays, 0) / activeDeals.length
       : 0;
 
-    const salesVelocity = avgSalesCycle > 0
-      ? (activeDeals.length * (totalPipelineValue / activeDeals.length) * (conversionRate / 100)) / avgSalesCycle
-      : 0;
-
     return {
       conversionRate,
-      salesVelocity,
+      avgSalesCycle,
       totalClosedACV,
       weightedPipelineACV,
       forecastACV,
@@ -1552,8 +1548,8 @@ export default function SalesPage() {
   // Render tabs
   const renderOverviewTab = () => (
     <div className="space-y-6">
-      {/* KPI Cards - Closed ACV, Weighted Pipeline, Forecast ACV, YoY Growth, Conversion, Sales Velocity */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      {/* KPI Cards - Closed ACV, Weighted Pipeline, Forecast ACV, YoY Growth, Conversion, Avg Deal Size, Time to Close */}
+      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
         <div className="card p-5">
           <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Closed ACV (YTD){revenueTypeFilter !== 'All' ? ` - ${revenueTypeFilter}` : ''}</p>
           <p className="text-2xl font-bold text-green-500">{formatCurrency(metrics.totalClosedACV)}</p>
@@ -1584,9 +1580,14 @@ export default function SalesPage() {
           <p className="text-xs text-secondary-400 mt-1">Won / All Closed</p>
         </div>
         <div className="card p-5">
-          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Sales Velocity</p>
-          <p className="text-2xl font-bold text-secondary-900">{formatCurrency(metrics.salesVelocity)}</p>
-          <p className="text-xs text-secondary-400 mt-1">per day</p>
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Avg Deal Size</p>
+          <p className="text-2xl font-bold text-secondary-900">{formatCurrency(metrics.avgDealSize)}</p>
+          <p className="text-xs text-secondary-400 mt-1">{metrics.closedWonCount} closed deals</p>
+        </div>
+        <div className="card p-5">
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Time to Close</p>
+          <p className="text-2xl font-bold text-secondary-900">{Math.round(metrics.avgSalesCycle)} days</p>
+          <p className="text-xs text-secondary-400 mt-1">avg active deals</p>
         </div>
       </div>
 
