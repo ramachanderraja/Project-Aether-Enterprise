@@ -101,6 +101,10 @@ export class PipelineMovementFilterDto extends SalesFilterDto {
   @IsOptional()
   @IsString()
   targetMonth?: string;
+
+  @ApiPropertyOptional({ description: 'Number of months to look back for comparison (1, 3, 6, or 12). Defaults to 1.' })
+  @IsOptional()
+  lookbackMonths?: number;
 }
 
 /**

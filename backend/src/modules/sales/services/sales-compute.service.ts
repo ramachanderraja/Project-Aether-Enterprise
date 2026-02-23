@@ -418,7 +418,10 @@ export class SalesComputeService {
       previousYearForecastACV: Math.round(previousYearForecastACV),
       yoyGrowth: Math.round(yoyGrowth * 10) / 10,
       conversionRate: Math.round(conversionRate * 10) / 10,
-      avgDealSize: closedWon.length > 0 ? Math.round(totalClosedACV / closedWon.length) : 0,
+      avgDealSize: (() => {
+        const dealsWithValue = closedWon.filter(o => this.getClosedValue(o, rt) > 0);
+        return dealsWithValue.length > 0 ? Math.round(totalClosedACV / dealsWithValue.length) : 0;
+      })(),
       avgSalesCycle: Math.round(avgSalesCycle),
       closedWonCount: closedWon.length,
       closedLostCount: closedLost.length,
@@ -784,7 +787,7 @@ export class SalesComputeService {
     return index;
   }
 
-  getPipelineMovement(filters: SalesFilterDto & { targetMonth?: string }) {
+  getPipelineMovement(filters: SalesFilterDto & { targetMonth?: string; lookbackMonths?: number }) {
     const snapshots = this.dataService.getPipelineSnapshots();
     const rt = filters.revenueType || 'All';
 
@@ -827,7 +830,29 @@ export class SalesComputeService {
         decreased: { count: 0, value: 0 }, won: { count: 0, value: 0 },
         lost: { count: 0, value: 0 }, totalChange: 0, waterfall: [], dealDetails: [] };
     }
-    const prevYYYYMM = allMonths[targetIdx - 1];
+
+    // Determine comparison month based on lookback
+    const lookback = filters.lookbackMonths || 1;
+    let prevIdx: number;
+    if (lookback === 1) {
+      prevIdx = targetIdx - 1;
+    } else {
+      const targetDate = new Date(parseInt(targetYYYYMM.slice(0, 4)), parseInt(targetYYYYMM.slice(5, 7)) - 1, 1);
+      targetDate.setMonth(targetDate.getMonth() - lookback);
+      const lookbackYYYYMM = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+      prevIdx = -1;
+      for (let i = targetIdx - 1; i >= 0; i--) {
+        if (allMonths[i] <= lookbackYYYYMM) { prevIdx = i; break; }
+      }
+      if (prevIdx < 0) prevIdx = 0;
+    }
+    if (prevIdx < 0 || prevIdx >= targetIdx) {
+      return { prevLabel: '', currLabel: '', startingPipeline: 0, endingPipeline: 0,
+        newDeals: { count: 0, value: 0 }, increased: { count: 0, value: 0 },
+        decreased: { count: 0, value: 0 }, won: { count: 0, value: 0 },
+        lost: { count: 0, value: 0 }, totalChange: 0, waterfall: [], dealDetails: [] };
+    }
+    const prevYYYYMM = allMonths[prevIdx];
 
     // Filter function for pipeline rows
     const passesFilters = (row: PipelineSnapshotRecord): boolean => {

@@ -749,6 +749,8 @@ export default function SalesPage() {
   const [revenueTypeFilter, setRevenueTypeFilter] = useState<string>('License');  // Revenue Type filter - default License
   const [productCategoryFilter, setProductCategoryFilter] = useState<string[]>([]);
   const [productSubCategoryFilter, setProductSubCategoryFilter] = useState<string[]>([]);
+  const [pipelineLookbackMonths, setPipelineLookbackMonths] = useState<number>(1);
+  const [waterfallSelectedCategory, setWaterfallSelectedCategory] = useState<string | null>(null);
 
   // Expandable rows for Closed ACV table
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -1127,7 +1129,11 @@ export default function SalesPage() {
       implementationACV,
       extensionRenewalLicense,
       totalPipelineValue,
-      avgDealSize: closedWon.length > 0 ? totalClosedACV / closedWon.length : 0,
+      avgDealSize: (() => {
+        const dealsWithValue = closedWon.filter(o => getClosedValue(o) > 0);
+        return dealsWithValue.length > 0 ? totalClosedACV / dealsWithValue.length : 0;
+      })(),
+      closedWonWithValueCount: closedWon.filter(o => getClosedValue(o) > 0).length,
       closedWonCount: closedWon.length,
       closedLostCount: closedLost.length,
       activeDealsCount: activeDeals.length,
@@ -1235,10 +1241,31 @@ export default function SalesPage() {
       }
     }
 
-    // Find the previous month in the data
+    // Find the comparison month based on lookback setting
     const targetIdx = allMonths.indexOf(targetYYYYMM);
     if (targetIdx <= 0) return null; // No previous month available
-    const prevYYYYMM = allMonths[targetIdx - 1];
+
+    // For lookback: go back N months from target in the available data
+    // e.g. lookback=1 → previous month, lookback=3 → 3 months back, etc.
+    let prevIdx: number;
+    if (pipelineLookbackMonths === 1) {
+      // Default: just the immediately previous snapshot month
+      prevIdx = targetIdx - 1;
+    } else {
+      // Find the snapshot month that is closest to N months before target
+      const targetDate = new Date(parseInt(targetYYYYMM.slice(0, 4)), parseInt(targetYYYYMM.slice(5, 7)) - 1, 1);
+      targetDate.setMonth(targetDate.getMonth() - pipelineLookbackMonths);
+      const lookbackYYYYMM = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+      // Find the closest available month that is <= the desired lookback month
+      prevIdx = -1;
+      for (let i = targetIdx - 1; i >= 0; i--) {
+        if (allMonths[i] <= lookbackYYYYMM) { prevIdx = i; break; }
+      }
+      // If no month found at or before the lookback target, use the earliest available before target
+      if (prevIdx < 0) prevIdx = 0;
+    }
+    if (prevIdx < 0 || prevIdx >= targetIdx) return null;
+    const prevYYYYMM = allMonths[prevIdx];
 
     // Deal type for comparison between months
     type SnapDeal = {
@@ -1420,7 +1447,10 @@ export default function SalesPage() {
       dealDetails,
     };
   }, [realData.isLoaded, realData.pipelineSnapshots, yearFilter, monthFilter, quarterFilter,
-      regionFilter, verticalFilter, segmentFilter, logoTypeFilter, revenueTypeFilter]);
+      regionFilter, verticalFilter, segmentFilter, logoTypeFilter, revenueTypeFilter, pipelineLookbackMonths]);
+
+  // Reset waterfall selection when comparison data changes
+  useEffect(() => { setWaterfallSelectedCategory(null); }, [snapshotComparison]);
 
   // Pipeline movement waterfall chart data — built from snapshot comparison
   const pipelineMovementWaterfall = useMemo(() => {
@@ -1582,7 +1612,7 @@ export default function SalesPage() {
         <div className="card p-5">
           <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Avg Deal Size</p>
           <p className="text-2xl font-bold text-secondary-900">{formatCurrency(metrics.avgDealSize)}</p>
-          <p className="text-xs text-secondary-400 mt-1">{metrics.closedWonCount} closed deals</p>
+          <p className="text-xs text-secondary-400 mt-1">{metrics.closedWonWithValueCount} closed deals</p>
         </div>
         <div className="card p-5">
           <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Time to Close</p>
@@ -1750,7 +1780,7 @@ export default function SalesPage() {
           return (d.licenseValue || 0) + (d.implementationValue || 0);
         };
         const closedWonDeals = filteredOpportunities
-          .filter(o => o.status === 'Won')
+          .filter(o => o.status === 'Won' && getClosedDealVal(o) > 0)
           .sort((a, b) => getClosedDealVal(b) - getClosedDealVal(a));
 
         if (closedWonDeals.length === 0) return null;
@@ -2133,15 +2163,35 @@ export default function SalesPage() {
 
   const renderPipelineTab = () => (
     <div className="space-y-6">
-      {/* Month-over-Month Comparison Info */}
+      {/* Month-over-Month Comparison Info + Lookback Filter */}
       {snapshotComparison && (
         <div className="card p-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <span className="text-sm font-medium text-secondary-700">Comparing:</span>
             <span className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-primary-100 text-primary-700">
               {snapshotComparison.prevLabel} → {snapshotComparison.currLabel}
             </span>
-            <span className="text-xs text-secondary-400">Use month/year filters to change the comparison period</span>
+            <div className="flex items-center gap-2 ml-auto">
+              <span className="text-xs font-medium text-secondary-500">Look Back:</span>
+              {[
+                { label: '1M', value: 1 },
+                { label: '3M', value: 3 },
+                { label: '6M', value: 6 },
+                { label: '12M', value: 12 },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setPipelineLookbackMonths(opt.value)}
+                  className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
+                    pipelineLookbackMonths === opt.value
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-secondary-100 text-secondary-600 hover:bg-secondary-200'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -2231,10 +2281,33 @@ export default function SalesPage() {
                 dataKey="value"
                 stackId="waterfall"
                 radius={[4, 4, 4, 4]}
+                cursor="pointer"
+                onClick={(_data: any, index: number) => {
+                  const categoryMap: Record<number, string> = { 1: 'New', 2: 'Increased', 3: 'Decreased', 4: 'Won', 5: 'Lost' };
+                  const cat = categoryMap[index];
+                  if (cat) {
+                    setWaterfallSelectedCategory(prev => prev === cat ? null : cat);
+                  } else {
+                    setWaterfallSelectedCategory(null);
+                  }
+                }}
               >
-                {pipelineMovementWaterfall.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
-                ))}
+                {pipelineMovementWaterfall.map((entry, index) => {
+                  const categoryMap: Record<number, string> = { 1: 'New', 2: 'Increased', 3: 'Decreased', 4: 'Won', 5: 'Lost' };
+                  const cat = categoryMap[index];
+                  const isSelected = waterfallSelectedCategory === cat;
+                  const isClickable = !!cat;
+                  const dimmed = waterfallSelectedCategory && !isSelected && isClickable;
+                  return (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.fill}
+                      fillOpacity={dimmed ? 0.3 : 1}
+                      stroke={isSelected ? '#1e293b' : 'none'}
+                      strokeWidth={isSelected ? 2 : 0}
+                    />
+                  );
+                })}
                 <LabelList
                   dataKey="displayValue"
                   position="top"
@@ -2306,6 +2379,21 @@ export default function SalesPage() {
         </div>
       </ChartWrapper>
 
+      {/* Active waterfall filter indicator */}
+      {waterfallSelectedCategory && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-primary-50 border border-primary-200 rounded-lg">
+          <span className="text-sm font-medium text-primary-700">
+            Showing deals: <strong>{waterfallSelectedCategory}</strong>
+          </span>
+          <button
+            onClick={() => setWaterfallSelectedCategory(null)}
+            className="ml-auto px-2.5 py-1 text-xs font-medium text-primary-600 bg-white border border-primary-200 rounded-md hover:bg-primary-100 transition-colors"
+          >
+            Clear Filter
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Key Deal Movement Table — top movers by absolute change */}
         <div className="card overflow-hidden">
@@ -2331,7 +2419,10 @@ export default function SalesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-secondary-100">
-                {pipelineMovement.topMovers.slice(0, 10).map((deal) => (
+                {(waterfallSelectedCategory
+                  ? pipelineMovement.topMovers.filter(d => d.category === waterfallSelectedCategory)
+                  : pipelineMovement.topMovers
+                ).slice(0, 10).map((deal) => (
                   <tr key={deal.id} className={`${deal.change > 0 ? 'bg-green-50' : deal.change < 0 ? 'bg-red-50' : ''}`}>
                     <td className="px-4 py-3 font-medium text-secondary-900">{deal.dealName}</td>
                     <td className="px-4 py-3 text-secondary-600">{deal.customerName}</td>
@@ -2382,7 +2473,9 @@ export default function SalesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-secondary-100">
-                {pipelineMovement.lostDeals.length === 0 ? (
+                {(waterfallSelectedCategory && waterfallSelectedCategory !== 'Lost') ? (
+                  <tr><td colSpan={5} className="px-5 py-8 text-center text-secondary-400">Select "Lost Deals" on the waterfall chart or clear filter to view</td></tr>
+                ) : pipelineMovement.lostDeals.length === 0 ? (
                   <tr><td colSpan={5} className="px-5 py-8 text-center text-secondary-400">No lost deals in this period</td></tr>
                 ) : pipelineMovement.lostDeals.map((deal) => (
                   <tr key={deal.id} className="hover:bg-secondary-50">
@@ -2406,7 +2499,9 @@ export default function SalesPage() {
             <h2 className="text-lg font-semibold text-secondary-900">All Deal Movement</h2>
             <p className="text-sm text-secondary-500">
               {snapshotComparison ? `${snapshotComparison.prevLabel} → ${snapshotComparison.currLabel}` : 'Month-over-month deal changes'}
-              {' — '}{pipelineMovement.dealDetails.length} deals with movement
+              {' — '}{waterfallSelectedCategory
+                ? `${pipelineMovement.dealDetails.filter(d => d.category === waterfallSelectedCategory).length} ${waterfallSelectedCategory.toLowerCase()} deals`
+                : `${pipelineMovement.dealDetails.length} deals with movement`}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -2448,7 +2543,10 @@ export default function SalesPage() {
             <tbody className="divide-y divide-secondary-100">
               {pipelineMovement.dealDetails.length === 0 ? (
                 <tr><td colSpan={8} className="px-5 py-8 text-center text-secondary-400">No deal movement in this period</td></tr>
-              ) : pipelineMovement.dealDetails
+              ) : (waterfallSelectedCategory
+                ? pipelineMovement.dealDetails.filter(d => d.category === waterfallSelectedCategory)
+                : pipelineMovement.dealDetails
+              )
                 .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
                 .map((deal) => (
                 <tr key={deal.id} data-deal-row={deal.dealName.toLowerCase()} className={`hover:bg-secondary-50 ${
