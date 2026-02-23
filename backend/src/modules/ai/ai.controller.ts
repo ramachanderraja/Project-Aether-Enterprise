@@ -77,6 +77,31 @@ export class AIController {
     return this.conversationService.getMessages(conversationId);
   }
 
+  @Post('message')
+  @ApiOperation({ summary: 'Send message (auto-creates or reuses conversation)' })
+  @ApiResponse({ status: 200, description: 'Message sent' })
+  async sendMessageSimple(
+    @Request() req,
+    @Body() body: { conversation_id?: string; message: string; context?: any },
+  ) {
+    let conversationId = body.conversation_id;
+
+    if (!conversationId) {
+      const conversation = await this.conversationService.createConversation(
+        req.user.sub,
+        req.user.tenant_id,
+        { context: 'general', initial_message: body.message },
+      );
+      conversationId = conversation.conversation_id;
+    }
+
+    return this.aiService.sendMessageSync(
+      conversationId,
+      body.message,
+      body.context,
+    );
+  }
+
   @Post('conversations/:conversationId/messages')
   @ApiOperation({ summary: 'Send message and get streaming response' })
   @ApiResponse({ status: 200, description: 'Message sent, streaming response' })

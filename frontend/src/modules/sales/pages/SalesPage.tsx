@@ -72,6 +72,8 @@ interface Salesperson {
   forecast: number;
   pipelineValue: number;
   monthlyAttainment: number[];
+  quota: number;
+  level?: number; // hierarchy depth: 0 = top-level, 1 = direct report of top, etc.
 }
 
 interface QuarterlyForecast {
@@ -246,10 +248,13 @@ function buildRealOpportunities(store: SalesDataState): Opportunity[] {
 function buildRealSalespeople(store: SalesDataState, opps: Opportunity[], prevYearOpps: Opportunity[]): Salesperson[] {
   const yr = new Date().getFullYear();
 
-  return store.salesTeam
-    .filter(m => m.Name && m.Status === 'Active')
+  // A person is a manager if ANY other team member lists them as their Manager_ID
+  const activeTeam = store.salesTeam.filter(m => m.Name && m.Status === 'Active');
+  const managerIds = new Set(activeTeam.map(m => m.Manager_ID).filter(Boolean));
+
+  return activeTeam
     .map(member => {
-      const isManager = member.Sales_Rep_ID === member.Manager_ID;
+      const isManager = managerIds.has(member.Sales_Rep_ID);
       const nameLower = member.Name.trim().toLowerCase();
 
       const wonDeals = opps.filter(o =>
@@ -286,12 +291,13 @@ function buildRealSalespeople(store: SalesDataState, opps: Opportunity[], prevYe
         name: member.Name,
         region: member.Region,
         isManager,
-        managerId: isManager ? undefined : member.Manager_ID,
+        managerId: member.Sales_Rep_ID === member.Manager_ID ? undefined : member.Manager_ID,
         previousYearClosed,
         closedYTD,
         forecast,
         pipelineValue,
         monthlyAttainment,
+        quota: member.Annual_Quota || 0,
       };
     });
 }
@@ -981,7 +987,6 @@ export default function SalesPage() {
     // Pipeline snapshot "Closed Won" deals are excluded in buildRealOpportunities — no pipeline data here.
     const closedWon = filteredOpportunities.filter(o => o.status === 'Won');
     const closedLost = filteredOpportunities.filter(o => o.status === 'Lost');
-    const allClosed = [...closedWon, ...closedLost];
     const activeDeals = filteredOpportunities.filter(o => o.status === 'Active' || o.status === 'Stalled');
 
     // Closed ACV — reads License_ACV / Implementation_Value directly from Closed ACV template
@@ -1027,21 +1032,91 @@ export default function SalesPage() {
 
     const totalPipelineValue = activeDeals.reduce((sum, o) => sum + o.dealValue, 0);
 
-    const conversionRate = allClosed.length > 0
-      ? (closedWon.length / allClosed.length) * 100
+    // --- Conversion Rate: snapshot-based, compares consecutive monthly pipeline snapshots ---
+    // "Newly Won"  = deals that moved to Closed Won in month M but were NOT Closed Won in M-1
+    // "Newly Lost" = deals that moved to Lost/Dead/Declined/Stalled in month M but were NOT in that status in M-1
+    // Formula: Newly Won ACV / (Newly Won ACV + Newly Lost ACV) × 100
+    // Revenue Type filter selects License_ACV or Implementation_Value from the pipeline snapshot.
+    // When no month filter is selected, each month in the selected year(s) is evaluated individually and summed.
+    let newlyWonACV = 0;
+    let newlyLostACV = 0;
+    {
+      const snapshots = realData.pipelineSnapshots;
+
+      const isWon = (stage: string) => stage.includes('Closed Won');
+      const isLostOrStalled = (stage: string) =>
+        stage.includes('Closed Lost') ||
+        stage.includes('Closed Dead') ||
+        stage.includes('Closed Declined') ||
+        stage.includes('Stalled');
+
+      // Pick the right value column based on Revenue Type filter
+      const getSnapshotValue = (s: { License_ACV: number; Implementation_Value: number }) => {
+        if (revenueTypeFilter === 'Implementation') return s.Implementation_Value || 0;
+        if (revenueTypeFilter === 'License') return s.License_ACV || 0;
+        return (s.License_ACV || 0) + (s.Implementation_Value || 0);
+      };
+
+      // All unique snapshot months sorted chronologically (YYYY-MM-DD format)
+      const allSnapshotMonths = [...new Set(snapshots.map(s => s.Snapshot_Month))]
+        .filter(Boolean)
+        .sort();
+
+      // Determine which snapshot months to evaluate based on year/quarter/month filters
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const selectedSnapshotMonths = allSnapshotMonths.filter(sm => {
+        const d = parseDateLocal(sm);
+        const yr = d.getFullYear().toString();
+        const mon = monthNames[d.getMonth()];
+        const qtr = `Q${Math.floor(d.getMonth() / 3) + 1}`;
+        if (yearFilter.length > 0 && !yearFilter.includes(yr)) return false;
+        if (monthFilter.length > 0 && !monthFilter.includes(mon)) return false;
+        if (quarterFilter.length > 0 && !quarterFilter.includes(qtr)) return false;
+        return true;
+      });
+
+      // For each selected month, compare with the previous month's snapshot
+      for (const currentMonth of selectedSnapshotMonths) {
+        const currentIdx = allSnapshotMonths.indexOf(currentMonth);
+        if (currentIdx <= 0) continue; // skip if no previous month to compare
+        const prevMonth = allSnapshotMonths[currentIdx - 1];
+
+        // Build deal maps for current and previous month
+        const currentDeals = new Map<string, { stage: string; value: number }>();
+        const prevDeals = new Map<string, { stage: string }>();
+        for (const s of snapshots) {
+          if (s.Snapshot_Month === currentMonth) {
+            currentDeals.set(s.Pipeline_Deal_ID, { stage: s.Current_Stage, value: getSnapshotValue(s) });
+          } else if (s.Snapshot_Month === prevMonth) {
+            prevDeals.set(s.Pipeline_Deal_ID, { stage: s.Current_Stage });
+          }
+        }
+
+        currentDeals.forEach((deal, dealId) => {
+          const prev = prevDeals.get(dealId);
+          // Newly Won: Closed Won this month, but wasn't Closed Won last month
+          if (isWon(deal.stage) && (!prev || !isWon(prev.stage))) {
+            newlyWonACV += deal.value;
+          }
+          // Newly Lost: Lost/Dead/Declined/Stalled this month, but wasn't last month
+          if (isLostOrStalled(deal.stage) && (!prev || !isLostOrStalled(prev.stage))) {
+            newlyLostACV += deal.value;
+          }
+        });
+      }
+    }
+
+    const conversionRate = (newlyWonACV + newlyLostACV) > 0
+      ? (newlyWonACV / (newlyWonACV + newlyLostACV)) * 100
       : 0;
 
     const avgSalesCycle = activeDeals.length > 0
       ? activeDeals.reduce((sum, o) => sum + o.salesCycleDays, 0) / activeDeals.length
       : 0;
 
-    const salesVelocity = avgSalesCycle > 0
-      ? (activeDeals.length * (totalPipelineValue / activeDeals.length) * (conversionRate / 100)) / avgSalesCycle
-      : 0;
-
     return {
       conversionRate,
-      salesVelocity,
+      avgSalesCycle,
       totalClosedACV,
       weightedPipelineACV,
       forecastACV,
@@ -1057,7 +1132,7 @@ export default function SalesPage() {
       closedLostCount: closedLost.length,
       activeDealsCount: activeDeals.length,
     };
-  }, [filteredOpportunities, previousYearOpportunities, revenueTypeFilter]);
+  }, [filteredOpportunities, previousYearOpportunities, revenueTypeFilter, realData.pipelineSnapshots, yearFilter, monthFilter, quarterFilter]);
 
   // Funnel data - dynamically built from actual Deal_Stage values in the data
   const funnelData = useMemo(() => {
@@ -1473,8 +1548,8 @@ export default function SalesPage() {
   // Render tabs
   const renderOverviewTab = () => (
     <div className="space-y-6">
-      {/* KPI Cards - Closed ACV, Weighted Pipeline, Forecast ACV, YoY Growth, Conversion, Sales Velocity */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      {/* KPI Cards - Closed ACV, Weighted Pipeline, Forecast ACV, YoY Growth, Conversion, Avg Deal Size, Time to Close */}
+      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
         <div className="card p-5">
           <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Closed ACV (YTD){revenueTypeFilter !== 'All' ? ` - ${revenueTypeFilter}` : ''}</p>
           <p className="text-2xl font-bold text-green-500">{formatCurrency(metrics.totalClosedACV)}</p>
@@ -1505,9 +1580,14 @@ export default function SalesPage() {
           <p className="text-xs text-secondary-400 mt-1">Won / All Closed</p>
         </div>
         <div className="card p-5">
-          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Sales Velocity</p>
-          <p className="text-2xl font-bold text-secondary-900">{formatCurrency(metrics.salesVelocity)}</p>
-          <p className="text-xs text-secondary-400 mt-1">per day</p>
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Avg Deal Size</p>
+          <p className="text-2xl font-bold text-secondary-900">{formatCurrency(metrics.avgDealSize)}</p>
+          <p className="text-xs text-secondary-400 mt-1">{metrics.closedWonCount} closed deals</p>
+        </div>
+        <div className="card p-5">
+          <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">Time to Close</p>
+          <p className="text-2xl font-bold text-secondary-900">{Math.round(metrics.avgSalesCycle)} days</p>
+          <p className="text-xs text-secondary-400 mt-1">avg active deals</p>
         </div>
       </div>
 
@@ -2490,64 +2570,122 @@ export default function SalesPage() {
 
   // Sorted salespeople data - moved outside render function for proper reactivity
   const sortedSalespeople = useMemo(() => {
-    // Calculate totals for managers and derived fields (using previous year for comparison)
+    // Build a map for quick lookup and recursive rollup through multi-tier manager hierarchy
+    // e.g. Mihir → Abhishek → Saurabh → Sean: each manager gets all descendants' totals
+    const spById = new Map(salespeople.map(sp => [sp.id, sp]));
+
+    // Recursive function: returns rolled-up totals for a person + all their descendants
+    const rollupCache = new Map<string, { closed: number; forecast: number; pipeline: number; prevYear: number }>();
+    const getRollup = (id: string): { closed: number; forecast: number; pipeline: number; prevYear: number } => {
+      if (rollupCache.has(id)) return rollupCache.get(id)!;
+      const person = spById.get(id);
+      if (!person) return { closed: 0, forecast: 0, pipeline: 0, prevYear: 0 };
+
+      const result = {
+        closed: person.closedYTD,
+        forecast: person.forecast,
+        pipeline: person.pipelineValue,
+        prevYear: person.previousYearClosed,
+      };
+
+      // Add all direct reports' recursive rollups
+      const directReports = salespeople.filter(s => s.managerId === id && s.id !== id);
+      for (const report of directReports) {
+        const sub = getRollup(report.id);
+        result.closed += sub.closed;
+        result.forecast += sub.forecast;
+        result.pipeline += sub.pipeline;
+        result.prevYear += sub.prevYear;
+      }
+
+      rollupCache.set(id, result);
+      return result;
+    };
+
+    // Compute totals and derived metrics for each person
     const salespeopleWithTotals = salespeople.map(sp => {
-      const prevYear = sp.previousYearClosed || 1; // avoid division by zero
+      if (sp.isManager) {
+        const rollup = getRollup(sp.id);
+        // Quota: use the manager's own value directly from the file (do NOT sum team)
+        const mgrCoverage = rollup.prevYear > 0 ? rollup.pipeline / rollup.prevYear : 0;
+        const mgrYtd = rollup.prevYear > 0 ? (rollup.closed / rollup.prevYear) * 100 : 0;
+        const mgrForecastAtt = rollup.prevYear > 0 ? ((rollup.closed + rollup.forecast) / rollup.prevYear) * 100 : 0;
+        return { ...sp, closedYTD: rollup.closed, forecast: rollup.forecast, pipelineValue: rollup.pipeline,
+          previousYearClosed: rollup.prevYear, pipelineCoverage: mgrCoverage,
+          forecastAttainment: mgrForecastAtt, ytdAttainment: mgrYtd };
+      }
       const pipelineCoverage = sp.previousYearClosed > 0 ? sp.pipelineValue / sp.previousYearClosed : 0;
       const forecastAttainment = sp.previousYearClosed > 0 ? ((sp.closedYTD + sp.forecast) / sp.previousYearClosed) * 100 : 0;
       const ytdAttainment = sp.previousYearClosed > 0 ? (sp.closedYTD / sp.previousYearClosed) * 100 : 0;
-
-      if (sp.isManager) {
-        const teamMembers = salespeople.filter(s => s.managerId === sp.id);
-        const teamClosed = teamMembers.reduce((sum, s) => sum + s.closedYTD, 0) + sp.closedYTD;
-        const teamForecast = teamMembers.reduce((sum, s) => sum + s.forecast, 0) + sp.forecast;
-        const teamPipeline = teamMembers.reduce((sum, s) => sum + s.pipelineValue, 0) + sp.pipelineValue;
-        const teamPrevYear = teamMembers.reduce((sum, s) => sum + s.previousYearClosed, 0) + sp.previousYearClosed;
-        const managerYtdAttainment = sp.previousYearClosed > 0 ? (teamClosed / sp.previousYearClosed) * 100 : 0;
-        const managerForecastAttainment = sp.previousYearClosed > 0 ? ((teamClosed + teamForecast) / sp.previousYearClosed) * 100 : 0;
-        return { ...sp, teamClosed, teamForecast, teamPipeline, teamPrevYear, pipelineCoverage,
-          forecastAttainment: managerForecastAttainment, ytdAttainment: managerYtdAttainment };
-      }
       return { ...sp, pipelineCoverage, forecastAttainment, ytdAttainment };
     });
 
-    // Apply table-specific column filters
-    let filteredSalespeople = salespeopleWithTotals;
+    // Build cascading hierarchical order: top-level managers first, then their reports indented
+    const totalsById = new Map(salespeopleWithTotals.map(sp => [sp.id, sp]));
+    const cascaded: typeof salespeopleWithTotals = [];
+    const visited = new Set<string>();
 
-    // Filter by region
+    const addWithChildren = (id: string, level: number) => {
+      if (visited.has(id)) return;
+      visited.add(id);
+      const person = totalsById.get(id);
+      if (person) {
+        cascaded.push({ ...person, level });
+        // Add direct reports recursively
+        const directReports = salespeopleWithTotals
+          .filter(s => s.managerId === id && s.id !== id)
+          .sort((a, b) => {
+            // Managers first within each group, then alphabetical
+            if (a.isManager !== b.isManager) return a.isManager ? -1 : 1;
+            return a.name.localeCompare(b.name);
+          });
+        for (const report of directReports) {
+          addWithChildren(report.id, level + 1);
+        }
+      }
+    };
+
+    // Start from top-level managers (no managerId = self-managers)
+    const topLevel = salespeopleWithTotals
+      .filter(sp => !sp.managerId)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    for (const top of topLevel) {
+      addWithChildren(top.id, 0);
+    }
+    // Add anyone not in the hierarchy (orphans)
+    for (const sp of salespeopleWithTotals) {
+      if (!visited.has(sp.id)) {
+        cascaded.push({ ...sp, level: 0 });
+      }
+    }
+
+    // Apply table-specific column filters
+    let filteredSalespeople = cascaded;
+
     if (tableColumnFilters.region && tableColumnFilters.region.length > 0) {
       filteredSalespeople = filteredSalespeople.filter(sp => tableColumnFilters.region.includes(sp.region));
     }
 
-    // Filter by name
     if (tableColumnFilters.name && tableColumnFilters.name.length > 0) {
       filteredSalespeople = filteredSalespeople.filter(sp => tableColumnFilters.name.includes(sp.name));
     }
 
-    // Apply sorting to Sales Rep table
+    // When sorting is active, sort within the flat list (overrides cascading order)
     if (sortConfig) {
       filteredSalespeople = [...filteredSalespeople].sort((a: any, b: any) => {
         let aVal = a[sortConfig.key];
         let bVal = b[sortConfig.key];
-
-        // Handle string comparison
-        if (typeof aVal === 'string') {
-          aVal = aVal.toLowerCase();
-          bVal = bVal?.toLowerCase() || '';
-        }
-
-        // Handle numeric comparison
+        if (typeof aVal === 'string') { aVal = aVal.toLowerCase(); bVal = bVal?.toLowerCase() || ''; }
         if (typeof aVal === 'number' && typeof bVal === 'number') {
           return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
         }
-
         if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
         if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
       });
     }
 
-    return { filteredSalespeople, salespeopleWithTotals };
+    return { filteredSalespeople, salespeopleWithTotals: cascaded };
   }, [salespeople, tableColumnFilters, sortConfig]);
 
   const renderQuotaTab = () => {
@@ -2580,9 +2718,10 @@ export default function SalesPage() {
                   Name: sp.name,
                   Region: sp.region,
                   IsManager: sp.isManager,
+                  Quota: sp.quota,
                   ClosedYTD: sp.closedYTD,
-                  Forecast: sp.forecast,
                   Pipeline: sp.pipelineValue,
+                  Forecast: sp.forecast,
                   PreviousYear: sp.previousYearClosed,
                   Coverage: sp.pipelineCoverage.toFixed(2),
                   YTDvsPrevYear: sp.ytdAttainment.toFixed(1),
@@ -2617,20 +2756,26 @@ export default function SalesPage() {
                     activeFilters={tableColumnFilters.region || []}
                   />
                   <SortableHeader
+                    label="Quota"
+                    sortKey="quota"
+                    currentSort={sortConfig}
+                    onSort={handleSort}
+                  />
+                  <SortableHeader
                     label="Closed (YTD)"
                     sortKey="closedYTD"
                     currentSort={sortConfig}
                     onSort={handleSort}
                   />
                   <SortableHeader
-                    label="Forecast"
-                    sortKey="forecast"
+                    label="Pipeline"
+                    sortKey="pipelineValue"
                     currentSort={sortConfig}
                     onSort={handleSort}
                   />
                   <SortableHeader
-                    label="Pipeline"
-                    sortKey="pipelineValue"
+                    label="Forecast"
+                    sortKey="forecast"
                     currentSort={sortConfig}
                     onSort={handleSort}
                   />
@@ -2661,10 +2806,15 @@ export default function SalesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-secondary-100">
-                {filteredSalespeople.map((sp) => (
-                  <tr key={sp.id} className={`hover:bg-secondary-50 ${sp.isManager ? 'bg-blue-50 font-semibold' : ''}`}>
+                {filteredSalespeople.map((sp) => {
+                  const indent = (sp.level || 0) * 20; // 20px per hierarchy level
+                  const bgClass = sp.isManager
+                    ? (sp.level || 0) === 0 ? 'bg-blue-50 font-semibold' : 'bg-blue-50/50 font-medium'
+                    : '';
+                  return (
+                  <tr key={sp.id} className={`hover:bg-secondary-50 ${bgClass}`}>
                     <td className="px-4 py-4">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2" style={{ paddingLeft: indent }}>
                         {sp.isManager && (
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                             MGR
@@ -2674,9 +2824,10 @@ export default function SalesPage() {
                       </div>
                     </td>
                     <td className="px-4 py-4 text-secondary-600">{sp.region}</td>
+                    <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(sp.quota)}</td>
                     <td className="px-4 py-4 text-right text-green-600">{formatCurrency(sp.closedYTD)}</td>
-                    <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(sp.forecast)}</td>
                     <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(sp.pipelineValue)}</td>
+                    <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(sp.forecast)}</td>
                     <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(sp.previousYearClosed)}</td>
                     <td className="px-4 py-4 text-right">
                       <span className={`font-medium ${sp.pipelineCoverage >= 1.5 ? 'text-green-600' : sp.pipelineCoverage >= 1 ? 'text-yellow-600' : 'text-red-600'}`}>
@@ -2694,7 +2845,8 @@ export default function SalesPage() {
                       </span>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

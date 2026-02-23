@@ -6,7 +6,8 @@ export type AgUiEventType =
   | 'observation'
   | 'error'
   | 'done'
-  | 'ping';
+  | 'ping'
+  | 'route';
 
 export interface AgUiEvent {
   type: AgUiEventType;

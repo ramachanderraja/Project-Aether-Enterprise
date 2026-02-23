@@ -7,7 +7,7 @@ import { GetCostDto } from './dto';
 @ApiTags('Cost')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard)
-@Controller('costs')
+@Controller('cost')
 export class CostController {
   constructor(private readonly costService: CostService) {}
 
@@ -30,7 +30,7 @@ export class CostController {
     return this.costService.getCostDrivers(query);
   }
 
-  @Get('optimization')
+  @Get('optimizations')
   @ApiOperation({ summary: 'Get optimization opportunities' })
   async getOptimizations() {
     return this.costService.getOptimizations();

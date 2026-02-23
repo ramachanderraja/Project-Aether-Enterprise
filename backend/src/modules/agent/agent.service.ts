@@ -3,26 +3,40 @@ import { ConfigService } from '@nestjs/config';
 import { ChatOpenAI, AzureChatOpenAI } from '@langchain/openai';
 import { HumanMessage, AIMessage, BaseMessage } from '@langchain/core/messages';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { StructuredToolInterface } from '@langchain/core/tools';
+
 import { SalesService } from '../sales/sales.service';
 import { DealService } from '../sales/services/deal.service';
 import { ForecastService } from '../sales/services/forecast.service';
+import { SalesComputeService } from '../sales/services/sales-compute.service';
 import { RevenueService } from '../revenue/revenue.service';
-import { createSalesTools } from './tools/sales.tools';
-import { createRevenueTools } from './tools/revenue.tools';
+import { RevenueComputeService } from '../revenue/services/revenue-compute.service';
+
 import { AGENT_CONFIGS, AgentConfig } from './config/agent-configs';
-import {
-  buildToolAgentGraph,
-  streamToolAgentGraph,
-} from './graphs/tool-agent-graph';
 import type { AgUiEvent } from './streaming/agui-events';
+
+// Sales Supervisor graph
+import {
+  createOverviewTools,
+  createForecastTools,
+  createPipelineTools,
+  createYoYTools,
+  buildSalesSupervisor,
+  streamSalesSupervisor,
+} from './graphs/sales';
+
+// ARR Agent graph
+import {
+  createArrTools,
+  buildArrAgent,
+  streamArrAgent,
+} from './graphs/arr';
 
 @Injectable()
 export class AgentService {
   private readonly logger = new Logger(AgentService.name);
   private llm: BaseChatModel | null = null;
-  private graphByAgent: Map<string, ReturnType<typeof buildToolAgentGraph>> =
-    new Map();
+  private salesSupervisor: ReturnType<typeof buildSalesSupervisor> | null = null;
+  private arrGraph: ReturnType<typeof buildArrAgent> | null = null;
   private initialized = false;
 
   constructor(
@@ -30,7 +44,9 @@ export class AgentService {
     private readonly salesService: SalesService,
     private readonly dealService: DealService,
     private readonly forecastService: ForecastService,
+    private readonly salesComputeService: SalesComputeService,
     private readonly revenueService: RevenueService,
+    private readonly revenueComputeService: RevenueComputeService,
   ) {}
 
   private ensureInitialized(): boolean {
@@ -39,23 +55,29 @@ export class AgentService {
     this.llm = this.buildLlm();
     if (!this.llm) return false;
 
-    const salesTools = createSalesTools(
-      this.salesService,
-      this.dealService,
-      this.forecastService,
+    // ── Build Sales Supervisor (4 sub-agents) ──
+    const overviewTools = createOverviewTools(this.salesComputeService, this.dealService);
+    const forecastTools = createForecastTools(this.salesComputeService, this.dealService, this.forecastService);
+    const pipelineTools = createPipelineTools(this.salesComputeService);
+    const yoyTools = createYoYTools(this.salesComputeService);
+
+    this.salesSupervisor = buildSalesSupervisor(this.llm, {
+      overviewTools,
+      forecastTools,
+      pipelineTools,
+      yoyTools,
+    });
+
+    this.logger.log(
+      `Sales Supervisor built: Overview(${overviewTools.length}), Forecast(${forecastTools.length}), Pipeline(${pipelineTools.length}), YoY(${yoyTools.length}) tools`,
     );
-    const revenueTools = createRevenueTools(this.revenueService);
 
-    const toolsMap: Record<string, StructuredToolInterface[]> = {
-      sales_pipeline: salesTools,
-      arr_revenue: revenueTools,
-    };
+    // ── Build ARR Agent (single agent with enhanced tools) ──
+    const arrConfig = AGENT_CONFIGS['arr_revenue'];
+    const arrTools = createArrTools(this.revenueService, this.revenueComputeService);
+    this.arrGraph = buildArrAgent(this.llm, arrTools, arrConfig?.systemPrompt || '');
 
-    for (const [agentKey, tools] of Object.entries(toolsMap)) {
-      const config = AGENT_CONFIGS[agentKey];
-      const graph = buildToolAgentGraph(this.llm, tools, config?.systemPrompt);
-      this.graphByAgent.set(agentKey, graph);
-    }
+    this.logger.log(`ARR Agent built: ${arrTools.length} tools`);
 
     this.initialized = true;
     return true;
@@ -125,24 +147,16 @@ export class AgentService {
       return { answer: `Unknown agent: ${agentKey}`, toolCalls: [] };
     }
 
-    const graph = this.graphByAgent.get(agentKey)!;
-    const historyMessages = this.buildHistoryMessages(history);
+    // Collect answer from streaming
+    let answer = '';
+    const toolCalls: any[] = [];
 
-    const result = await graph.invoke({
-      messages: [...historyMessages, new HumanMessage(message)],
-    });
+    for await (const event of this.chatStream(agentKey, message, userId, history)) {
+      if (event.type === 'answer') answer += event.content;
+      if (event.type === 'action') toolCalls.push({ name: event.toolName, input: event.metadata });
+    }
 
-    const msgs = result.messages || [];
-    const lastAi = [...msgs].reverse().find(
-      (m: BaseMessage) => m._getType() === 'ai',
-    );
-    const answer = lastAi
-      ? typeof lastAi.content === 'string'
-        ? lastAi.content
-        : JSON.stringify(lastAi.content)
-      : 'No response generated.';
-
-    return { answer, toolCalls: [] };
+    return { answer: answer || 'No response generated.', toolCalls };
   }
 
   async *chatStream(
@@ -168,18 +182,39 @@ export class AgentService {
       return;
     }
 
-    const graph = this.graphByAgent.get(agentKey)!;
     const historyMessages = this.buildHistoryMessages(history);
 
     try {
-      for await (const event of streamToolAgentGraph(graph, {
-        userId,
-        input: message,
-        systemPrompt: config.systemPrompt,
-        history: historyMessages,
-        maxIterations: 15,
-      })) {
-        yield event as AgUiEvent;
+      if (agentKey === 'sales_pipeline' && this.salesSupervisor) {
+        // ── Sales: Supervisor with routing ──
+        for await (const event of streamSalesSupervisor(
+          this.llm!,
+          this.salesSupervisor,
+          {
+            userId,
+            input: message,
+            history: historyMessages,
+            maxIterations: 15,
+          },
+        )) {
+          yield event as AgUiEvent;
+        }
+      } else if (agentKey === 'arr_revenue' && this.arrGraph) {
+        // ── ARR: Single ReAct agent ──
+        for await (const event of streamArrAgent(
+          this.arrGraph,
+          {
+            userId,
+            input: message,
+            systemPrompt: config.systemPrompt,
+            history: historyMessages,
+            maxIterations: 15,
+          },
+        )) {
+          yield event as AgUiEvent;
+        }
+      } else {
+        yield { type: 'error', content: `Agent ${agentKey} not properly initialized.` };
       }
     } catch (error) {
       this.logger.error(`Agent stream error: ${error}`);

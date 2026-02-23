@@ -451,6 +451,158 @@ export class ReportsService {
     return { success: true, message: 'Template deleted successfully' };
   }
 
+  // ── Profitability data (serves /reports/profitability) ──
+  async getProfitabilityData(
+    organizationId: string,
+    filters: { type?: string; region?: string; segment?: string; vertical?: string },
+  ) {
+    const REGIONS = ['North America', 'Europe', 'Asia Pacific', 'Middle East', 'Latin America'];
+    const SEGMENTS = ['Enterprise', 'Mid-Market'];
+    const VERTICALS = ['CPG', 'AIM', 'TMT', 'E&U', 'LS', 'Others'];
+    const NAMES_1 = ['Acme', 'Global', 'Tech', 'Alpha', 'Beta', 'Omega', 'Delta', 'Prime'];
+    const NAMES_2 = ['Corp', 'Inc', 'Ltd', 'Solutions', 'Industries', 'Group'];
+
+    const viewType = (filters.type === 'Implementation' ? 'Implementation' : 'License') as 'License' | 'Implementation';
+
+    // Deterministic seed based on viewType so data is stable across requests
+    const seed = (s: string) => {
+      let h = 0;
+      for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+      return Math.abs(h);
+    };
+    const pseudoRandom = (idx: number, salt: number) => {
+      const x = Math.sin(seed(viewType) + idx * 9301 + salt * 49297) * 49297;
+      return x - Math.floor(x);
+    };
+
+    const accounts = Array.from({ length: 50 }, (_, i) => {
+      const region = REGIONS[Math.floor(pseudoRandom(i, 1) * REGIONS.length)];
+      const segment = SEGMENTS[Math.floor(pseudoRandom(i, 2) * SEGMENTS.length)];
+      const vertical = VERTICALS[Math.floor(pseudoRandom(i, 3) * VERTICALS.length)];
+      const revenue = Math.floor(pseudoRandom(i, 4) * 2000000) + 500000;
+
+      let cost1: number, cost2: number;
+      if (viewType === 'License') {
+        cost1 = Math.round(revenue * (0.12 + pseudoRandom(i, 5) * 0.06));
+        cost2 = Math.round(revenue * (0.08 + pseudoRandom(i, 6) * 0.04));
+      } else {
+        cost1 = Math.round(revenue * (0.35 + pseudoRandom(i, 5) * 0.10));
+        cost2 = Math.round(revenue * (0.20 + pseudoRandom(i, 6) * 0.10));
+      }
+
+      const grossMarginValue = revenue - cost1 - cost2;
+      const grossMarginPercent = grossMarginValue / revenue;
+      const contributionMarginPercent = grossMarginPercent - 0.15;
+
+      return {
+        id: `ACC-${1000 + i}`,
+        accountName: `${NAMES_1[Math.floor(pseudoRandom(i, 7) * NAMES_1.length)]} ${NAMES_2[Math.floor(pseudoRandom(i, 8) * NAMES_2.length)]}`,
+        region,
+        segment,
+        vertical,
+        revenue,
+        cost1,
+        cost2,
+        grossMarginValue,
+        grossMarginPercent,
+        contributionMarginPercent,
+        healthScore: Math.floor(pseudoRandom(i, 9) * 40) + 60,
+        renewalDate: `2025-${String(Math.floor(pseudoRandom(i, 10) * 12) + 1).padStart(2, '0')}-${String(Math.floor(pseudoRandom(i, 11) * 28) + 1).padStart(2, '0')}`,
+      };
+    });
+
+    // Apply filters
+    const filtered = accounts.filter((d) => {
+      const matchesRegion = !filters.region || filters.region === 'All' || d.region === filters.region;
+      const matchesSegment = !filters.segment || filters.segment === 'All' || d.segment === filters.segment;
+      const matchesVertical = !filters.vertical || filters.vertical === 'All' || d.vertical === filters.vertical;
+      return matchesRegion && matchesSegment && matchesVertical;
+    });
+
+    // Aggregate by region
+    const regionGroups: Record<string, { name: string; revenue: number; margin: number }> = {};
+    filtered.forEach((d) => {
+      if (!regionGroups[d.region]) regionGroups[d.region] = { name: d.region, revenue: 0, margin: 0 };
+      regionGroups[d.region].revenue += d.revenue;
+      regionGroups[d.region].margin += d.grossMarginValue;
+    });
+    const regionAgg = Object.values(regionGroups)
+      .map((g) => ({ dimension: g.name, revenue: g.revenue, grossMargin: g.margin, marginPercent: g.margin / g.revenue }))
+      .sort((a, b) => b.marginPercent - a.marginPercent);
+
+    // Aggregate by segment
+    const segmentGroups: Record<string, { name: string; revenue: number; margin: number }> = {};
+    filtered.forEach((d) => {
+      if (!segmentGroups[d.segment]) segmentGroups[d.segment] = { name: d.segment, revenue: 0, margin: 0 };
+      segmentGroups[d.segment].revenue += d.revenue;
+      segmentGroups[d.segment].margin += d.grossMarginValue;
+    });
+    const segmentAgg = Object.values(segmentGroups).map((g) => ({
+      dimension: g.name, revenue: g.revenue, grossMargin: g.margin, marginPercent: g.margin / g.revenue,
+    }));
+
+    // Segment breakdown
+    const segBreakGroups: Record<string, { name: string; revenue: number; grossMargin: number; contribMargin: number; count: number }> = {};
+    filtered.forEach((d) => {
+      if (!segBreakGroups[d.segment]) segBreakGroups[d.segment] = { name: d.segment, revenue: 0, grossMargin: 0, contribMargin: 0, count: 0 };
+      segBreakGroups[d.segment].revenue += d.revenue;
+      segBreakGroups[d.segment].grossMargin += d.grossMarginValue;
+      segBreakGroups[d.segment].contribMargin += d.revenue * d.contributionMarginPercent;
+      segBreakGroups[d.segment].count += 1;
+    });
+    const segmentBreakdown = Object.values(segBreakGroups)
+      .map((g) => ({ segment: g.name, revenue: g.revenue, gmPct: g.grossMargin / g.revenue, cmPct: g.contribMargin / g.revenue, accounts: g.count }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    // Summary stats
+    const totalRevenue = filtered.reduce((a, b) => a + b.revenue, 0);
+    const totalCost1 = filtered.reduce((a, b) => a + b.cost1, 0);
+    const totalCost2 = filtered.reduce((a, b) => a + b.cost2, 0);
+    const totalMargin = filtered.reduce((a, b) => a + b.grossMarginValue, 0);
+    const avgMarginPct = totalRevenue > 0 ? totalMargin / totalRevenue : 0;
+
+    return {
+      accounts: filtered,
+      regionAgg,
+      segmentAgg,
+      segmentBreakdown,
+      summary: { totalRevenue, totalCost1, totalCost2, totalMargin, avgMarginPct, accountCount: filtered.length },
+    };
+  }
+
+  // ── Margin trend data (serves /reports/margin-trend) ──
+  async getMarginTrendData(
+    organizationId: string,
+    filters: { viewMode?: string; region?: string },
+  ) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const viewMode = filters.viewMode === 'Implementation' ? 'Implementation' : 'License';
+    const baseMargin = viewMode === 'License' ? 0.72 : 0.35;
+    const volatility = 0.03;
+    const regionFilter = filters.region || 'All';
+
+    // Deterministic pseudo-random for stable data
+    const pseudoRandom = (idx: number) => {
+      const x = Math.sin(idx * 9301 + 49297) * 49297;
+      return x - Math.floor(x);
+    };
+
+    let cumulativeChange = 0;
+    const trend = months.map((month, idx) => {
+      const randomVar = (pseudoRandom(idx) - 0.4) * volatility;
+      const regionMod = regionFilter === 'North America' ? 0.05 : regionFilter === 'Europe' ? 0.02 : regionFilter === 'Asia Pacific' ? -0.02 : 0;
+      cumulativeChange += randomVar;
+
+      return {
+        month,
+        netMarginPercent: Math.max(0.15, Math.min(0.90, baseMargin + cumulativeChange + regionMod)),
+        revenue: (1000 + pseudoRandom(idx + 100) * 200) * (1 + idx * 0.02),
+      };
+    });
+
+    return { trend };
+  }
+
   // Data export
   async exportData(organizationId: string, dto: ExportDataDto) {
     this.logger.log(`Exporting ${dto.dataType} data as ${dto.format}`);

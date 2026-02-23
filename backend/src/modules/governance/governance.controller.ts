@@ -106,6 +106,13 @@ export class GovernanceController {
   }
 
   // Compliance Reports
+  @Get('compliance')
+  @ApiOperation({ summary: 'Get compliance report (default internal)' })
+  @ApiResponse({ status: 200, description: 'Compliance report retrieved' })
+  async getComplianceReportGet() {
+    return this.governanceService.getComplianceReport({ report_type: 'internal' } as GetComplianceReportDto);
+  }
+
   @Post('compliance/report')
   @ApiOperation({ summary: 'Generate compliance report' })
   @ApiResponse({ status: 200, description: 'Compliance report generated' })
