@@ -41,6 +41,42 @@ export class ReportsController {
     return this.reportsService.getReports(req.user.organizationId, type);
   }
 
+  // Profitability report data (used by ReportsPage)
+  // IMPORTANT: Must be before :id route so NestJS doesn't match "profitability" as an id param
+  @Get('profitability')
+  @ApiOperation({ summary: 'Get account profitability data' })
+  @ApiQuery({ name: 'type', required: false, description: 'License or Implementation' })
+  @ApiQuery({ name: 'region', required: false })
+  @ApiQuery({ name: 'segment', required: false })
+  @ApiQuery({ name: 'vertical', required: false })
+  async getProfitability(
+    @Request() req,
+    @Query('type') type?: string,
+    @Query('region') region?: string,
+    @Query('segment') segment?: string,
+    @Query('vertical') vertical?: string,
+  ) {
+    return this.reportsService.getProfitabilityData(
+      req.user.organizationId,
+      { type, region, segment, vertical },
+    );
+  }
+
+  @Get('margin-trend')
+  @ApiOperation({ summary: 'Get margin trend data' })
+  @ApiQuery({ name: 'viewMode', required: false, description: 'License or Implementation' })
+  @ApiQuery({ name: 'region', required: false })
+  async getMarginTrend(
+    @Request() req,
+    @Query('viewMode') viewMode?: string,
+    @Query('region') region?: string,
+  ) {
+    return this.reportsService.getMarginTrendData(
+      req.user.organizationId,
+      { viewMode, region },
+    );
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get report by ID' })
   async getReport(@Request() req, @Param('id') id: string) {

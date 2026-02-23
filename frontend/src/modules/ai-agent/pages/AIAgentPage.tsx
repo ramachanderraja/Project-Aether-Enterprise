@@ -39,24 +39,24 @@ export default function AIAgentPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-7rem)]">
-      <div className="flex items-center justify-between mb-3 shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold text-secondary-900">
-            AI Financial Analyst
-          </h1>
-          <p className="text-secondary-500 text-sm">
-            {selectedAgent
-              ? selectedAgent.name
-              : 'Choose an agent to start analyzing your data'}
-          </p>
+      {!selectedAgent && (
+        <div className="flex items-center justify-between mb-3 shrink-0">
+          <div>
+            <h1 className="text-2xl font-bold text-secondary-900">
+              AI Financial Analyst
+            </h1>
+            <p className="text-secondary-500 text-sm">
+              Choose an agent to start analyzing your data
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <span className="w-2 h-2 bg-green-500 rounded-full mr-1.5 animate-pulse" />
+              Online
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-            <span className="w-2 h-2 bg-green-500 rounded-full mr-1.5 animate-pulse" />
-            Online
-          </span>
-        </div>
-      </div>
+      )}
 
       <div className="flex-1 min-h-0 card overflow-hidden flex flex-col p-4">
         {selectedAgent ? (

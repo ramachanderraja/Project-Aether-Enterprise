@@ -9,6 +9,13 @@ export interface ToolCall {
   output?: string;
 }
 
+export interface RouteInfo {
+  tab: string;
+  tabIndex: number;
+  reason: string;
+  agentKey: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -17,6 +24,8 @@ export interface ChatMessage {
   isStreaming?: boolean;
   toolCalls?: ToolCall[];
   thoughts?: string;
+  route?: RouteInfo;
+  elapsedMs?: number;
 }
 
 export function useAgentStream() {
@@ -57,6 +66,7 @@ export function useAgentStream() {
       setMessages((prev) => [...prev, assistantMsg]);
       setIsStreaming(true);
 
+      const streamStartTime = Date.now();
       const abortController = new AbortController();
       abortRef.current = abortController;
 
@@ -64,6 +74,7 @@ export function useAgentStream() {
         const toolCallsMap = new Map<string, ToolCall>();
         let answerContent = '';
         let thoughts = '';
+        let routeInfo: RouteInfo | undefined;
 
         for await (const event of streamAgentChat(
           agentKey,
@@ -130,6 +141,17 @@ export function useAgentStream() {
               }
               break;
 
+            case 'route': {
+              const meta = event.metadata || {};
+              routeInfo = {
+                tab: (meta.tab as string) || event.content,
+                tabIndex: (meta.tabIndex as number) ?? -1,
+                reason: (meta.reason as string) || '',
+                agentKey: (meta.agentKey as string) || '',
+              };
+              break;
+            }
+
             case 'done':
             case 'ping':
               // Ignored
@@ -149,6 +171,7 @@ export function useAgentStream() {
                     content: answerContent,
                     thoughts,
                     toolCalls: Array.from(toolCallsMap.values()),
+                    route: routeInfo,
                     isStreaming: event.type !== 'done',
                   }
                 : m,
@@ -165,12 +188,15 @@ export function useAgentStream() {
                   content: answerContent || 'No response received.',
                   thoughts,
                   toolCalls: Array.from(toolCallsMap.values()),
+                  route: routeInfo,
                   isStreaming: false,
+                  elapsedMs: Date.now() - streamStartTime,
                 }
               : m,
           ),
         );
       } catch (error) {
+        const elapsed = Date.now() - streamStartTime;
         if ((error as Error).name !== 'AbortError') {
           setMessages((prev) =>
             prev.map((m) =>
@@ -179,8 +205,16 @@ export function useAgentStream() {
                     ...m,
                     content: `**Error:** ${(error as Error).message || 'An error occurred'}`,
                     isStreaming: false,
+                    elapsedMs: elapsed,
                   }
                 : m,
+            ),
+          );
+        } else {
+          // Abort: mark the assistant message as no longer streaming
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId ? { ...m, isStreaming: false, elapsedMs: elapsed } : m,
             ),
           );
         }

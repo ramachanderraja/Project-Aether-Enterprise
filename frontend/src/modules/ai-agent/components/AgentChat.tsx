@@ -5,6 +5,35 @@ import { useAuthStore } from '@/modules/auth/store/authStore';
 import { AgentAvatar } from './AgentSelector';
 import ChatMessage from './ChatMessage';
 
+function useStopwatch(running: boolean) {
+  const [elapsed, setElapsed] = useState(0);
+  const startRef = useRef<number | null>(null);
+  const rafRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (running) {
+      startRef.current = Date.now();
+      setElapsed(0);
+      const tick = () => {
+        setElapsed(Date.now() - (startRef.current ?? Date.now()));
+        rafRef.current = requestAnimationFrame(tick);
+      };
+      rafRef.current = requestAnimationFrame(tick);
+    } else {
+      cancelAnimationFrame(rafRef.current);
+    }
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [running]);
+
+  const secs = Math.floor(elapsed / 1000);
+  const mins = Math.floor(secs / 60);
+  const display = mins > 0
+    ? `${mins}:${String(secs % 60).padStart(2, '0')}`
+    : `${secs}.${String(Math.floor((elapsed % 1000) / 100))}s`;
+
+  return { elapsed, display };
+}
+
 interface AgentChatProps {
   agent: AgentConfig;
   onBack: () => void;
@@ -18,6 +47,7 @@ export default function AgentChat({ agent, onBack }: AgentChatProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const user = useAuthStore((s) => s.user);
   const userName = user?.name || 'You';
+  const { display: stopwatchDisplay } = useStopwatch(isStreaming);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -44,13 +74,13 @@ export default function AgentChat({ agent, onBack }: AgentChatProps) {
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-3 pb-3 border-b border-secondary-200 mb-3 shrink-0">
+      <div className="flex items-center gap-3 pb-3 border-b border-secondary-100 mb-3 shrink-0">
         <button
           onClick={onBack}
           className="p-1.5 hover:bg-secondary-100 rounded-lg transition-colors"
           title="Back to agent selection"
         >
-          <svg className="w-5 h-5 text-secondary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-secondary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
@@ -59,10 +89,11 @@ export default function AgentChat({ agent, onBack }: AgentChatProps) {
           <h3 className="font-semibold text-secondary-900 text-sm truncate">
             {agent.name}
           </h3>
-          <p className="text-xs text-secondary-500 truncate">
-            {agent.description}
-          </p>
         </div>
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-50 text-green-600 border border-green-200">
+          <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1 animate-pulse" />
+          Online
+        </span>
         <button
           onClick={clearMessages}
           className="text-xs text-secondary-400 hover:text-secondary-600 px-2 py-1 rounded hover:bg-secondary-100 transition-colors"
@@ -73,7 +104,7 @@ export default function AgentChat({ agent, onBack }: AgentChatProps) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-5 pb-2 px-1">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pb-2 px-1">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-10 px-4">
             <AgentAvatar icon={agent.icon} size="lg" />
@@ -104,28 +135,29 @@ export default function AgentChat({ agent, onBack }: AgentChatProps) {
             message={message}
             agent={agent}
             userName={userName}
+            stopwatch={message.isStreaming ? stopwatchDisplay : undefined}
           />
         ))}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
-      <div className="border-t border-secondary-200 pt-3 shrink-0">
-        <div className="flex gap-3">
+      <div className="border-t border-secondary-100 pt-3 shrink-0">
+        <div className="flex gap-2 items-end">
           <textarea
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={`Ask ${agent.name}...`}
-            className="flex-1 resize-none rounded-lg border border-secondary-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+            placeholder={`Ask a question...`}
+            className="flex-1 resize-none rounded-xl border border-secondary-200 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:border-primary-400 text-sm bg-secondary-50/50 placeholder:text-secondary-400"
             rows={1}
             disabled={isStreaming}
           />
           {isStreaming ? (
             <button
               onClick={stopStreaming}
-              className="px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              className="p-2.5 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors"
               title="Stop streaming"
             >
               <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
@@ -136,16 +168,16 @@ export default function AgentChat({ agent, onBack }: AgentChatProps) {
             <button
               onClick={() => handleSubmit()}
               disabled={!input.trim()}
-              className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="p-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
               </svg>
             </button>
           )}
         </div>
-        <p className="text-xs text-secondary-400 mt-1.5">
-          Press Enter to send, Shift+Enter for new line
+        <p className="text-[10px] text-secondary-400 mt-1 ml-1">
+          Enter to send &middot; Shift+Enter for new line
         </p>
       </div>
     </div>

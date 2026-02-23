@@ -47,6 +47,13 @@ export class DashboardController {
     return this.dashboardService.getExecutiveDashboard(query);
   }
 
+  @Get('kpis')
+  @ApiOperation({ summary: 'Get all KPIs summary' })
+  @ApiResponse({ status: 200, description: 'KPIs retrieved' })
+  async getAllKpis(@Query() query: GetDashboardDto) {
+    return this.dashboardService.getAllKpis(query);
+  }
+
   @Get('kpis/:kpiId')
   @ApiOperation({ summary: 'Get detailed KPI breakdown' })
   @ApiResponse({ status: 200, description: 'KPI details retrieved' })
@@ -86,6 +93,41 @@ export class DashboardController {
   @ApiResponse({ status: 200, description: 'Cash flow forecast retrieved' })
   async getCashFlowForecast(@Query() query: GetDashboardDto) {
     return this.dashboardService.getCashFlowForecast(query);
+  }
+
+  @Get('rolling-forecast')
+  @ApiOperation({ summary: 'Get rolling forecast' })
+  @ApiResponse({ status: 200, description: 'Rolling forecast retrieved' })
+  async getRollingForecast(@Query() query: GetDashboardDto) {
+    return this.dashboardService.getRollingForecast(query);
+  }
+
+  @Get('saas-metrics')
+  @ApiOperation({ summary: 'Get SaaS metrics' })
+  @ApiResponse({ status: 200, description: 'SaaS metrics retrieved' })
+  async getSaasMetrics(@Query() query: GetDashboardDto) {
+    return this.dashboardService.getSaasMetrics(query);
+  }
+
+  @Get('rca/:metric')
+  @ApiOperation({ summary: 'Get root cause analysis for a metric' })
+  @ApiResponse({ status: 200, description: 'RCA retrieved' })
+  async getRCA(@Param('metric') metric: string) {
+    return this.dashboardService.getRootCauseAnalysis(metric);
+  }
+
+  @Get('action-plan/:metric')
+  @ApiOperation({ summary: 'Get action plan for a metric' })
+  @ApiResponse({ status: 200, description: 'Action plan retrieved' })
+  async getActionPlan(@Param('metric') metric: string) {
+    return this.dashboardService.getActionPlan(metric);
+  }
+
+  @Get('competitors')
+  @ApiOperation({ summary: 'Get competitor comparison data' })
+  @ApiResponse({ status: 200, description: 'Competitors data retrieved' })
+  async getCompetitors() {
+    return this.dashboardService.getCompetitors();
   }
 
   @Get('insights')
