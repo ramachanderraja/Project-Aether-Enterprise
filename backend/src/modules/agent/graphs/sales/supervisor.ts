@@ -352,7 +352,8 @@ export async function* streamSalesSupervisor(
       new HumanMessage(params.input),
     ];
 
-    const routeResponse = await llm.invoke(routeMessages);
+    // Cap output tokens to keep the router fast — it only needs a small JSON
+    const routeResponse = await llm.invoke(routeMessages, { max_tokens: 80 } as any);
     const content = typeof routeResponse.content === 'string'
       ? routeResponse.content
       : JSON.stringify(routeResponse.content);
