@@ -530,13 +530,26 @@ export class SalesComputeService {
     const filtered = this.filterOpportunities(allOpps, filters);
     const rt = filters.revenueType || 'All';
 
-    const getUnweightedVal = (o: Opportunity): number => {
+    const getUnweightedLicense = (o: Opportunity): number => {
       const prob = o.probability > 0 ? o.probability / 100 : 1;
-      return this.getPipelineValue(o, rt) / prob;
+      return (o.licenseValue || 0) / prob;
+    };
+
+    const getUnweightedImpl = (o: Opportunity): number => {
+      const prob = o.probability > 0 ? o.probability / 100 : 1;
+      return (o.implementationValue || 0) / prob;
+    };
+
+    const getUnweightedVal = (o: Opportunity): number => {
+      if (rt === 'License') return getUnweightedLicense(o);
+      if (rt === 'Implementation') return getUnweightedImpl(o);
+      return getUnweightedLicense(o) + getUnweightedImpl(o);
     };
 
     let deals = filtered
       .filter(o => o.status === 'Active')
+      // Filter out deals where the relevant unweighted value is $0
+      .filter(o => getUnweightedVal(o) > 0)
       .sort((a, b) => getUnweightedVal(b) - getUnweightedVal(a));
 
     if (filters.sortField) {
@@ -560,6 +573,8 @@ export class SalesComputeService {
         probability: o.probability,
         dealValue: Math.round(o.dealValue),
         unweightedValue: Math.round(getUnweightedVal(o)),
+        unweightedLicenseValue: Math.round(getUnweightedLicense(o)),
+        unweightedImplementationValue: Math.round(getUnweightedImpl(o)),
         licenseValue: Math.round(o.licenseValue),
         implementationValue: Math.round(o.implementationValue),
         expectedCloseDate: o.expectedCloseDate,

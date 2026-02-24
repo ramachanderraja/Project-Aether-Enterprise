@@ -54,7 +54,7 @@ export function createOverviewTools(
     {
       name: 'get_overview_key_deals',
       description:
-        'Get the Key Deals in Pipeline table: top active deals with Deal Name, Account, Unweighted Fee, Stage, Close Date, Probability, Owner. Matches the pipeline table on the Overview tab.',
+        'Get the Key Deals in Pipeline table: top active deals with Deal Name, Account, Unweighted Fee (unweightedValue), Unweighted License ACV (unweightedLicenseValue), Unweighted Implementation Value (unweightedImplementationValue), Stage, Close Date, Probability, Owner. Deals with $0 value for the selected revenueType are automatically excluded. When the user asks about license values, pass revenueType="License". Values returned are UNWEIGHTED (raw deal value before probability adjustment). Matches the pipeline table on the Overview tab.',
       schema: filtersSchema.extend({
         sortField: z.string().optional().describe('Field to sort by'),
         sortDirection: z.string().optional().describe('asc or desc'),

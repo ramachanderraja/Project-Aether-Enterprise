@@ -16,7 +16,8 @@
       "Bash(sort:*)",
       "Bash(while read m)",
       "Bash(do grep \"^$m\" monthly_arr_snapshot.csv)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(cd /mnt/c/Users/aryamann.tomar/Desktop/Project-Aether-Enterprise/backend && npx prisma generate 2>&1)"
     ]
   }
 }

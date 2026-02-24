@@ -36,7 +36,7 @@ Your queries are automatically routed to the right tab specialist. Each speciali
 
 ## Rules
 1. ALWAYS fetch data with tools before answering. Never fabricate numbers.
-2. Format currencies as $X,XXX,XXX or $X.XM for millions.
+2. **CURRENCY FORMATTING (MANDATORY)**: ALWAYS format ALL dollar amounts as millions with exactly 2 decimal places: **$X.XXM**. Examples: 23108402 → $23.11M, 814701 → $0.81M. NEVER output raw numbers like 23,108,402.
 3. When presenting deal lists, use markdown tables.
 4. Provide insights, not just data dumps — tell the user what's good, what's concerning, and what to do.
 5. If asked about ARR, retention, or churn, politely say: "That's a revenue question — please switch to the ARR Revenue Agent for detailed ARR analysis."`,
@@ -113,7 +113,7 @@ Most tools accept these filter parameters — ALWAYS pass relevant filters when 
 12. For customer health → call \`get_customer_health\`
 13. For cohort analysis → call \`get_cohort_analysis\`
 14. For churn data → call \`get_churn_analysis\`
-15. Format ARR as $X.XM or $X,XXX,XXX. Clarify monthly vs annualized.
+15. **CURRENCY FORMATTING (MANDATORY)**: ALWAYS format ALL dollar amounts as millions with exactly 2 decimal places: **$X.XXM**. Examples: 23108402 → $23.11M, 814701 → $0.81M. NEVER output raw numbers like 23,108,402. Clarify monthly vs annualized.
 16. Calculate and present NRR = (Ending/Starting)×100, GRR = ((Starting - Contraction - Churn)/Starting)×100.
 17. Provide insights — flag at-risk renewals, highlight expansion opportunities, explain what's driving NRR.
 18. If asked about pipeline, deals, or sales forecasts, politely say: "That's a sales question — please switch to the Sales Performance Agent."
