@@ -7,6 +7,59 @@
 
 <!-- Add entries below in reverse chronological order (newest first) -->
 
+## 2026-02-24 - ARR Revenue Agent Supervisor Architecture
+
+**Task:** Refactor ARR Revenue Agent from a single flat ReAct agent (15 tools) into a Supervisor pattern with 4 sub-agents matching the 4 frontend Revenue tabs, each with focused tools, proper parameter schemas, date context, and clarification behavior.
+
+**New Files Created:**
+- `backend/src/modules/agent/graphs/arr/supervisor.ts` — Supervisor with router, 4 sub-agents (Overview, Movement, Customers, Products), date context, clarification behavior
+- `backend/src/modules/agent/graphs/arr/tools/overview.tools.ts` — 4 tools: `get_arr_overview_metrics`, `get_arr_trend`, `get_arr_by_dimension`, `get_revenue_overview`
+- `backend/src/modules/agent/graphs/arr/tools/movement.tools.ts` — 3 tools: `get_movement_summary`, `get_movement_customers`, `get_movement_trend`
+- `backend/src/modules/agent/graphs/arr/tools/customers.tools.ts` — 4 tools: `get_customers_list`, `get_renewal_risk`, `get_customer_health`, `get_cohort_analysis`
+- `backend/src/modules/agent/graphs/arr/tools/products.tools.ts` — 1 tool: `get_products`
+
+**Files Modified:**
+- `backend/src/modules/agent/graphs/arr/index.ts` — Updated exports to new supervisor + tool files
+- `backend/src/modules/agent/agent.service.ts` — Replaced `buildArrAgent`/`streamArrAgent` with `buildArrSupervisor`/`streamArrSupervisor`, wires 4 tool sets
+- `backend/src/modules/agent/config/agent-configs.ts` — Set `hasSupervisor: true` for `arr_revenue`, simplified systemPrompt to tab-aware context
+
+**Architecture:**
+```
+User Query → Router (LLM classification) → Route Decision
+  ├─ Overview Agent (4 tools) — KPIs, ARR trend, dimension breakdowns
+  ├─ Movement Agent (3 tools) — Waterfall bridge, customer movements, trends
+  ├─ Customers Agent (4 tools) — Customer list, renewal risk, health, cohorts
+  └─ Products Agent (1 tool) — Category performance
+```
+
+**Dropped 3 legacy/redundant tools:** `get_arr_movement`, `get_churn_analysis`, `get_revenue_data_summary`
+
+**Status:** Completed (TypeScript compiles clean)
+**Branch:** commonbranch
+
+---
+
+## 2026-02-24 - Sales Agent Context Awareness & Clarification Behavior
+
+**Task:** Fix Sales Performance Agent not understanding context ("this year" → empty params) and not asking clarifying questions when revenue type (License/Implementation/All) is ambiguous.
+
+**Changes:**
+- `backend/src/modules/agent/graphs/sales/supervisor.ts`:
+  - Added `getDateContext()` helper that dynamically generates current date/year/quarter/month context block
+  - Added `## Current Date Context` and `## Smart Date Inference` sections injected into all 4 sub-agent prompts at runtime via `buildSalesSupervisor()`
+  - Added **Rule 7 (CLARIFICATION REQUIRED)** to Overview and Forecast sub-agent prompts: agent must ask user whether they want License, Implementation, or All ACV before calling tools when revenueType is ambiguous
+  - Added **Rule 8/9 (SMART DEFAULTS)** to all 4 sub-agent prompts: never pass empty filters, always infer current year as minimum
+  - Date context is computed fresh each time `buildSalesSupervisor()` is called (not stale)
+
+**Behavior change:**
+- "What's our Closed ACV and Forecast ACV this year?" → Agent now asks "License, Implementation, or All?" THEN calls tools with `year: ["2026"]` + user's chosen revenueType
+- "What's our Closed ACV for 2026 and Forecast license ACV for 2026?" → Still works as before (year + revenueType already explicit)
+
+**Status:** Completed
+**Branch:** commonbranch
+
+---
+
 ## 2026-02-24 - Comprehensive Project Documentation (3 Deep-Dive Docs)
 
 **Task:** Create three developer deep-dive documentation files analyzing the entire codebase — frontend, backend, and agentic AI system — with inline code snippets, best practices audit, and actionable upgrade recommendations.

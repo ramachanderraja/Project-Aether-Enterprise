@@ -24,11 +24,14 @@ import {
   streamSalesSupervisor,
 } from './graphs/sales';
 
-// ARR Agent graph
+// ARR Supervisor graph
 import {
-  createArrTools,
-  buildArrAgent,
-  streamArrAgent,
+  createOverviewTools as createArrOverviewTools,
+  createMovementTools,
+  createCustomersTools,
+  createProductsTools,
+  buildArrSupervisor,
+  streamArrSupervisor,
 } from './graphs/arr';
 
 @Injectable()
@@ -36,7 +39,7 @@ export class AgentService {
   private readonly logger = new Logger(AgentService.name);
   private llm: BaseChatModel | null = null;
   private salesSupervisor: ReturnType<typeof buildSalesSupervisor> | null = null;
-  private arrGraph: ReturnType<typeof buildArrAgent> | null = null;
+  private arrSupervisor: ReturnType<typeof buildArrSupervisor> | null = null;
   private initialized = false;
 
   constructor(
@@ -72,12 +75,22 @@ export class AgentService {
       `Sales Supervisor built: Overview(${overviewTools.length}), Forecast(${forecastTools.length}), Pipeline(${pipelineTools.length}), YoY(${yoyTools.length}) tools`,
     );
 
-    // ── Build ARR Agent (single agent with enhanced tools) ──
-    const arrConfig = AGENT_CONFIGS['arr_revenue'];
-    const arrTools = createArrTools(this.revenueService, this.revenueComputeService);
-    this.arrGraph = buildArrAgent(this.llm, arrTools, arrConfig?.systemPrompt || '');
+    // ── Build ARR Supervisor (4 sub-agents) ──
+    const arrOverviewTools = createArrOverviewTools(this.revenueService, this.revenueComputeService);
+    const arrMovementTools = createMovementTools(this.revenueComputeService);
+    const arrCustomersTools = createCustomersTools(this.revenueService, this.revenueComputeService);
+    const arrProductsTools = createProductsTools(this.revenueComputeService);
 
-    this.logger.log(`ARR Agent built: ${arrTools.length} tools`);
+    this.arrSupervisor = buildArrSupervisor(this.llm, {
+      overviewTools: arrOverviewTools,
+      movementTools: arrMovementTools,
+      customersTools: arrCustomersTools,
+      productsTools: arrProductsTools,
+    });
+
+    this.logger.log(
+      `ARR Supervisor built: Overview(${arrOverviewTools.length}), Movement(${arrMovementTools.length}), Customers(${arrCustomersTools.length}), Products(${arrProductsTools.length}) tools`,
+    );
 
     this.initialized = true;
     return true;
@@ -199,14 +212,14 @@ export class AgentService {
         )) {
           yield event as AgUiEvent;
         }
-      } else if (agentKey === 'arr_revenue' && this.arrGraph) {
-        // ── ARR: Single ReAct agent ──
-        for await (const event of streamArrAgent(
-          this.arrGraph,
+      } else if (agentKey === 'arr_revenue' && this.arrSupervisor) {
+        // ── ARR: Supervisor with routing ──
+        for await (const event of streamArrSupervisor(
+          this.llm!,
+          this.arrSupervisor,
           {
             userId,
             input: message,
-            systemPrompt: config.systemPrompt,
             history: historyMessages,
             maxIterations: 15,
           },

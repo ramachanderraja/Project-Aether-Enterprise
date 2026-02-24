@@ -106,6 +106,31 @@ function parseRouteResponse(content: string): RouteDecision {
   }
 }
 
+// ── Date context helper ──
+
+function getDateContext(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const quarter = Math.ceil((now.getMonth() + 1) / 3);
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `
+
+## Current Date Context
+- Today: ${now.toISOString().split('T')[0]}
+- Current year: ${year}
+- Current quarter: Q${quarter}
+- Current month: ${monthNames[now.getMonth()]}
+- Previous year: ${year - 1}
+
+## Smart Date Inference (CRITICAL — apply BEFORE calling any tool)
+- "this year" / "current year" / no year mentioned → ALWAYS pass year: ["${year}"]
+- "last year" / "previous year" → pass year: ["${year - 1}"]
+- "this quarter" → pass quarter: ["Q${quarter}"]
+- "this month" → pass month: ["${monthNames[now.getMonth()]}"]
+- If the user does NOT specify any year at all, DEFAULT to year: ["${year}"] — always assume current year.
+- NEVER pass empty filters ({}) to any tool. At minimum, always include the current year.`;
+}
+
 // ── Sub-agent prompts ──
 
 const SUB_AGENT_PROMPTS: Record<SalesTab, string> = {
@@ -145,7 +170,9 @@ Rules:
 3. Use markdown tables for deal lists.
 4. Provide insights, not just data — tell the user what's good, concerning, and actionable.
 5. When the user asks about "license value", "license ACV", or license-specific data, pass revenueType="License" to the tool. For implementation questions, pass revenueType="Implementation".
-6. For key deals, ALWAYS use the unweighted values (unweightedLicenseValue, unweightedImplementationValue, unweightedValue) in your response — these are the true deal values before probability adjustment. Never display the weighted licenseValue/implementationValue fields as "License ACV".`,
+6. For key deals, ALWAYS use the unweighted values (unweightedLicenseValue, unweightedImplementationValue, unweightedValue) in your response — these are the true deal values before probability adjustment. Never display the weighted licenseValue/implementationValue fields as "License ACV".
+7. **CLARIFICATION REQUIRED**: When the user asks about "ACV" (Closed ACV, Forecast ACV, etc.) WITHOUT specifying whether they want License, Implementation, or All (combined), you MUST ask the user BEFORE calling any tool: "Would you like to see: **All ACV** (License + Implementation combined), **License ACV only**, or **Implementation ACV only**?" Do NOT call tools with an unresolved revenueType — ask first, then call tools with the correct filter once the user answers.
+8. **SMART DEFAULTS**: Never call tools with completely empty filters. At minimum, always infer and pass the year filter. If the user says "this year" or implies a current time period, resolve it to the actual year (see Current Date Context below).`,
 
   forecast: `You are the Forecast Deep Dive Analyst. You answer questions about the Sales Forecast tab.
 
@@ -181,7 +208,9 @@ Rules:
 4. For trend analysis, call get_forecast_trend with filters.
 5. For product analysis, call get_forecast_by_subcategory with filters.
 6. For scenario/simulation questions, call get_forecast or run_monte_carlo.
-7. Highlight growth/decline trends and which regions or categories are driving performance.`,
+7. Highlight growth/decline trends and which regions or categories are driving performance.
+8. **CLARIFICATION REQUIRED**: When the user asks about "ACV" or "Forecast" WITHOUT specifying License, Implementation, or All, you MUST ask the user BEFORE calling any tool: "Would you like to see: **All ACV** (License + Implementation combined), **License ACV only**, or **Implementation ACV only**?" Do NOT call tools with an unresolved revenueType — ask first.
+9. **SMART DEFAULTS**: Never call tools with completely empty filters. At minimum, always infer and pass the year filter. If the user says "this year" or implies a current time period, resolve it to the actual year (see Current Date Context below).`,
 
   pipeline: `You are the Pipeline Movement Analyst. You answer questions about pipeline changes.
 
@@ -215,7 +244,8 @@ Rules:
 3. For sub-category breakdown, call get_pipeline_by_subcategory.
 4. Explain changes clearly: "Pipeline grew/shrank by $X.XXM because..."
 5. Highlight significant deal movements, new deals, and concerning losses.
-6. Use the dealDetails array to name specific deals and customers.`,
+6. Use the dealDetails array to name specific deals and customers.
+7. **SMART DEFAULTS**: Never call tools with completely empty filters. At minimum, always infer and pass the year filter. If the user says "this year", "this month", or implies a current time period, resolve it to the actual value (see Current Date Context below).`,
 
   yoy: `You are the YoY Performance Analyst. You answer questions about sales rep performance and attainment.
 
@@ -249,7 +279,8 @@ Rules:
 5. Highlight top/bottom performers and explain why (coverage, pipeline, close rate).
 6. Present the hierarchy clearly: show manager rollups vs individual rep numbers.
 7. When asked "who are the top performers?", sort by forecastAttainment desc.
-8. When asked about coverage, highlight reps with coverage < 1x as at-risk.`,
+8. When asked about coverage, highlight reps with coverage < 1x as at-risk.
+9. **SMART DEFAULTS**: Never call tools with completely empty filters. At minimum, always infer and pass the year filter. If the user says "this year" or implies a current time period, resolve it to the actual value (see Current Date Context below).`,
 };
 
 // ── Supervisor builder ──
@@ -265,27 +296,31 @@ export function buildSalesSupervisor(
   llm: BaseChatModel,
   deps: SalesSupervisorDeps,
 ) {
+  // Inject current date context into every sub-agent prompt so the LLM
+  // can resolve relative time references ("this year", "this quarter", etc.)
+  const dateContext = getDateContext();
+
   // Build 4 compiled sub-agent graphs
   const subAgents: Record<SalesTab, ReturnType<typeof createReactAgent>> = {
     overview: createReactAgent({
       llm,
       tools: deps.overviewTools,
-      prompt: SUB_AGENT_PROMPTS.overview,
+      prompt: SUB_AGENT_PROMPTS.overview + dateContext,
     }),
     forecast: createReactAgent({
       llm,
       tools: deps.forecastTools,
-      prompt: SUB_AGENT_PROMPTS.forecast,
+      prompt: SUB_AGENT_PROMPTS.forecast + dateContext,
     }),
     pipeline: createReactAgent({
       llm,
       tools: deps.pipelineTools,
-      prompt: SUB_AGENT_PROMPTS.pipeline,
+      prompt: SUB_AGENT_PROMPTS.pipeline + dateContext,
     }),
     yoy: createReactAgent({
       llm,
       tools: deps.yoyTools,
-      prompt: SUB_AGENT_PROMPTS.yoy,
+      prompt: SUB_AGENT_PROMPTS.yoy + dateContext,
     }),
   };
 
