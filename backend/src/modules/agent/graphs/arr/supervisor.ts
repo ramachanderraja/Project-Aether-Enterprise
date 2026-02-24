@@ -128,7 +128,8 @@ function getDateContext(): string {
 - "this quarter" -> pass month filters for the current quarter months
 - "this month" -> pass month: ["${monthNames[now.getMonth()]}"]
 - If the user does NOT specify any year at all, DEFAULT to year: ["${year}"] — always assume current year.
-- NEVER pass empty filters ({}) to any tool. At minimum, always include the current year.`;
+- NEVER pass empty filters ({}) to any tool. At minimum, always include the current year.
+- **IMPORTANT for movement/waterfall tools**: ALWAYS pass month: ["${monthNames[now.getMonth()]}"] (or the prior month "${monthNames[now.getMonth() === 0 ? 11 : now.getMonth() - 1]}") in addition to year. If you only pass year without month, the system defaults to December which may be in the future with no data. Use the current or prior month as the end point.`;
 }
 
 // ── Sub-agent prompts ──
@@ -198,7 +199,8 @@ Rules:
 4. Highlight significant customer movements — name specific customers and amounts.
 5. Use markdown tables for customer movement lists.
 6. **CLARIFICATION**: If the user asks "what's driving ARR change?" without specifying a lookback period, ask: "What timeframe would you like? **1 month**, **3 months**, **6 months**, or **12 months**?"
-7. **SMART DEFAULTS**: Never call tools with completely empty filters. At minimum, always infer and pass the year filter.`,
+7. **SMART DEFAULTS**: Never call tools with completely empty filters. At minimum, always infer and pass the year filter.
+8. **CRITICAL — ALWAYS PASS MONTH**: When calling ANY movement tool, you MUST pass the month filter (e.g. month: ["Feb"] for current month, or month: ["Jan"] for prior month). If you only pass year without month, the system defaults to December which may be in the future with no data. The lookback period counts backwards FROM the month you specify.`,
 
   customers: `You are the Customer Analyst. You answer questions about customers, renewals, health, and cohorts.
 
