@@ -17,7 +17,14 @@
       "Bash(while read m)",
       "Bash(do grep \"^$m\" monthly_arr_snapshot.csv)",
       "Bash(done)",
-      "Bash(cd /mnt/c/Users/aryamann.tomar/Desktop/Project-Aether-Enterprise/backend && npx prisma generate 2>&1)"
+      "Bash(cd /mnt/c/Users/aryamann.tomar/Desktop/Project-Aether-Enterprise/backend && npx prisma generate 2>&1)",
+      "Bash(for month in \"1/1/2025\" \"2/1/2025\" \"3/1/2025\")",
+      "Bash(do grep \"^$month\" monthly_pipeline_snapshot.csv)",
+      "Bash(/tmp/test_date_parse.js:*)",
+      "Bash(/tmp/test_nan.js:*)",
+      "Bash(do)",
+      "Bash(echo:*)",
+      "Bash(python:*)"
     ]
   }
 }

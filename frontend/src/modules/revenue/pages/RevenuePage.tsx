@@ -1276,6 +1276,18 @@ export default function RevenuePage() {
     let forecastUpsellCrossSell = 0; // contributes to NRR only
     let decActualARR = 0;
     const decOfYear = `${yr}-12`;
+
+    // For past years: end point is Jan of next year's Ending_ARR
+    let endARRJanNext = 0;
+    if (!isForecastYear) {
+      const nextYr = String(parseInt(yr) + 1);
+      const janNextYear = `${nextYr}-01`;
+      realData.arrSnapshots.forEach(row => {
+        const rowMonth = row.Snapshot_Month.slice(0, 7);
+        if (rowMonth === janNextYear && arrRowPassesFilters(row)) endARRJanNext += row.Ending_ARR;
+      });
+    }
+
     if (isForecastYear) {
       // Get Dec ending ARR from snapshot data (already includes all actual movements)
       realData.arrSnapshots.forEach(row => {
@@ -1305,19 +1317,21 @@ export default function RevenuePage() {
 
     // Forecast year: Dec ARR already has all movements baked in, so subtract New Business
     // (retention metrics shouldn't include new logos) and add pipeline forecast on top.
-    // Past years: use startARR-based formula with actual movement components.
+    // Past years: use Jan(year+1) Ending_ARR — subtract New Business and (for GRR) Expansion.
     const nrr = startARR > 0
       ? isForecastYear
         ? ((decActualARR - actualNewBusiness + forecastRenewalExt + forecastUpsellCrossSell) / startARR) * 100
-        : ((startARR + actualExpansion + actualScheduleChange - actualContraction - actualChurn) / startARR) * 100
+        : ((endARRJanNext - actualNewBusiness) / startARR) * 100
       : 0;
     const grr = startARR > 0
       ? isForecastYear
         ? ((decActualARR - actualNewBusiness + forecastRenewalExt) / startARR) * 100
-        : ((startARR + actualScheduleChange - actualContraction - actualChurn) / startARR) * 100
+        : ((endARRJanNext - actualNewBusiness - actualExpansion) / startARR) * 100
       : 0;
 
-    return { startARR: Math.round(startARR), endARR: forecastARR, nrr, grr };
+    const endARRDisplay = isForecastYear ? forecastARR : endARRJanNext;
+
+    return { startARR: Math.round(startARR), endARR: Math.round(endARRDisplay), nrr, grr };
   }, [realData.isLoaded, realData.arrSnapshots, realData.pipelineSnapshots, filteredYear, forecastARR, arrRowPassesFilters, pipelineRowPassesFilters]);
 
   // Calculate metrics
@@ -2081,7 +2095,7 @@ export default function RevenuePage() {
             <div className="text-secondary-300 text-lg">→</div>
             <div className="text-right">
               <p className="text-xs text-secondary-400">
-                {isFilteredYearPast ? `Dec ${filteredYear} ARR` : `Dec ${filteredYear} (Forecast)`}
+                {isFilteredYearPast ? `Jan ${parseInt(filteredYear) + 1} ARR` : `Dec ${filteredYear} (Forecast)`}
               </p>
               <p className="text-sm font-semibold text-secondary-700">{formatCurrency(fullYearRetention.endARR)}</p>
             </div>
@@ -2105,7 +2119,7 @@ export default function RevenuePage() {
             <div className="text-secondary-300 text-lg">→</div>
             <div className="text-right">
               <p className="text-xs text-secondary-400">
-                {isFilteredYearPast ? `Dec ${filteredYear} ARR` : `Dec ${filteredYear} (Forecast)`}
+                {isFilteredYearPast ? `Jan ${parseInt(filteredYear) + 1} ARR` : `Dec ${filteredYear} (Forecast)`}
               </p>
               <p className="text-sm font-semibold text-secondary-700">{formatCurrency(fullYearRetention.endARR)}</p>
             </div>

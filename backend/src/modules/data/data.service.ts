@@ -6,6 +6,7 @@ import {
   parseNumber,
   parseDate,
   normalizeLogoType,
+  normalizeNumericId,
 } from './csv-parser.util';
 import {
   ClosedAcvRecord,
@@ -91,7 +92,7 @@ export class DataService implements OnModuleInit {
       // Parse Closed ACV
       this.closedAcv = parseCSV(closedAcvText).map(row => ({
         Closed_ACV_ID: row['Closed_ACV_ID'] || '',
-        Pipeline_Deal_ID: row['Pipeline_Deal_ID'] || '',
+        Pipeline_Deal_ID: normalizeNumericId(row['Pipeline_Deal_ID'] || ''),
         Deal_Name: row['Deal_Name'] || '',
         Customer_Name: row['Customer_Name'] || '',
         Close_Date: parseDate(row['Close_Date'] || ''),
@@ -112,7 +113,7 @@ export class DataService implements OnModuleInit {
       // Parse Pipeline Snapshots
       this.pipelineSnapshots = parseCSV(pipelineText).map(row => ({
         Snapshot_Month: parseDate(row['Snapshot_Month'] || ''),
-        Pipeline_Deal_ID: row['Pipeline_Deal_ID'] || '',
+        Pipeline_Deal_ID: normalizeNumericId(row['Pipeline_Deal_ID'] || ''),
         Deal_Name: row['Deal_Name'] || '',
         Customer_Name: row['Customer_Name'] || '',
         Deal_Value: parseNumber(row['Deal_Value'] || ''),
@@ -128,6 +129,7 @@ export class DataService implements OnModuleInit {
         Segment: (row['Segment'] || '').trim(),
         Product_Sub_Category: (row['Product_Sub_Category'] || '').trim(),
         Sales_Rep: (row['Sales_Rep'] || '').trim(),
+        Created_Date: parseDate(row['Created Date'] || row['Created_Date'] || ''),
       }));
 
       // Parse ARR Snapshots

@@ -36,8 +36,48 @@ export function parseCSVLine(line: string): string[] {
   return fields;
 }
 
+/**
+ * Split CSV text into logical rows, handling quoted fields that contain
+ * newlines (e.g. Excel exports with multi-line cell values).
+ */
+function splitCSVRows(text: string): string[] {
+  const rows: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (inQuotes) {
+      if (char === '"') {
+        if (i + 1 < text.length && text[i + 1] === '"') {
+          current += '""';
+          i++;
+        } else {
+          inQuotes = false;
+          current += char;
+        }
+      } else {
+        // Replace embedded newlines with space so downstream parsing works
+        current += char === '\n' || char === '\r' ? ' ' : char;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+        current += char;
+      } else if (char === '\n') {
+        if (current.trim()) rows.push(current.replace(/\r$/, ''));
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+  }
+  if (current.trim()) rows.push(current.replace(/\r$/, ''));
+  return rows;
+}
+
 export function parseCSV(text: string): Record<string, string>[] {
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  const lines = splitCSVRows(text);
   if (lines.length === 0) return [];
   const headers = parseCSVLine(lines[0]);
   return lines
@@ -58,6 +98,23 @@ export function parseNumber(str: string): number {
   const cleaned = str.replace(/[$%\s]/g, '').replace(/,/g, '');
   const num = parseFloat(cleaned);
   return isNaN(num) ? 0 : num;
+}
+
+/**
+ * Convert scientific notation strings (e.g. "3.08157E+11") to full numeric
+ * strings (e.g. "308157000000"). This handles Excel-corrupted IDs.
+ */
+export function normalizeNumericId(raw: string): string {
+  if (!raw) return '';
+  const trimmed = raw.trim();
+  // Check if it looks like scientific notation (e.g. 3.08E+11, 3.08157E+11)
+  if (/^[\d.]+E\+\d+$/i.test(trimmed)) {
+    const num = Number(trimmed);
+    if (!isNaN(num) && isFinite(num)) {
+      return num.toFixed(0);
+    }
+  }
+  return trimmed;
 }
 
 export function parseDate(dateStr: string): string {

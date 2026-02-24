@@ -1,6 +1,6 @@
 Sales_Rep_ID,Name,Email,Role,Region,Vertical_Focus,Segment,Manager_ID,Manager_Name,Annual_Quota,Q1_Quota,Q2_Quota,Q3_Quota,Q4_Quota,Hire_Date,Status
 GEP.9647,Stephanie Meer,stephanie.meer@gep.com,Senior Manager - Business Development,North America,All,Enterprise,GEP.4366,Michael Clear,"2,100,000","525,000","525,000","525,000","525,000",9/15/2025,Active
-GEP.6046,William Hoffman,william.hoffman@gep.com,Senior Manager - Business Development,North America,All,Enterprise,GEP.4366,Michael Clear,"1,800,000","450,000","450,000","450,000","450,000",4/22/2024,Active
+GEP.6046,Bill Hoffman,william.hoffman@gep.com,Senior Manager - Business Development,North America,All,Enterprise,GEP.4366,Michael Clear,"1,800,000","450,000","450,000","450,000","450,000",4/22/2024,Active
 GEP.10046,Bill Constantakis,bill.constantakis@gep.com,Senior Manager - Business Development,North America,All,Enterprise,GEP.4366,Michael Clear,"2,100,000","525,000","525,000","525,000","525,000",11/17/2025,Active
 GEP.4366,Michael Clear,michael.clear@gep.com,"Senior Director - Business Development, SW",North America,All,Enterprise,GEP.4366,Michael Clear,"5,000,000","1,250,000","1,250,000","1,250,000","1,250,000",12/4/2023,Active
 GEP.6225,Addison Cauley,addison.cauley@gep.com,Manager - Business Development,North America,All,Enterprise,GEP05667,Brian Bergersen,"1,800,000","450,000","450,000","450,000","450,000",5/13/2024,Active

@@ -86,6 +86,7 @@ export interface RawPipelineSnapshot {
   Segment: string;
   Product_Sub_Category: string;
   Sales_Rep: string;
+  Created_Date: string;
 }
 
 export interface RawARRSnapshot {
