@@ -250,11 +250,12 @@ function buildRealMonthlyARR(
 ): MonthlyARR[] {
   const priorMonth = getPriorMonth(); // Actual data cutoff (e.g. "2026-01")
 
-  // 1. Aggregate actual Ending_ARR by month from ARR snapshots (only up to prior month, with filters)
+  // 1. Aggregate actual Ending_ARR by month from ARR snapshots (ALL months, with filters)
+  //    Months <= priorMonth are "actual"; months > priorMonth provide the base ARR for forecasting
   const actualMonthMap = new Map<string, number>();
   store.arrSnapshots.forEach(row => {
     const month = row.Snapshot_Month.slice(0, 7); // YYYY-MM
-    if (month <= priorMonth && arrFilter(row)) {
+    if (arrFilter(row)) {
       actualMonthMap.set(month, (actualMonthMap.get(month) || 0) + row.Ending_ARR);
     }
   });
@@ -322,12 +323,14 @@ function buildRealMonthlyARR(
     const monthLabel = fc.toLocaleString('en-US', { month: 'short', year: '2-digit' });
     cumulativeRenewals += (renewalByMonth.get(ym) || 0);
     cumulativeNewBiz += (newBizByMonth.get(ym) || 0);
-    const totalForecast = lastActualARR + cumulativeRenewals + cumulativeNewBiz;
+    // Use per-month actual ARR as base (from snapshot) if available, else fall back to lastActualARR
+    const monthBaseARR = actualMonthMap.get(ym) || lastActualARR;
+    const totalForecast = monthBaseARR + cumulativeRenewals + cumulativeNewBiz;
     data.push({
       month: monthLabel,
       currentARR: 0,
       forecastedARR: Math.round(totalForecast),
-      forecastBase: Math.round(lastActualARR),
+      forecastBase: Math.round(monthBaseARR),
       forecastRenewals: Math.round(cumulativeRenewals),
       forecastNewBusiness: Math.round(cumulativeNewBiz),
     });
@@ -1076,18 +1079,24 @@ export default function RevenuePage() {
       return Math.round(total);
     }
 
-    // Otherwise, compute forecast: last actual ARR + cumulative pipeline through Dec of filtered year
-    // Get the last actual month's ARR (up to prior month, with filters)
+    // Otherwise, compute forecast: per-month actual ARR as base + cumulative pipeline through Dec of filtered year
+    // Get ALL months' ARR from snapshot (including future months as base)
     let lastActualARR = 0;
     const actualMonthMap = new Map<string, number>();
     realData.arrSnapshots.forEach(row => {
       const rowMonth = row.Snapshot_Month.slice(0, 7);
-      if (rowMonth <= priorMonth && arrRowPassesFilters(row)) {
+      if (arrRowPassesFilters(row)) {
         actualMonthMap.set(rowMonth, (actualMonthMap.get(rowMonth) || 0) + row.Ending_ARR);
       }
     });
-    const sortedMonths = Array.from(actualMonthMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-    if (sortedMonths.length > 0) lastActualARR = sortedMonths[sortedMonths.length - 1][1];
+    // lastActualARR = fallback from the latest actual month (≤ priorMonth)
+    const sortedActualMonths = Array.from(actualMonthMap.entries())
+      .filter(([m]) => m <= priorMonth)
+      .sort((a, b) => a[0].localeCompare(b[0]));
+    if (sortedActualMonths.length > 0) lastActualARR = sortedActualMonths[sortedActualMonths.length - 1][1];
+
+    // Use Dec's snapshot ARR as base if available, else fall back to lastActualARR
+    const decBaseARR = actualMonthMap.get(decOfYear) || lastActualARR;
 
     // Get latest pipeline snapshot month
     let latestSnapshotMonth = '';
@@ -1108,7 +1117,7 @@ export default function RevenuePage() {
       }
     });
 
-    return Math.round(lastActualARR + cumulativePipeline);
+    return Math.round(decBaseARR + cumulativePipeline);
   }, [realData.isLoaded, realData.arrSnapshots, realData.pipelineSnapshots, yearFilterMulti, priorMonthDefaults, arrRowPassesFilters, pipelineRowPassesFilters]);
 
   // Forecasted ARR for the specific selected month (not year-end)
@@ -1130,17 +1139,23 @@ export default function RevenuePage() {
       return Math.round(total);
     }
 
-    // Otherwise, compute forecast: last actual ARR + cumulative pipeline through selected month
+    // Otherwise, compute forecast: per-month actual ARR as base + cumulative pipeline through selected month
     let lastActualARR = 0;
     const actualMonthMap = new Map<string, number>();
     realData.arrSnapshots.forEach(row => {
       const rowMonth = row.Snapshot_Month.slice(0, 7);
-      if (rowMonth <= priorMonth && arrRowPassesFilters(row)) {
+      if (arrRowPassesFilters(row)) {
         actualMonthMap.set(rowMonth, (actualMonthMap.get(rowMonth) || 0) + row.Ending_ARR);
       }
     });
-    const sortedMonths = Array.from(actualMonthMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-    if (sortedMonths.length > 0) lastActualARR = sortedMonths[sortedMonths.length - 1][1];
+    // lastActualARR = fallback from the latest actual month (≤ priorMonth)
+    const sortedActualMonths = Array.from(actualMonthMap.entries())
+      .filter(([m]) => m <= priorMonth)
+      .sort((a, b) => a[0].localeCompare(b[0]));
+    if (sortedActualMonths.length > 0) lastActualARR = sortedActualMonths[sortedActualMonths.length - 1][1];
+
+    // Use selected month's snapshot ARR as base if available, else fall back to lastActualARR
+    const monthBaseARR = actualMonthMap.get(selectedARRMonth) || lastActualARR;
 
     let latestSnapshotMonth = '';
     realData.pipelineSnapshots.forEach(row => {
@@ -1159,7 +1174,7 @@ export default function RevenuePage() {
       }
     });
 
-    return Math.round(lastActualARR + cumulativePipeline);
+    return Math.round(monthBaseARR + cumulativePipeline);
   }, [realData.isLoaded, realData.arrSnapshots, realData.pipelineSnapshots, selectedARRMonth, arrRowPassesFilters, pipelineRowPassesFilters]);
 
   // Determine if the filtered year is in the past (for KPI card labeling)
@@ -1205,7 +1220,16 @@ export default function RevenuePage() {
     // NRR: additionally Upsell + Cross-Sell License_ACV  (expansion on top of renewals)
     let forecastRenewalExt = 0;      // contributes to both GRR and NRR
     let forecastUpsellCrossSell = 0; // contributes to NRR only
+    // Dec Actual ARR from snapshot (used as numerator base for forecast year)
+    let decActualARR = 0;
+    const decOfYear = `${yr}-12`;
     if (isForecastYear) {
+      // Get Dec ending ARR from snapshot data
+      realData.arrSnapshots.forEach(row => {
+        const rowMonth = row.Snapshot_Month.slice(0, 7);
+        if (rowMonth === decOfYear && arrRowPassesFilters(row)) decActualARR += row.Ending_ARR;
+      });
+
       let latestSnapshotMonth = '';
       realData.pipelineSnapshots.forEach(row => {
         if (row.Snapshot_Month > latestSnapshotMonth) latestSnapshotMonth = row.Snapshot_Month;
@@ -1227,13 +1251,17 @@ export default function RevenuePage() {
       });
     }
 
-    // Full-Year NRR: retained + expansion + schedule change + forecast renewals + forecast upsell/XS - losses
+    // For forecast year: numerator uses Dec Actual ARR (from snapshot) as base instead of startARR
+    // For past years: numerator uses startARR as base (forecast components are 0)
     const nrr = startARR > 0
-      ? ((startARR + actualExpansion + actualScheduleChange + forecastRenewalExt + forecastUpsellCrossSell - actualContraction - actualChurn) / startARR) * 100
+      ? isForecastYear
+        ? ((decActualARR + actualExpansion + actualScheduleChange + forecastRenewalExt + forecastUpsellCrossSell - actualContraction - actualChurn) / startARR) * 100
+        : ((startARR + actualExpansion + actualScheduleChange - actualContraction - actualChurn) / startARR) * 100
       : 0;
-    // Full-Year GRR: retained + schedule change + forecast renewals (no expansion/upsell) - losses
     const grr = startARR > 0
-      ? ((startARR + actualScheduleChange + forecastRenewalExt - actualContraction - actualChurn) / startARR) * 100
+      ? isForecastYear
+        ? ((decActualARR + actualScheduleChange + forecastRenewalExt - actualContraction - actualChurn) / startARR) * 100
+        : ((startARR + actualScheduleChange - actualContraction - actualChurn) / startARR) * 100
       : 0;
 
     return { startARR: Math.round(startARR), endARR: forecastARR, nrr, grr };
@@ -2282,15 +2310,46 @@ export default function RevenuePage() {
                 isAnimationActive={false}
               />
 
-              {/* Visible value bar - stacked on top of spacer */}
+              {/* Visible value bar - stacked on top of spacer, clickable to filter tables */}
               <Bar
                 dataKey="value"
                 stackId="waterfall"
                 radius={[4, 4, 4, 4]}
+                onClick={(_data: any, index: number) => {
+                  const categoryMap: Record<number, string | null> = {
+                    0: null, // Starting ARR - clears filter
+                    1: 'New Business',
+                    2: 'Expansion',
+                    3: 'Schedule Change',
+                    4: 'Contraction',
+                    5: 'Churn',
+                    6: null, // Ending ARR - clears filter
+                  };
+                  const category = categoryMap[index];
+                  if (category === null) {
+                    setMovementTypeFilter(null);
+                  } else {
+                    setMovementTypeFilter(prev => prev === category ? null : category);
+                  }
+                }}
+                style={{ cursor: 'pointer' }}
               >
-                {arrMovementData.waterfallData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
-                ))}
+                {arrMovementData.waterfallData.map((entry, index) => {
+                  const categoryMap: Record<number, string | null> = {
+                    0: null, 1: 'New Business', 2: 'Expansion', 3: 'Schedule Change', 4: 'Contraction', 5: 'Churn', 6: null,
+                  };
+                  const barCategory = categoryMap[index];
+                  const isActive = movementTypeFilter === null || movementTypeFilter === barCategory;
+                  return (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.fill}
+                      fillOpacity={isActive ? 1 : 0.3}
+                      stroke={movementTypeFilter !== null && movementTypeFilter === barCategory ? '#1e40af' : 'none'}
+                      strokeWidth={movementTypeFilter !== null && movementTypeFilter === barCategory ? 2 : 0}
+                    />
+                  );
+                })}
                 <LabelList
                   dataKey="displayValue"
                   position="top"

@@ -72,9 +72,9 @@ export type Platform = typeof PLATFORMS[number];
 export type LogoType = typeof LOGO_TYPES[number];
 export type NormalizedLogoType = typeof NORMALIZED_LOGO_TYPES[number];
 
-// Helper function to normalize Logo Type (Extension = Renewal)
+// Helper function to normalize Logo Type (Extension = Renewal = Renewal/Extn)
 export function normalizeLogoType(logoType: string): NormalizedLogoType {
-  if (logoType === 'Extension' || logoType === 'Renewal') {
+  if (logoType === 'Extension' || logoType === 'Renewal' || logoType === 'Renewal/Extn') {
     return 'Extension/Renewal';
   }
   return logoType as NormalizedLogoType;

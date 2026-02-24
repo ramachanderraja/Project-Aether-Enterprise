@@ -64,6 +64,7 @@ interface Salesperson {
 
 const REGIONS = ['North America', 'Europe', 'LATAM', 'Middle East', 'APAC'];
 const LICENSE_ACV_LOGO_TYPES = ['New Logo', 'Upsell', 'Cross-Sell'];
+const RENEWAL_LOGO_TYPES = ['Extension', 'Renewal'];
 
 function normalizeRegion(raw: string): string {
   const map: Record<string, string> = {
@@ -378,13 +379,16 @@ export class SalesComputeService {
     const activeDeals = filtered.filter(o => o.status === 'Active' || o.status === 'Stalled');
 
     const totalClosedACV = closedWon.reduce((sum, o) => sum + this.getClosedValue(o, rt), 0);
-    const weightedPipelineACV = activeDeals.reduce((sum, o) => sum + this.getPipelineValue(o, rt), 0);
+    // ACV forecast excludes Renewal/Extension deals from pipeline
+    const acvActiveDeals = activeDeals.filter(o => !RENEWAL_LOGO_TYPES.includes(o.logoType));
+    const weightedPipelineACV = acvActiveDeals.reduce((sum, o) => sum + this.getPipelineValue(o, rt), 0);
     const forecastACV = totalClosedACV + weightedPipelineACV;
 
     const prevYearWon = prevYear.filter(o => o.status === 'Won');
     const previousYearClosedACV = prevYearWon.reduce((sum, o) => sum + this.getClosedValue(o, rt), 0);
     const prevYearActive = prevYear.filter(o => o.status === 'Active' || o.status === 'Stalled');
-    const previousYearPipelineACV = prevYearActive.reduce((sum, o) => sum + this.getPipelineValue(o, rt), 0);
+    const prevYearAcvActive = prevYearActive.filter(o => !RENEWAL_LOGO_TYPES.includes(o.logoType));
+    const previousYearPipelineACV = prevYearAcvActive.reduce((sum, o) => sum + this.getPipelineValue(o, rt), 0);
     const previousYearForecastACV = previousYearClosedACV + previousYearPipelineACV;
 
     const yoyGrowth = previousYearForecastACV > 0
@@ -617,8 +621,10 @@ export class SalesComputeService {
         ? wonInQ.reduce((sum, o) => sum + this.getClosedValue(o, rt), 0)
         : 0;
 
+      // ACV forecast excludes Renewal/Extension deals from pipeline
       const activeInQ = filtered.filter(o => {
         if (o.status !== 'Active' && o.status !== 'Stalled') return false;
+        if (RENEWAL_LOGO_TYPES.includes(o.logoType)) return false;
         const d = parseDateLocal(o.expectedCloseDate);
         return d >= qStart && d <= qEnd;
       });
@@ -658,15 +664,16 @@ export class SalesComputeService {
       );
       const closedACV = regionWon.reduce((sum, o) => sum + this.getClosedValue(o, rt), 0);
 
+      // ACV forecast excludes Renewal/Extension deals from pipeline
       const regionActive = filtered.filter(o =>
-        (o.status === 'Active' || o.status === 'Stalled') && o.region === region,
+        (o.status === 'Active' || o.status === 'Stalled') && o.region === region && !RENEWAL_LOGO_TYPES.includes(o.logoType),
       );
       const weightedPipeline = regionActive.reduce((sum, o) => sum + this.getPipelineValue(o, rt), 0);
       const forecast = closedACV + weightedPipeline;
 
       const prevRegionWon = prevYearOpps.filter(o => o.status === 'Won' && o.region === region);
       const previousYearACV = prevRegionWon.reduce((sum, o) => sum + this.getClosedValue(o, rt), 0);
-      const prevRegionActive = prevYearOpps.filter(o => (o.status === 'Active' || o.status === 'Stalled') && o.region === region);
+      const prevRegionActive = prevYearOpps.filter(o => (o.status === 'Active' || o.status === 'Stalled') && o.region === region && !RENEWAL_LOGO_TYPES.includes(o.logoType));
       const prevYearPipeline = prevRegionActive.reduce((sum, o) => sum + this.getPipelineValue(o, rt), 0);
       const previousYearForecast = previousYearACV + prevYearPipeline;
 
@@ -711,16 +718,18 @@ export class SalesComputeService {
         return d >= monthStart2 && d <= monthEnd;
       }).reduce((sum, o) => sum + this.getClosedValue(o, rt), 0);
 
-      // Pipeline weighted for this month
+      // Pipeline weighted for this month — ACV forecast excludes Renewal/Extension
       const monthlyPipeline = filtered.filter(o => {
         if (o.status !== 'Active' && o.status !== 'Stalled') return false;
+        if (RENEWAL_LOGO_TYPES.includes(o.logoType)) return false;
         const d = parseDateLocal(o.expectedCloseDate);
         return d >= monthStart2 && d <= monthEnd;
       }).reduce((sum, o) => sum + this.getPipelineValue(o, rt), 0);
 
-      // Cumulative pipeline through this month
+      // Cumulative pipeline through this month — ACV forecast excludes Renewal/Extension
       const pipelineThrough = filtered.filter(o => {
         if (o.status !== 'Active' && o.status !== 'Stalled') return false;
+        if (RENEWAL_LOGO_TYPES.includes(o.logoType)) return false;
         const d = parseDateLocal(o.expectedCloseDate);
         return d.getFullYear() === yr && d <= monthEnd;
       }).reduce((sum, o) => sum + this.getPipelineValue(o, rt), 0);

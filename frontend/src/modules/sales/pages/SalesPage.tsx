@@ -117,6 +117,7 @@ const SEGMENTS = ['Enterprise', 'SMB'];
 const CHANNELS = ['Direct', 'Partner', 'Reseller', 'Organic', 'Referral'];
 
 const LICENSE_ACV_LOGO_TYPES = ['New Logo', 'Upsell', 'Cross-Sell'];
+const RENEWAL_LOGO_TYPES = ['Extension', 'Renewal'];
 const STAGES = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
 
 const SOLD_BY_OPTIONS = ['Sales', 'GD', 'TSO'] as const;
@@ -333,8 +334,10 @@ function buildQuarterlyForecast(opps: Opportunity[], prevYearOpps: Opportunity[]
       ? wonInQ.reduce((sum, o) => sum + getClosedVal(o), 0)
       : 0;
 
+    // ACV forecast excludes Renewal/Extension deals from pipeline
     const activeInQ = opps.filter(o => {
       if (o.status !== 'Active' && o.status !== 'Stalled') return false;
+      if (RENEWAL_LOGO_TYPES.includes(o.logoType)) return false;
       const d = parseDateLocal(o.expectedCloseDate);
       return d >= qStart && d <= qEnd;
     });
@@ -376,8 +379,9 @@ function buildRegionalForecast(opps: Opportunity[], prevYearOpps: Opportunity[],
     );
     const closedACV = regionWon.reduce((sum, o) => sum + getClosedVal(o), 0);
 
+    // ACV forecast excludes Renewal/Extension deals from pipeline
     const regionActive = opps.filter(o =>
-      (o.status === 'Active' || o.status === 'Stalled') && o.region === region
+      (o.status === 'Active' || o.status === 'Stalled') && o.region === region && !RENEWAL_LOGO_TYPES.includes(o.logoType)
     );
     const weightedPipeline = regionActive.reduce((sum, o) => sum + getPipeVal(o), 0);
     const forecast = closedACV + weightedPipeline;
@@ -388,9 +392,9 @@ function buildRegionalForecast(opps: Opportunity[], prevYearOpps: Opportunity[],
     );
     const previousYearACV = prevRegionWon.reduce((sum, o) => sum + getClosedVal(o), 0);
 
-    // Previous year forecast = previous year closed + previous year pipeline
+    // Previous year forecast = previous year closed + previous year pipeline (excl. Renewal/Extension)
     const prevRegionActive = prevYearOpps.filter(o =>
-      (o.status === 'Active' || o.status === 'Stalled') && o.region === region
+      (o.status === 'Active' || o.status === 'Stalled') && o.region === region && !RENEWAL_LOGO_TYPES.includes(o.logoType)
     );
     const prevYearPipeline = prevRegionActive.reduce((sum, o) => sum + getPipeVal(o), 0);
     const previousYearForecast = previousYearACV + prevYearPipeline;
@@ -744,7 +748,7 @@ export default function SalesPage() {
   const [verticalFilter, setVerticalFilter] = useState<string[]>([]);
   const [segmentFilter, setSegmentFilter] = useState<string[]>([]);
   const [channelFilter, setChannelFilter] = useState<string[]>([]);
-  const [logoTypeFilter, setLogoTypeFilter] = useState<string[]>([]);
+  const [logoTypeFilter, setLogoTypeFilter] = useState<string[]>(['New Logo', 'Upsell', 'Cross-Sell']);
   const [soldByFilter, setSoldByFilter] = useState<string>('All');  // Sold By filter (Change 9)
   const [revenueTypeFilter, setRevenueTypeFilter] = useState<string>('License');  // Revenue Type filter - default License
   const [productCategoryFilter, setProductCategoryFilter] = useState<string[]>([]);
@@ -1004,16 +1008,19 @@ export default function SalesPage() {
 
     // Weighted Pipeline ACV — picks the right column from the pipeline snapshot
     // License filter → License_ACV, Implementation filter → Implementation_Value
-    const weightedPipelineACV = activeDeals.reduce((sum, o) => sum + getPipelineValue(o), 0);
+    // ACV forecast excludes Renewal/Extension deals from pipeline
+    const acvActiveDeals = activeDeals.filter(o => !RENEWAL_LOGO_TYPES.includes(o.logoType));
+    const weightedPipelineACV = acvActiveDeals.reduce((sum, o) => sum + getPipelineValue(o), 0);
 
-    // Forecast ACV = Closed ACV + Weighted Pipeline ACV
+    // Forecast ACV = Closed ACV + Weighted Pipeline ACV (excl. Renewal/Extension pipeline)
     const forecastACV = totalClosedACV + weightedPipelineACV;
 
     // Previous year: compute same metrics for YoY comparison against Forecast ACV
     const prevYearWon = previousYearOpportunities.filter(o => o.status === 'Won');
     const previousYearClosedACV = prevYearWon.reduce((sum, o) => sum + getClosedValue(o), 0);
     const prevYearActive = previousYearOpportunities.filter(o => o.status === 'Active' || o.status === 'Stalled');
-    const previousYearPipelineACV = prevYearActive.reduce((sum, o) => sum + getPipelineValue(o), 0);
+    const prevYearAcvActive = prevYearActive.filter(o => !RENEWAL_LOGO_TYPES.includes(o.logoType));
+    const previousYearPipelineACV = prevYearAcvActive.reduce((sum, o) => sum + getPipelineValue(o), 0);
     const previousYearForecastACV = previousYearClosedACV + previousYearPipelineACV;
 
     // YoY Growth % is against Forecast ACV (Closed + Pipeline)
@@ -2397,25 +2404,25 @@ export default function SalesPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Key Deal Movement Table — top movers by absolute change */}
         <div className="card overflow-hidden">
-          <div className="p-5 border-b border-secondary-200 flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-secondary-900">Key Deal Movement</h2>
+          <div className="p-4 border-b border-secondary-200 flex justify-between items-center">
+            <h2 className="text-sm font-semibold text-secondary-900">Key Deal Movement</h2>
             <button
               onClick={() => exportToCSV(pipelineMovement.topMovers, 'deal_movement')}
-              className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
+              className="px-2 py-0.5 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
             >
               Export
             </button>
           </div>
           <div className="overflow-x-auto max-h-80">
-            <table className="w-full">
+            <table className="w-full" style={{ fontSize: '0.7rem' }}>
               <thead className="bg-secondary-50 sticky top-0">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Deal</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Account</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Previous</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Current</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Change</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Category</th>
+                  <th className="px-2 py-1.5 text-left font-semibold text-secondary-500 uppercase" style={{ fontSize: '0.6rem' }}>Deal</th>
+                  <th className="px-2 py-1.5 text-left font-semibold text-secondary-500 uppercase" style={{ fontSize: '0.6rem' }}>Account</th>
+                  <th className="px-2 py-1.5 text-right font-semibold text-secondary-500 uppercase" style={{ fontSize: '0.6rem' }}>Previous</th>
+                  <th className="px-2 py-1.5 text-right font-semibold text-secondary-500 uppercase" style={{ fontSize: '0.6rem' }}>Current</th>
+                  <th className="px-2 py-1.5 text-right font-semibold text-secondary-500 uppercase" style={{ fontSize: '0.6rem' }}>Change</th>
+                  <th className="px-2 py-1.5 text-left font-semibold text-secondary-500 uppercase" style={{ fontSize: '0.6rem' }}>Category</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-secondary-100">
@@ -2424,22 +2431,22 @@ export default function SalesPage() {
                   : pipelineMovement.topMovers
                 ).slice(0, 10).map((deal) => (
                   <tr key={deal.id} className={`${deal.change > 0 ? 'bg-green-50' : deal.change < 0 ? 'bg-red-50' : ''}`}>
-                    <td className="px-4 py-3 font-medium text-secondary-900">{deal.dealName}</td>
-                    <td className="px-4 py-3 text-secondary-600">{deal.customerName}</td>
-                    <td className="px-4 py-3 text-right text-secondary-600">{formatCurrency(deal.prevValue)}</td>
-                    <td className="px-4 py-3 text-right font-medium text-secondary-900">{formatCurrency(deal.currValue)}</td>
-                    <td className={`px-4 py-3 text-right font-medium ${deal.change > 0 ? 'text-green-600' : deal.change < 0 ? 'text-red-600' : 'text-secondary-400'}`}>
+                    <td className="px-2 py-1.5 font-medium text-secondary-900 truncate max-w-[120px]">{deal.dealName}</td>
+                    <td className="px-2 py-1.5 text-secondary-600 truncate max-w-[100px]">{deal.customerName}</td>
+                    <td className="px-2 py-1.5 text-right text-secondary-600">{formatCurrency(deal.prevValue)}</td>
+                    <td className="px-2 py-1.5 text-right font-medium text-secondary-900">{formatCurrency(deal.currValue)}</td>
+                    <td className={`px-2 py-1.5 text-right font-medium ${deal.change > 0 ? 'text-green-600' : deal.change < 0 ? 'text-red-600' : 'text-secondary-400'}`}>
                       {deal.change > 0 ? '+' : ''}{formatCurrency(deal.change)}
                       {deal.prevValue > 0 ? ` (${((deal.change / deal.prevValue) * 100).toFixed(0)}%)` : ''}
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                    <td className="px-2 py-1.5">
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full font-medium ${
                         deal.category === 'New' ? 'bg-blue-100 text-blue-800' :
                         deal.category === 'Increased' ? 'bg-green-100 text-green-800' :
                         deal.category === 'Decreased' ? 'bg-amber-100 text-amber-800' :
                         deal.category === 'Won' ? 'bg-emerald-100 text-emerald-800' :
                         'bg-red-100 text-red-800'
-                      }`}>
+                      }`} style={{ fontSize: '0.6rem' }}>
                         {deal.category}
                       </span>
                     </td>
@@ -2452,38 +2459,38 @@ export default function SalesPage() {
 
         {/* Lost Deals Analysis */}
         <div className="card overflow-hidden">
-          <div className="p-5 border-b border-secondary-200 flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-secondary-900">Lost Deals Analysis</h2>
+          <div className="p-4 border-b border-secondary-200 flex justify-between items-center">
+            <h2 className="text-sm font-semibold text-secondary-900">Lost Deals Analysis</h2>
             <button
               onClick={() => exportToCSV(pipelineMovement.lostDeals, 'lost_deals')}
-              className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
+              className="px-2 py-0.5 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
             >
               Export
             </button>
           </div>
           <div className="overflow-x-auto max-h-80">
-            <table className="w-full">
+            <table className="w-full" style={{ fontSize: '0.7rem' }}>
               <thead className="bg-secondary-50 sticky top-0">
                 <tr>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Deal Name</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Account</th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Value</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Stage Lost At</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Owner</th>
+                  <th className="px-2 py-1.5 text-left font-semibold text-secondary-500 uppercase" style={{ fontSize: '0.6rem' }}>Deal Name</th>
+                  <th className="px-2 py-1.5 text-left font-semibold text-secondary-500 uppercase" style={{ fontSize: '0.6rem' }}>Account</th>
+                  <th className="px-2 py-1.5 text-right font-semibold text-secondary-500 uppercase" style={{ fontSize: '0.6rem' }}>Value</th>
+                  <th className="px-2 py-1.5 text-left font-semibold text-secondary-500 uppercase" style={{ fontSize: '0.6rem' }}>Stage Lost At</th>
+                  <th className="px-2 py-1.5 text-left font-semibold text-secondary-500 uppercase" style={{ fontSize: '0.6rem' }}>Owner</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-secondary-100">
                 {(waterfallSelectedCategory && waterfallSelectedCategory !== 'Lost') ? (
-                  <tr><td colSpan={5} className="px-5 py-8 text-center text-secondary-400">Select "Lost Deals" on the waterfall chart or clear filter to view</td></tr>
+                  <tr><td colSpan={5} className="px-2 py-6 text-center text-secondary-400 text-xs">Select "Lost Deals" on the waterfall chart or clear filter to view</td></tr>
                 ) : pipelineMovement.lostDeals.length === 0 ? (
-                  <tr><td colSpan={5} className="px-5 py-8 text-center text-secondary-400">No lost deals in this period</td></tr>
+                  <tr><td colSpan={5} className="px-2 py-6 text-center text-secondary-400 text-xs">No lost deals in this period</td></tr>
                 ) : pipelineMovement.lostDeals.map((deal) => (
                   <tr key={deal.id} className="hover:bg-secondary-50">
-                    <td className="px-5 py-4 font-medium text-secondary-900">{deal.dealName}</td>
-                    <td className="px-5 py-4 text-secondary-600">{deal.customerName}</td>
-                    <td className="px-5 py-4 text-right font-medium text-red-600">{formatCurrency(Math.abs(deal.prevValue))}</td>
-                    <td className="px-5 py-4 text-secondary-600">{deal.stage}</td>
-                    <td className="px-5 py-4 text-secondary-600">{deal.salesRep}</td>
+                    <td className="px-2 py-1.5 font-medium text-secondary-900 truncate max-w-[120px]">{deal.dealName}</td>
+                    <td className="px-2 py-1.5 text-secondary-600 truncate max-w-[100px]">{deal.customerName}</td>
+                    <td className="px-2 py-1.5 text-right font-medium text-red-600">{formatCurrency(Math.abs(deal.prevValue))}</td>
+                    <td className="px-2 py-1.5 text-secondary-600">{deal.stage}</td>
+                    <td className="px-2 py-1.5 text-secondary-600 truncate max-w-[80px]">{deal.salesRep}</td>
                   </tr>
                 ))}
               </tbody>
@@ -2494,21 +2501,21 @@ export default function SalesPage() {
 
       {/* All Deal Movement Table — searchable by deal name */}
       <div className="card overflow-hidden">
-        <div className="p-5 border-b border-secondary-200 flex justify-between items-center">
+        <div className="p-4 border-b border-secondary-200 flex justify-between items-center">
           <div>
-            <h2 className="text-lg font-semibold text-secondary-900">All Deal Movement</h2>
-            <p className="text-sm text-secondary-500">
+            <h2 className="text-sm font-semibold text-secondary-900">All Deal Movement</h2>
+            <p className="text-xs text-secondary-500">
               {snapshotComparison ? `${snapshotComparison.prevLabel} → ${snapshotComparison.currLabel}` : 'Month-over-month deal changes'}
               {' — '}{waterfallSelectedCategory
                 ? `${pipelineMovement.dealDetails.filter(d => d.category === waterfallSelectedCategory).length} ${waterfallSelectedCategory.toLowerCase()} deals`
                 : `${pipelineMovement.dealDetails.length} deals with movement`}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <input
               type="text"
               placeholder="Filter by deal name..."
-              className="px-3 py-1.5 text-sm border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="px-2 py-1 text-xs border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               onChange={(e) => {
                 const el = e.target.closest('.card')?.querySelector('[data-deal-filter]');
                 if (el) (el as HTMLElement).dataset.dealFilter = e.target.value.toLowerCase();
@@ -2520,29 +2527,29 @@ export default function SalesPage() {
             />
             <button
               onClick={() => exportToCSV(pipelineMovement.dealDetails, 'all_deal_movement')}
-              className="px-3 py-1.5 text-sm border border-secondary-200 rounded-lg hover:bg-secondary-50 flex items-center gap-2"
+              className="px-2 py-1 text-xs border border-secondary-200 rounded-lg hover:bg-secondary-50 flex items-center gap-2"
             >
               Export
             </button>
           </div>
         </div>
         <div className="overflow-x-auto max-h-96">
-          <table className="w-full">
+          <table className="w-full" style={{ fontSize: '0.7rem' }}>
             <thead className="bg-secondary-50 sticky top-0">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Deal Name</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Account</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Category</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Previous Value</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Current Value</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase">Change</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Stage</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-500 uppercase">Owner</th>
+                <th className="px-2 py-1.5 text-left font-semibold text-secondary-500 uppercase" style={{ fontSize: '0.6rem' }}>Deal Name</th>
+                <th className="px-2 py-1.5 text-left font-semibold text-secondary-500 uppercase" style={{ fontSize: '0.6rem' }}>Account</th>
+                <th className="px-2 py-1.5 text-left font-semibold text-secondary-500 uppercase" style={{ fontSize: '0.6rem' }}>Category</th>
+                <th className="px-2 py-1.5 text-right font-semibold text-secondary-500 uppercase" style={{ fontSize: '0.6rem' }}>Prev Value</th>
+                <th className="px-2 py-1.5 text-right font-semibold text-secondary-500 uppercase" style={{ fontSize: '0.6rem' }}>Curr Value</th>
+                <th className="px-2 py-1.5 text-right font-semibold text-secondary-500 uppercase" style={{ fontSize: '0.6rem' }}>Change</th>
+                <th className="px-2 py-1.5 text-left font-semibold text-secondary-500 uppercase" style={{ fontSize: '0.6rem' }}>Stage</th>
+                <th className="px-2 py-1.5 text-left font-semibold text-secondary-500 uppercase" style={{ fontSize: '0.6rem' }}>Owner</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-secondary-100">
               {pipelineMovement.dealDetails.length === 0 ? (
-                <tr><td colSpan={8} className="px-5 py-8 text-center text-secondary-400">No deal movement in this period</td></tr>
+                <tr><td colSpan={8} className="px-2 py-6 text-center text-secondary-400 text-xs">No deal movement in this period</td></tr>
               ) : (waterfallSelectedCategory
                 ? pipelineMovement.dealDetails.filter(d => d.category === waterfallSelectedCategory)
                 : pipelineMovement.dealDetails
@@ -2555,26 +2562,26 @@ export default function SalesPage() {
                   deal.change > 0 ? 'bg-green-50/50' :
                   deal.change < 0 ? 'bg-red-50/30' : ''
                 }`}>
-                  <td className="px-4 py-3 font-medium text-secondary-900">{deal.dealName}</td>
-                  <td className="px-4 py-3 text-secondary-600">{deal.customerName}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                  <td className="px-2 py-1.5 font-medium text-secondary-900 truncate max-w-[110px]">{deal.dealName}</td>
+                  <td className="px-2 py-1.5 text-secondary-600 truncate max-w-[90px]">{deal.customerName}</td>
+                  <td className="px-2 py-1.5">
+                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full font-medium ${
                       deal.category === 'New' ? 'bg-blue-100 text-blue-800' :
                       deal.category === 'Increased' ? 'bg-green-100 text-green-800' :
                       deal.category === 'Decreased' ? 'bg-amber-100 text-amber-800' :
                       deal.category === 'Won' ? 'bg-emerald-100 text-emerald-800' :
                       'bg-red-100 text-red-800'
-                    }`}>
+                    }`} style={{ fontSize: '0.6rem' }}>
                       {deal.category}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right text-secondary-600">{formatCurrency(deal.prevValue)}</td>
-                  <td className="px-4 py-3 text-right font-medium text-secondary-900">{formatCurrency(deal.currValue)}</td>
-                  <td className={`px-4 py-3 text-right font-medium ${deal.change > 0 ? 'text-green-600' : deal.change < 0 ? 'text-red-600' : 'text-secondary-400'}`}>
+                  <td className="px-2 py-1.5 text-right text-secondary-600">{formatCurrency(deal.prevValue)}</td>
+                  <td className="px-2 py-1.5 text-right font-medium text-secondary-900">{formatCurrency(deal.currValue)}</td>
+                  <td className={`px-2 py-1.5 text-right font-medium ${deal.change > 0 ? 'text-green-600' : deal.change < 0 ? 'text-red-600' : 'text-secondary-400'}`}>
                     {deal.change > 0 ? '+' : ''}{formatCurrency(deal.change)}
                   </td>
-                  <td className="px-4 py-3 text-secondary-600">{deal.stage}</td>
-                  <td className="px-4 py-3 text-secondary-600">{deal.salesRep}</td>
+                  <td className="px-2 py-1.5 text-secondary-600 truncate max-w-[80px]">{deal.stage}</td>
+                  <td className="px-2 py-1.5 text-secondary-600 truncate max-w-[70px]">{deal.salesRep}</td>
                 </tr>
               ))}
             </tbody>

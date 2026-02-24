@@ -347,12 +347,18 @@ export class RevenueComputeService {
     const actualMonthMap = new Map<string, number>();
     arrSnapshots.forEach(row => {
       const rowMonth = row.Snapshot_Month.slice(0, 7);
-      if (rowMonth <= priorMonth && this.arrRowPassesFilters(row, filters)) {
+      if (this.arrRowPassesFilters(row, filters)) {
         actualMonthMap.set(rowMonth, (actualMonthMap.get(rowMonth) || 0) + row.Ending_ARR);
       }
     });
-    const sortedMonths = Array.from(actualMonthMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-    if (sortedMonths.length > 0) lastActualARR = sortedMonths[sortedMonths.length - 1][1];
+    // lastActualARR = fallback from the latest actual month (≤ priorMonth)
+    const sortedActualMonths = Array.from(actualMonthMap.entries())
+      .filter(([m]) => m <= priorMonth)
+      .sort((a, b) => a[0].localeCompare(b[0]));
+    if (sortedActualMonths.length > 0) lastActualARR = sortedActualMonths[sortedActualMonths.length - 1][1];
+
+    // Use Dec's snapshot ARR as base if available, else fall back to lastActualARR
+    const decBaseARR = actualMonthMap.get(decOfYear) || lastActualARR;
 
     let latestSnapshotMonth = '';
     pipelineSnapshots.forEach(row => { if (row.Snapshot_Month > latestSnapshotMonth) latestSnapshotMonth = row.Snapshot_Month; });
@@ -367,7 +373,7 @@ export class RevenueComputeService {
       if (closeMonth > priorMonth && closeMonth <= decOfYear) cumulativePipeline += row.License_ACV;
     });
 
-    return Math.round(lastActualARR + cumulativePipeline);
+    return Math.round(decBaseARR + cumulativePipeline);
   }
 
   private computeMonthForecastARR(filters: RevenueFilterDto, arrSnapshots: ARRSnapshotRecord[], pipelineSnapshots: PipelineSnapshotRecord[]): number {
@@ -386,12 +392,18 @@ export class RevenueComputeService {
     const actualMonthMap = new Map<string, number>();
     arrSnapshots.forEach(row => {
       const rowMonth = row.Snapshot_Month.slice(0, 7);
-      if (rowMonth <= priorMonth && this.arrRowPassesFilters(row, filters)) {
+      if (this.arrRowPassesFilters(row, filters)) {
         actualMonthMap.set(rowMonth, (actualMonthMap.get(rowMonth) || 0) + row.Ending_ARR);
       }
     });
-    const sortedMonths = Array.from(actualMonthMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-    if (sortedMonths.length > 0) lastActualARR = sortedMonths[sortedMonths.length - 1][1];
+    // lastActualARR = fallback from the latest actual month (≤ priorMonth)
+    const sortedActualMonths = Array.from(actualMonthMap.entries())
+      .filter(([m]) => m <= priorMonth)
+      .sort((a, b) => a[0].localeCompare(b[0]));
+    if (sortedActualMonths.length > 0) lastActualARR = sortedActualMonths[sortedActualMonths.length - 1][1];
+
+    // Use selected month's snapshot ARR as base if available, else fall back to lastActualARR
+    const monthBaseARR = actualMonthMap.get(selectedARRMonth) || lastActualARR;
 
     let latestSnapshotMonth = '';
     pipelineSnapshots.forEach(row => { if (row.Snapshot_Month > latestSnapshotMonth) latestSnapshotMonth = row.Snapshot_Month; });
@@ -406,7 +418,7 @@ export class RevenueComputeService {
       if (closeMonth > priorMonth && closeMonth <= selectedARRMonth) cumulativePipeline += row.License_ACV;
     });
 
-    return Math.round(lastActualARR + cumulativePipeline);
+    return Math.round(monthBaseARR + cumulativePipeline);
   }
 
   private computeFullYearRetention(filters: RevenueFilterDto, arrSnapshots: ARRSnapshotRecord[], pipelineSnapshots: PipelineSnapshotRecord[], forecastARR: number) {
@@ -434,7 +446,14 @@ export class RevenueComputeService {
     });
 
     let forecastRenewalExt = 0, forecastUpsellCrossSell = 0;
+    let decActualARR = 0;
+    const decOfYear = `${yr}-12`;
     if (isForecastYear) {
+      // Get Dec ending ARR from snapshot data
+      arrSnapshots.forEach(row => {
+        if (row.Snapshot_Month.slice(0, 7) === decOfYear && this.arrRowPassesFilters(row, filters)) decActualARR += row.Ending_ARR;
+      });
+
       let latestSnapshotMonth = '';
       pipelineSnapshots.forEach(row => { if (row.Snapshot_Month > latestSnapshotMonth) latestSnapshotMonth = row.Snapshot_Month; });
       pipelineSnapshots.forEach(row => {
@@ -450,11 +469,17 @@ export class RevenueComputeService {
       });
     }
 
+    // For forecast year: numerator uses Dec Actual ARR (from snapshot) as base instead of startARR
+    // For past years: numerator uses startARR as base (forecast components are 0)
     const nrr = startARR > 0
-      ? ((startARR + actualExpansion + actualScheduleChange + forecastRenewalExt + forecastUpsellCrossSell - actualContraction - actualChurn) / startARR) * 100
+      ? isForecastYear
+        ? ((decActualARR + actualExpansion + actualScheduleChange + forecastRenewalExt + forecastUpsellCrossSell - actualContraction - actualChurn) / startARR) * 100
+        : ((startARR + actualExpansion + actualScheduleChange - actualContraction - actualChurn) / startARR) * 100
       : 0;
     const grr = startARR > 0
-      ? ((startARR + actualScheduleChange + forecastRenewalExt - actualContraction - actualChurn) / startARR) * 100
+      ? isForecastYear
+        ? ((decActualARR + actualScheduleChange + forecastRenewalExt - actualContraction - actualChurn) / startARR) * 100
+        : ((startARR + actualScheduleChange - actualContraction - actualChurn) / startARR) * 100
       : 0;
 
     return { startARR: Math.round(startARR), endARR: forecastARR, nrr, grr };
@@ -465,11 +490,12 @@ export class RevenueComputeService {
     const pipelineSnapshots = this.dataService.getPipelineSnapshots();
     const priorMonth = getPriorMonth();
 
-    // Aggregate actual ARR by month
+    // Aggregate actual ARR by month (ALL months, not just ≤ priorMonth)
+    // Months > priorMonth provide the base ARR for forecasting
     const actualMonthMap = new Map<string, number>();
     arrSnapshots.forEach(row => {
       const month = row.Snapshot_Month.slice(0, 7);
-      if (month <= priorMonth && this.arrRowPassesFilters(row, filters)) {
+      if (this.arrRowPassesFilters(row, filters)) {
         actualMonthMap.set(month, (actualMonthMap.get(month) || 0) + row.Ending_ARR);
       }
     });
@@ -523,11 +549,13 @@ export class RevenueComputeService {
       const monthLabel = fc.toLocaleString('en-US', { month: 'short', year: '2-digit' });
       cumulativeRenewals += (renewalByMonth.get(ym) || 0);
       cumulativeNewBiz += (newBizByMonth.get(ym) || 0);
-      const totalForecast = lastActualARR + cumulativeRenewals + cumulativeNewBiz;
+      // Use per-month actual ARR as base (from snapshot) if available, else fall back to lastActualARR
+      const monthBaseARR = actualMonthMap.get(ym) || lastActualARR;
+      const totalForecast = monthBaseARR + cumulativeRenewals + cumulativeNewBiz;
       data.push({
         month: monthLabel, currentARR: 0,
         forecastedARR: Math.round(totalForecast),
-        forecastBase: Math.round(lastActualARR),
+        forecastBase: Math.round(monthBaseARR),
         forecastRenewals: Math.round(cumulativeRenewals),
         forecastNewBusiness: Math.round(cumulativeNewBiz),
       });

@@ -29,6 +29,7 @@ export function normalizeLogoType(raw: string): string {
   const trimmed = raw.trim();
   if (trimmed === 'New' || trimmed === 'New Logo') return 'New Logo';
   if (trimmed === 'Cross Sell' || trimmed === 'Cross-Sell') return 'Cross-Sell';
+  if (trimmed === 'Renewal/Extn' || trimmed === 'Renewal/Extension') return 'Extension';
   return trimmed;
 }
 
