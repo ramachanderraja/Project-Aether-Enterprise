@@ -72,6 +72,8 @@ interface Customer {
 
 @Injectable()
 export class RevenueComputeService {
+  private customerPlatformMapCache: Map<string, { quantumSmart: string; goLiveDate: string | undefined }> | null = null;
+
   constructor(private readonly dataService: DataService) {}
 
   // ─────────────────────────────────────────────
@@ -199,27 +201,86 @@ export class RevenueComputeService {
     const rowRegion = row.Region || (sowMapping ? normalizeRegion(sowMapping.Region) : '');
     const rowVertical = row.Vertical || (sowMapping ? sowMapping.Vertical : '');
     const rowSegment = row.Segment || (sowMapping ? sowMapping.Segment_Type : '');
-    const currentMonth = new Date().toISOString().slice(0, 7);
 
     if (filters.region?.length && !filters.region.includes(rowRegion)) return false;
     if (filters.vertical?.length && !filters.vertical.includes(rowVertical)) return false;
     if (filters.segment?.length && !filters.segment.includes(rowSegment)) return false;
     if (filters.platform?.length && !filters.platform.includes(row.Quantum_SMART || 'SMART')) return false;
     if (filters.quantumSmart && filters.quantumSmart !== 'All') {
+      // Use the row's own snapshot month for classification, not today's date
+      // A customer with Go-Live in Mar'26 should be SMART in Jan'26 but Quantum in Apr'26
+      const rowSnapshotMonth = row.Snapshot_Month.slice(0, 7);
       const effectivePlatform = classifyPlatform(
         row.Quantum_SMART || undefined,
         row.Quantum_GoLive_Date || undefined,
-        currentMonth,
+        rowSnapshotMonth,
       );
       if (effectivePlatform !== filters.quantumSmart) return false;
     }
     return true;
   }
 
+  private buildCustomerPlatformMap(): Map<string, { quantumSmart: string; goLiveDate: string | undefined }> {
+    if (this.customerPlatformMapCache) return this.customerPlatformMapCache;
+
+    const arrSnapshots = this.dataService.getArrSnapshots();
+    const customerNameMappings = this.dataService.getCustomerNameMappings();
+
+    // Scan ALL months, keeping the latest entry per customer.
+    // This ensures churned customers who still have pipeline deals are correctly classified.
+    const monthTracker = new Map<string, string>(); // customer -> latest month seen
+    const map = new Map<string, { quantumSmart: string; goLiveDate: string | undefined }>();
+    arrSnapshots.forEach(row => {
+      const m = row.Snapshot_Month.slice(0, 7);
+      const prev = monthTracker.get(row.Customer_Name);
+      if (!prev || m > prev) {
+        monthTracker.set(row.Customer_Name, m);
+        map.set(row.Customer_Name, {
+          quantumSmart: row.Quantum_SMART || 'SMART',
+          goLiveDate: row.Quantum_GoLive_Date || undefined,
+        });
+      }
+    });
+
+    // Also index by pipeline customer name using reverse name mapping
+    // customerNameMappings: ARR_Customer_Name -> Pipeline_Customer_Name
+    customerNameMappings.forEach(m => {
+      const arrInfo = map.get(m.ARR_Customer_Name);
+      if (arrInfo && m.Pipeline_Customer_Name && !map.has(m.Pipeline_Customer_Name)) {
+        map.set(m.Pipeline_Customer_Name, arrInfo);
+      }
+    });
+
+    this.customerPlatformMapCache = map;
+    return map;
+  }
+
   private pipelineRowPassesFilters(row: PipelineSnapshotRecord, filters: RevenueFilterDto): boolean {
     if (filters.region?.length && !filters.region.includes(row.Region)) return false;
     if (filters.vertical?.length && !filters.vertical.includes(row.Vertical)) return false;
     if (filters.segment?.length && row.Segment && !filters.segment.includes(row.Segment)) return false;
+
+    if (filters.quantumSmart && filters.quantumSmart !== 'All') {
+      const logoType = row.Logo_Type.trim();
+      let dealPlatform: 'Quantum' | 'SMART';
+      if (logoType === 'New Logo' || logoType === 'New') {
+        dealPlatform = 'Quantum';
+      } else {
+        const platformMap = this.buildCustomerPlatformMap();
+        const custInfo = platformMap.get(row.Customer_Name);
+        if (custInfo) {
+          // Use the deal's Expected_Close_Date for classification, not today's date.
+          // A customer with Go-Live Mar'26 should be SMART for deals closing Feb'26
+          // but Quantum for deals closing Nov'26.
+          const dealMonth = row.Expected_Close_Date.slice(0, 7);
+          dealPlatform = classifyPlatform(custInfo.quantumSmart, custInfo.goLiveDate, dealMonth);
+        } else {
+          dealPlatform = 'Quantum';
+        }
+      }
+      if (dealPlatform !== filters.quantumSmart) return false;
+    }
+
     return true;
   }
 
@@ -281,20 +342,48 @@ export class RevenueComputeService {
     const ytdGrowth = snapshotPreviousARR > 0 ? ((snapshotCurrentARR - snapshotPreviousARR) / snapshotPreviousARR) * 100 : 0;
 
     // Monthly retention components
-    let expansion = 0, contraction = 0, churn = 0, scheduleChange = 0;
+    let expansion = 0, contraction = 0, churn = 0, scheduleChange = 0, monthNewBusiness = 0;
     arrSnapshots.forEach(row => {
       if (row.Snapshot_Month.slice(0, 7) === selectedARRMonth && this.arrRowPassesFilters(row, filters)) {
         expansion += row.Expansion_ARR;
         contraction += Math.abs(row.Contraction_ARR);
         churn += Math.abs(row.Churn_ARR);
         scheduleChange += row.Schedule_Change;
+        monthNewBusiness += row.New_ARR;
       }
     });
 
-    const monthlyNRR = snapshotPreviousARR > 0
-      ? ((snapshotPreviousARR + expansion + scheduleChange - contraction - churn) / snapshotPreviousARR) * 100 : 0;
-    const monthlyGRR = snapshotPreviousARR > 0
-      ? ((snapshotPreviousARR + scheduleChange - contraction - churn) / snapshotPreviousARR) * 100 : 0;
+    // For forecast months: Ending_ARR already has all movements baked in.
+    // Subtract New Business (not a retention metric), add pipeline forecast for this month.
+    // For actual months: use standard formula with movement components.
+    const isForecastMonth = selectedARRMonth > priorMonth;
+    let monthlyNRR: number, monthlyGRR: number;
+    if (isForecastMonth) {
+      let latestSnapshotMonth = '';
+      pipelineSnapshots.forEach(row => { if (row.Snapshot_Month > latestSnapshotMonth) latestSnapshotMonth = row.Snapshot_Month; });
+      let forecastRenewalExt = 0, forecastUpsellCrossSell = 0;
+      pipelineSnapshots.forEach(row => {
+        if (row.Snapshot_Month !== latestSnapshotMonth) return;
+        if (row.Current_Stage.includes('Closed Won') || row.Current_Stage.includes('Closed Lost') ||
+            row.Current_Stage.includes('Closed Dead') || row.Current_Stage.includes('Closed Declined')) return;
+        if (!this.pipelineRowPassesFilters(row, filters)) return;
+        const closeMonth = row.Expected_Close_Date.slice(0, 7);
+        if (closeMonth !== selectedARRMonth) return;
+        const logoType = row.Logo_Type.trim();
+        if (logoType === 'Renewal' || logoType === 'Extension') forecastRenewalExt += row.License_ACV;
+        else if (logoType === 'Upsell' || logoType === 'Cross-Sell') forecastUpsellCrossSell += row.License_ACV;
+      });
+
+      monthlyNRR = snapshotPreviousARR > 0
+        ? ((snapshotCurrentARR - monthNewBusiness + forecastRenewalExt + forecastUpsellCrossSell) / snapshotPreviousARR) * 100 : 0;
+      monthlyGRR = snapshotPreviousARR > 0
+        ? ((snapshotCurrentARR - monthNewBusiness + forecastRenewalExt) / snapshotPreviousARR) * 100 : 0;
+    } else {
+      monthlyNRR = snapshotPreviousARR > 0
+        ? ((snapshotPreviousARR + expansion + scheduleChange - contraction - churn) / snapshotPreviousARR) * 100 : 0;
+      monthlyGRR = snapshotPreviousARR > 0
+        ? ((snapshotPreviousARR + scheduleChange - contraction - churn) / snapshotPreviousARR) * 100 : 0;
+    }
 
     // Year-end forecast
     const yearEndARR = this.computeForecastARR(filters, arrSnapshots, pipelineSnapshots);
@@ -434,7 +523,7 @@ export class RevenueComputeService {
       if (row.Snapshot_Month.slice(0, 7) === janOfYear && this.arrRowPassesFilters(row, filters)) startARR += row.Ending_ARR;
     });
 
-    let actualExpansion = 0, actualScheduleChange = 0, actualContraction = 0, actualChurn = 0;
+    let actualExpansion = 0, actualScheduleChange = 0, actualContraction = 0, actualChurn = 0, actualNewBusiness = 0;
     arrSnapshots.forEach(row => {
       const rowMonth = row.Snapshot_Month.slice(0, 7);
       if (rowMonth.startsWith(yr) && rowMonth <= priorMonth && this.arrRowPassesFilters(row, filters)) {
@@ -442,6 +531,7 @@ export class RevenueComputeService {
         actualScheduleChange += row.Schedule_Change;
         actualContraction += Math.abs(row.Contraction_ARR);
         actualChurn += Math.abs(row.Churn_ARR);
+        actualNewBusiness += row.New_ARR;
       }
     });
 
@@ -449,7 +539,7 @@ export class RevenueComputeService {
     let decActualARR = 0;
     const decOfYear = `${yr}-12`;
     if (isForecastYear) {
-      // Get Dec ending ARR from snapshot data
+      // Get Dec ending ARR from snapshot data (already includes all actual movements)
       arrSnapshots.forEach(row => {
         if (row.Snapshot_Month.slice(0, 7) === decOfYear && this.arrRowPassesFilters(row, filters)) decActualARR += row.Ending_ARR;
       });
@@ -469,16 +559,17 @@ export class RevenueComputeService {
       });
     }
 
-    // For forecast year: numerator uses Dec Actual ARR (from snapshot) as base instead of startARR
-    // For past years: numerator uses startARR as base (forecast components are 0)
+    // Forecast year: Dec ARR already has all movements baked in, so subtract New Business
+    // (retention metrics shouldn't include new logos) and add pipeline forecast on top.
+    // Past years: use startARR-based formula with actual movement components.
     const nrr = startARR > 0
       ? isForecastYear
-        ? ((decActualARR + actualExpansion + actualScheduleChange + forecastRenewalExt + forecastUpsellCrossSell - actualContraction - actualChurn) / startARR) * 100
+        ? ((decActualARR - actualNewBusiness + forecastRenewalExt + forecastUpsellCrossSell) / startARR) * 100
         : ((startARR + actualExpansion + actualScheduleChange - actualContraction - actualChurn) / startARR) * 100
       : 0;
     const grr = startARR > 0
       ? isForecastYear
-        ? ((decActualARR + actualScheduleChange + forecastRenewalExt - actualContraction - actualChurn) / startARR) * 100
+        ? ((decActualARR - actualNewBusiness + forecastRenewalExt) / startARR) * 100
         : ((startARR + actualScheduleChange - actualContraction - actualChurn) / startARR) * 100
       : 0;
 

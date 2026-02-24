@@ -970,7 +970,6 @@ export default function RevenuePage() {
 
   // Helper: check if an ARR snapshot row passes active filters
   const arrRowPassesFilters = useMemo(() => {
-    const currentMonth = new Date().toISOString().slice(0, 7);
     return (row: typeof realData.arrSnapshots[0]) => {
       // Enrich from SOW mapping
       const sowMapping = realData.sowMappingIndex[row.SOW_ID];
@@ -983,10 +982,13 @@ export default function RevenuePage() {
       if (segmentFilter.length > 0 && !segmentFilter.includes(rowSegment)) return false;
       if (platformFilter.length > 0 && !platformFilter.includes(row.Quantum_SMART || 'SMART')) return false;
       if (quantumSmartFilter !== 'All') {
+        // Use the row's own snapshot month for classification, not today's date
+        // A customer with Go-Live in Mar'26 should be SMART in Jan'26 but Quantum in Apr'26
+        const rowSnapshotMonth = row.Snapshot_Month.slice(0, 7);
         const effectivePlatform = classifyPlatform(
           row.Quantum_SMART || undefined,
           row.Quantum_GoLive_Date || undefined,
-          currentMonth
+          rowSnapshotMonth
         );
         if (effectivePlatform !== quantumSmartFilter) return false;
       }
@@ -994,16 +996,69 @@ export default function RevenuePage() {
     };
   }, [realData.sowMappingIndex, regionFilter, verticalFilter, segmentFilter, platformFilter, quantumSmartFilter]);
 
+  // Build customer platform map: customer name -> {quantumSmart, goLiveDate}
+  // Used to classify pipeline deals by Quantum/SMART based on the existing customer's platform.
+  // Scans ALL ARR snapshot months (not just the latest) so that churned customers who still
+  // have pipeline deals (e.g. renewal attempts) are correctly classified.
+  const customerPlatformMap = useMemo(() => {
+    if (!realData.isLoaded || realData.arrSnapshots.length === 0) return new Map<string, { quantumSmart: string; goLiveDate: string | undefined; month: string }>();
+
+    // Track the latest snapshot month seen per customer so we keep the most recent data
+    const map = new Map<string, { quantumSmart: string; goLiveDate: string | undefined; month: string }>();
+    realData.arrSnapshots.forEach(row => {
+      const m = row.Snapshot_Month.slice(0, 7);
+      const existing = map.get(row.Customer_Name);
+      if (!existing || m > existing.month) {
+        map.set(row.Customer_Name, {
+          quantumSmart: row.Quantum_SMART || 'SMART',
+          goLiveDate: row.Quantum_GoLive_Date || undefined,
+          month: m,
+        });
+      }
+    });
+
+    // Also index by pipeline customer name using reverse name mapping
+    // customerNameIndex: ARR_Customer_Name -> Pipeline_Customer_Name
+    Object.entries(realData.customerNameIndex).forEach(([arrName, pipelineName]) => {
+      const arrInfo = map.get(arrName);
+      if (arrInfo && pipelineName && !map.has(pipelineName)) {
+        map.set(pipelineName, arrInfo);
+      }
+    });
+
+    return map;
+  }, [realData.isLoaded, realData.arrSnapshots, realData.customerNameIndex]);
+
   // Helper: check if a pipeline row passes active filters
   const pipelineRowPassesFilters = useMemo(() => {
     return (row: typeof realData.pipelineSnapshots[0]) => {
       if (regionFilter.length > 0 && !regionFilter.includes(row.Region)) return false;
       if (verticalFilter.length > 0 && !verticalFilter.includes(row.Vertical)) return false;
       if (segmentFilter.length > 0 && row.Segment && !segmentFilter.includes(row.Segment)) return false;
-      // Pipeline doesn't have Quantum/SMART field, skip that filter
+
+      if (quantumSmartFilter !== 'All') {
+        const logoType = row.Logo_Type.trim();
+        let dealPlatform: 'Quantum' | 'SMART';
+        if (logoType === 'New Logo' || logoType === 'New') {
+          dealPlatform = 'Quantum';
+        } else {
+          const custInfo = customerPlatformMap.get(row.Customer_Name);
+          if (custInfo) {
+            // Use the deal's Expected_Close_Date for classification, not today's date.
+            // A customer with Go-Live Mar'26 should be SMART for deals closing Feb'26
+            // but Quantum for deals closing Nov'26.
+            const dealMonth = row.Expected_Close_Date.slice(0, 7);
+            dealPlatform = classifyPlatform(custInfo.quantumSmart, custInfo.goLiveDate, dealMonth);
+          } else {
+            dealPlatform = 'Quantum';
+          }
+        }
+        if (dealPlatform !== quantumSmartFilter) return false;
+      }
+
       return true;
     };
-  }, [regionFilter, verticalFilter, segmentFilter]);
+  }, [regionFilter, verticalFilter, segmentFilter, quantumSmartFilter, customerPlatformMap]);
 
   const monthlyARRData = useMemo(() => {
     if (!realData.isLoaded) return [];
@@ -1204,7 +1259,7 @@ export default function RevenuePage() {
     });
 
     // Actual movement from snapshot — only months with real data (≤ priorMonth)
-    let actualExpansion = 0, actualScheduleChange = 0, actualContraction = 0, actualChurn = 0;
+    let actualExpansion = 0, actualScheduleChange = 0, actualContraction = 0, actualChurn = 0, actualNewBusiness = 0;
     realData.arrSnapshots.forEach(row => {
       const rowMonth = row.Snapshot_Month.slice(0, 7);
       if (rowMonth.startsWith(yr) && rowMonth <= priorMonth && arrRowPassesFilters(row)) {
@@ -1212,19 +1267,17 @@ export default function RevenuePage() {
         actualScheduleChange += row.Schedule_Change;           // net — positive or negative
         actualContraction    += Math.abs(row.Contraction_ARR);
         actualChurn          += Math.abs(row.Churn_ARR);
+        actualNewBusiness    += row.New_ARR;
       }
     });
 
     // Pipeline forecast for remaining months of the year (only when year is not yet complete)
-    // GRR: Renewal + Extension License_ACV  (these deals represent retained revenue)
-    // NRR: additionally Upsell + Cross-Sell License_ACV  (expansion on top of renewals)
     let forecastRenewalExt = 0;      // contributes to both GRR and NRR
     let forecastUpsellCrossSell = 0; // contributes to NRR only
-    // Dec Actual ARR from snapshot (used as numerator base for forecast year)
     let decActualARR = 0;
     const decOfYear = `${yr}-12`;
     if (isForecastYear) {
-      // Get Dec ending ARR from snapshot data
+      // Get Dec ending ARR from snapshot data (already includes all actual movements)
       realData.arrSnapshots.forEach(row => {
         const rowMonth = row.Snapshot_Month.slice(0, 7);
         if (rowMonth === decOfYear && arrRowPassesFilters(row)) decActualARR += row.Ending_ARR;
@@ -1240,7 +1293,6 @@ export default function RevenuePage() {
             row.Current_Stage.includes('Closed Dead') || row.Current_Stage.includes('Closed Declined')) return;
         if (!pipelineRowPassesFilters(row)) return;
         const closeMonth = row.Expected_Close_Date.slice(0, 7);
-        // Only forecast period: after last actual month and within the filtered year
         if (closeMonth <= priorMonth || !closeMonth.startsWith(yr)) return;
         const logoType = row.Logo_Type.trim();
         if (logoType === 'Renewal' || logoType === 'Extension') {
@@ -1251,16 +1303,17 @@ export default function RevenuePage() {
       });
     }
 
-    // For forecast year: numerator uses Dec Actual ARR (from snapshot) as base instead of startARR
-    // For past years: numerator uses startARR as base (forecast components are 0)
+    // Forecast year: Dec ARR already has all movements baked in, so subtract New Business
+    // (retention metrics shouldn't include new logos) and add pipeline forecast on top.
+    // Past years: use startARR-based formula with actual movement components.
     const nrr = startARR > 0
       ? isForecastYear
-        ? ((decActualARR + actualExpansion + actualScheduleChange + forecastRenewalExt + forecastUpsellCrossSell - actualContraction - actualChurn) / startARR) * 100
+        ? ((decActualARR - actualNewBusiness + forecastRenewalExt + forecastUpsellCrossSell) / startARR) * 100
         : ((startARR + actualExpansion + actualScheduleChange - actualContraction - actualChurn) / startARR) * 100
       : 0;
     const grr = startARR > 0
       ? isForecastYear
-        ? ((decActualARR + actualScheduleChange + forecastRenewalExt - actualContraction - actualChurn) / startARR) * 100
+        ? ((decActualARR - actualNewBusiness + forecastRenewalExt) / startARR) * 100
         : ((startARR + actualScheduleChange - actualContraction - actualChurn) / startARR) * 100
       : 0;
 
@@ -1297,9 +1350,50 @@ export default function RevenuePage() {
     // Schedule change is net (positive = ARR pulled forward, negative = deferred)
     const scheduleChange = useRealARR ? snapshotMonthlyRetention.scheduleChange : 0;
 
-    // NRR includes expansion + schedule change; GRR excludes expansion but keeps schedule change
-    const nrr = previousARR > 0 ? ((previousARR + expansion + scheduleChange - contraction - churn) / previousARR) * 100 : 0;
-    const grr = previousARR > 0 ? ((previousARR + scheduleChange - contraction - churn) / previousARR) * 100 : 0;
+    // For forecast months: Ending_ARR already has all movements baked in.
+    // Subtract New Business (not a retention metric), add pipeline forecast for this month.
+    // For actual months: use standard formula with movement components.
+    const priorMonth = getPriorMonth();
+    const isForecastMonth = selectedARRMonth > priorMonth;
+
+    let nrr: number, grr: number;
+    if (isForecastMonth && useRealARR) {
+      // New Business from snapshot for the selected month
+      let monthNewBusiness = 0;
+      realData.arrSnapshots.forEach(row => {
+        const rowMonth = row.Snapshot_Month.slice(0, 7);
+        if (rowMonth === selectedARRMonth && arrRowPassesFilters(row)) {
+          monthNewBusiness += row.New_ARR;
+        }
+      });
+
+      // Pipeline forecast for this specific month only
+      let latestSnapshotMonth = '';
+      realData.pipelineSnapshots.forEach(row => {
+        if (row.Snapshot_Month > latestSnapshotMonth) latestSnapshotMonth = row.Snapshot_Month;
+      });
+      let forecastRenewalExt = 0, forecastUpsellCrossSell = 0;
+      realData.pipelineSnapshots.forEach(row => {
+        if (row.Snapshot_Month !== latestSnapshotMonth) return;
+        if (row.Current_Stage.includes('Closed Won') || row.Current_Stage.includes('Closed Lost') ||
+            row.Current_Stage.includes('Closed Dead') || row.Current_Stage.includes('Closed Declined')) return;
+        if (!pipelineRowPassesFilters(row)) return;
+        const closeMonth = row.Expected_Close_Date.slice(0, 7);
+        if (closeMonth !== selectedARRMonth) return;
+        const logoType = row.Logo_Type.trim();
+        if (logoType === 'Renewal' || logoType === 'Extension') forecastRenewalExt += row.License_ACV;
+        else if (logoType === 'Upsell' || logoType === 'Cross-Sell') forecastUpsellCrossSell += row.License_ACV;
+      });
+
+      nrr = previousARR > 0
+        ? ((currentARR - monthNewBusiness + forecastRenewalExt + forecastUpsellCrossSell) / previousARR) * 100 : 0;
+      grr = previousARR > 0
+        ? ((currentARR - monthNewBusiness + forecastRenewalExt) / previousARR) * 100 : 0;
+    } else {
+      // Actual month: standard formula
+      nrr = previousARR > 0 ? ((previousARR + expansion + scheduleChange - contraction - churn) / previousARR) * 100 : 0;
+      grr = previousARR > 0 ? ((previousARR + scheduleChange - contraction - churn) / previousARR) * 100 : 0;
+    }
 
     return {
       currentARR,
@@ -1312,7 +1406,7 @@ export default function RevenuePage() {
       grr,
       customerCount: filteredCustomers.filter(c => c.currentARR > 0).length,
     };
-  }, [filteredCustomers, snapshotCurrentARR, snapshotPreviousARR, snapshotMonthlyRetention, forecastARR, monthForecastARR, realData.isLoaded, realData.arrSnapshots]);
+  }, [filteredCustomers, snapshotCurrentARR, snapshotPreviousARR, snapshotMonthlyRetention, forecastARR, monthForecastARR, realData.isLoaded, realData.arrSnapshots, realData.pipelineSnapshots, selectedARRMonth, arrRowPassesFilters, pipelineRowPassesFilters]);
 
   // ARR by Region
   const arrByRegion = useMemo(() => {
