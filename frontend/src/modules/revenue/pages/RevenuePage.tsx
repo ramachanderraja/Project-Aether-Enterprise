@@ -1710,8 +1710,9 @@ export default function RevenuePage() {
     return filteredCustomers.filter(c => c.renewalDate.startsWith('2026') && c.renewalRiskLevel);
   }, [filteredCustomers]);
 
-  // Renewal risk distribution (used for future risk analysis features)
-  const _renewalRiskDistribution = useMemo(() => {
+  // Renewal risk distribution - computed for future risk analysis features
+  // Kept as side-effect to maintain reactivity pattern
+  useMemo(() => {
     const distribution: Record<string, number> = { Low: 0, Medium: 0, High: 0, Critical: 0 };
     renewals2026.forEach(c => {
       if (c.renewalRiskLevel) {
