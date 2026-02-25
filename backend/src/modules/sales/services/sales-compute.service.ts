@@ -410,9 +410,81 @@ export class SalesComputeService {
     // Conversion rate: snapshot-based (compares consecutive monthly snapshots)
     const conversionRate = this.computeConversionRate(filters);
 
-    const avgSalesCycle = activeDeals.length > 0
-      ? activeDeals.reduce((sum, o) => sum + o.salesCycleDays, 0) / activeDeals.length
-      : 0;
+    // Time to Close: pipeline snapshot history
+    // Won deals: Close_Date (from Closed ACV) - Created_Date (from pipeline snapshots)
+    // Lost/Dead/Declined/Stalled: LATEST snapshot month with closed stage - Created_Date
+    let avgSalesCycle = 0;
+    {
+      const snapshots = this.dataService.getPipelineSnapshots();
+      const closedAcvRecords = this.dataService.getClosedAcv();
+      const isClosed = (stage: string) =>
+        stage.includes('Closed Won') || stage.includes('Closed Lost') ||
+        stage.includes('Closed Dead') || stage.includes('Closed Declined') || stage.includes('Stalled');
+
+      const closedAcvDateMap = new Map<string, string>();
+      closedAcvRecords.forEach(c => {
+        if (c.Pipeline_Deal_ID && c.Close_Date) closedAcvDateMap.set(c.Pipeline_Deal_ID, c.Close_Date);
+      });
+
+      const dealHistory = new Map<string, {
+        createdDate: string; logoType: string; region: string; vertical: string; segment: string;
+        licenseAcv: number; implementationValue: number;
+        entries: { month: string; stage: string }[];
+      }>();
+      snapshots.forEach(s => {
+        if (!s.Pipeline_Deal_ID) return;
+        if (!dealHistory.has(s.Pipeline_Deal_ID)) {
+          dealHistory.set(s.Pipeline_Deal_ID, {
+            createdDate: s.Created_Date || '', logoType: s.Logo_Type || '',
+            region: s.Region || '', vertical: s.Vertical || '', segment: s.Segment || '',
+            licenseAcv: s.License_ACV || 0, implementationValue: s.Implementation_Value || 0,
+            entries: [],
+          });
+        }
+        dealHistory.get(s.Pipeline_Deal_ID)!.entries.push({ month: s.Snapshot_Month, stage: s.Current_Stage });
+      });
+
+      let totalDays = 0;
+      let closedDealCount = 0;
+      dealHistory.forEach((deal, dealId) => {
+        if (!deal.createdDate) return;
+        if (rt === 'License' && deal.licenseAcv <= 0) return;
+        if (rt === 'Implementation' && deal.implementationValue <= 0) return;
+        if (filters.logoType?.length) {
+          const normalizedLt = (deal.logoType === 'Renewal' || deal.logoType === 'Extension') ? 'Extension/Renewal' : deal.logoType;
+          const normalizedFilters = filters.logoType.map(f => (f === 'Extension' || f === 'Renewal') ? 'Extension/Renewal' : f);
+          if (!normalizedFilters.includes(normalizedLt) && !filters.logoType.includes(deal.logoType)) return;
+        }
+        if (filters.region?.length && !filters.region.includes(deal.region)) return;
+        if (filters.vertical?.length && !filters.vertical.includes(deal.vertical)) return;
+        if (filters.segment?.length && !filters.segment.includes(deal.segment)) return;
+
+        deal.entries.sort((a, b) => a.month.localeCompare(b.month));
+        let lastClosedMonth: string | null = null;
+        for (const entry of deal.entries) {
+          if (isClosed(entry.stage)) lastClosedMonth = entry.month;
+        }
+        if (!lastClosedMonth) return;
+
+        const acvCloseDate = closedAcvDateMap.get(dealId);
+        const closeDate = acvCloseDate || lastClosedMonth;
+
+        const closeDateObj = parseDateLocal(closeDate);
+        const yr = closeDateObj.getFullYear().toString();
+        const mon = MONTH_NAMES[closeDateObj.getMonth()];
+        const qtr = `Q${Math.floor(closeDateObj.getMonth() / 3) + 1}`;
+        if (filters.year?.length && !filters.year.includes(yr)) return;
+        if (filters.month?.length && !filters.month.includes(mon)) return;
+        if (filters.quarter?.length && !filters.quarter.includes(qtr)) return;
+
+        const created = parseDateLocal(deal.createdDate);
+        const diffMs = closeDateObj.getTime() - created.getTime();
+        const diffDays = Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+        totalDays += diffDays;
+        closedDealCount++;
+      });
+      avgSalesCycle = closedDealCount > 0 ? totalDays / closedDealCount : 0;
+    }
 
     return {
       totalClosedACV: Math.round(totalClosedACV),
