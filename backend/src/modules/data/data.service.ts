@@ -17,6 +17,7 @@ import {
   SOWMappingRecord,
   ARRSubCategoryRecord,
   ProductCategoryMappingRecord,
+  PriorYearPerformanceRecord,
   AllDataResponse,
 } from './dto';
 
@@ -33,6 +34,7 @@ export class DataService implements OnModuleInit {
   private sowMappings: SOWMappingRecord[] = [];
   private arrSubCategoryBreakdown: ARRSubCategoryRecord[] = [];
   private productCategoryMapping: ProductCategoryMappingRecord[] = [];
+  private priorYearPerformance: PriorYearPerformanceRecord[] = [];
 
   // Indexes
   private sowMappingIndex: Record<string, SOWMappingRecord> = {};
@@ -67,6 +69,7 @@ export class DataService implements OnModuleInit {
         'sow_mapping',
         'arr_subcategory_breakdown',
         'product_category_mapping',
+        'Prior_year_Performance Template',
       ];
 
       const texts = fileNames.map(f => {
@@ -87,6 +90,7 @@ export class DataService implements OnModuleInit {
         sowMappingText,
         arrSubCatText,
         prodCatText,
+        priorYearPerfText,
       ] = texts;
 
       // Parse Closed ACV
@@ -219,6 +223,24 @@ export class DataService implements OnModuleInit {
           Status: row['Status'] || '',
         }));
 
+      // Parse Prior Year Performance
+      this.priorYearPerformance = parseCSV(priorYearPerfText)
+        .filter(row => row['Year'] && row['Sales_Rep_ID'])
+        .map(row => ({
+          Year: parseInt((row['Year'] || '').trim()) || 0,
+          Sales_Rep_ID: (row['Sales_Rep_ID'] || '').trim(),
+          Sales_Rep_Name: (row['Sales_Rep_Name'] || '').trim(),
+          Region: (row['Region'] || '').trim(),
+          Vertical: (row['Vertical'] || '').trim(),
+          Segment: (row['Segment'] || '').trim(),
+          Annual_Quota: parseNumber(row['Annual_Quota'] || ''),
+          Q1_Closed: parseNumber(row['Q1_Closed'] || ''),
+          Q2_Closed: parseNumber(row['Q2_Closed'] || ''),
+          Q3_Closed: parseNumber(row['Q3_Closed'] || ''),
+          Q4_Closed: parseNumber(row['Q4_Closed'] || ''),
+          Total_Closed: parseNumber(row['Total_Closed'] || ''),
+        }));
+
       // Build indexes
       this.sowMappingIndex = {};
       this.sowMappings.forEach(m => {
@@ -263,6 +285,7 @@ export class DataService implements OnModuleInit {
       sowMappings: this.sowMappings,
       arrSubCategoryBreakdown: this.arrSubCategoryBreakdown,
       productCategoryMapping: this.productCategoryMapping,
+      priorYearPerformance: this.priorYearPerformance,
       sowMappingIndex: this.sowMappingIndex,
       productCategoryIndex: this.productCategoryIndex,
       customerNameIndex: this.customerNameIndex,
@@ -299,6 +322,10 @@ export class DataService implements OnModuleInit {
 
   getProductCategoryMapping(): ProductCategoryMappingRecord[] {
     return this.productCategoryMapping;
+  }
+
+  getPriorYearPerformance(): PriorYearPerformanceRecord[] {
+    return this.priorYearPerformance;
   }
 
   getDataDir(): string {

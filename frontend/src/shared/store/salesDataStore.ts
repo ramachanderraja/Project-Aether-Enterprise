@@ -8,6 +8,7 @@ import type {
   RawSOWMapping,
   RawARRSubCategory,
   RawProductCategoryMapping,
+  RawPriorYearPerformance,
 } from './dataTypes';
 
 export interface SalesDataState {
@@ -22,6 +23,7 @@ export interface SalesDataState {
   sowMappings: RawSOWMapping[];
   arrSubCategoryBreakdown: RawARRSubCategory[];
   productCategoryMapping: RawProductCategoryMapping[];
+  priorYearPerformance: RawPriorYearPerformance[];
 
   sowMappingIndex: Record<string, RawSOWMapping>;
   productCategoryIndex: Record<string, string>;
@@ -67,6 +69,7 @@ export const useSalesDataStore = create<SalesDataState>((set, get) => ({
   sowMappings: [],
   arrSubCategoryBreakdown: [],
   productCategoryMapping: [],
+  priorYearPerformance: [],
   sowMappingIndex: {},
   productCategoryIndex: {},
   customerNameIndex: {},
@@ -93,6 +96,7 @@ export const useSalesDataStore = create<SalesDataState>((set, get) => ({
         sowMappings: data.sowMappings || [],
         arrSubCategoryBreakdown: data.arrSubCategoryBreakdown || [],
         productCategoryMapping: data.productCategoryMapping || [],
+        priorYearPerformance: data.priorYearPerformance || [],
         ...indexes,
         isLoaded: true,
         isLoading: false,

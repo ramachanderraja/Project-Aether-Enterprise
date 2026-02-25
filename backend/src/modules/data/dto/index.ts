@@ -113,6 +113,21 @@ export interface ProductCategoryMappingRecord {
   Status: string;
 }
 
+export interface PriorYearPerformanceRecord {
+  Year: number;
+  Sales_Rep_ID: string;
+  Sales_Rep_Name: string;
+  Region: string;
+  Vertical: string;
+  Segment: string;
+  Annual_Quota: number;
+  Q1_Closed: number;
+  Q2_Closed: number;
+  Q3_Closed: number;
+  Q4_Closed: number;
+  Total_Closed: number;
+}
+
 export interface AllDataResponse {
   closedAcv: ClosedAcvRecord[];
   pipelineSnapshots: PipelineSnapshotRecord[];
@@ -122,6 +137,7 @@ export interface AllDataResponse {
   sowMappings: SOWMappingRecord[];
   arrSubCategoryBreakdown: ARRSubCategoryRecord[];
   productCategoryMapping: ProductCategoryMappingRecord[];
+  priorYearPerformance: PriorYearPerformanceRecord[];
   sowMappingIndex: Record<string, SOWMappingRecord>;
   productCategoryIndex: Record<string, string>;
   customerNameIndex: Record<string, string>;

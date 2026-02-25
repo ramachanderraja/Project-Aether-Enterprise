@@ -70,7 +70,8 @@ interface Salesperson {
   previousYearClosed: number;
   closedYTD: number;
   forecast: number;
-  pipelineValue: number;
+  pipelineValue: number;        // weighted pipeline
+  unweightedPipeline: number;   // unweighted pipeline (value / probability)
   monthlyAttainment: number[];
   quota: number;
   level?: number; // hierarchy depth: 0 = top-level, 1 = direct report of top, etc.
@@ -246,10 +247,94 @@ function buildRealOpportunities(store: SalesDataState): Opportunity[] {
   return opps;
 }
 
-function buildRealSalespeople(store: SalesDataState, opps: Opportunity[], prevYearOpps: Opportunity[]): Salesperson[] {
-  const yr = new Date().getFullYear();
+function buildRealSalespeople(
+  store: SalesDataState, opps: Opportunity[], prevYearOpps: Opportunity[],
+  yearFilter: string[], regionFilter: string[], segmentFilter: string[], verticalFilter: string[],
+  revenueTypeFilter: string,
+): Salesperson[] {
+  // Revenue-type-aware value getters for closed and pipeline deals
+  const getClosedVal = (o: Opportunity): number => {
+    if (revenueTypeFilter === 'Implementation') return o.implementationValue || 0;
+    if (revenueTypeFilter === 'License') return o.licenseValue || 0;
+    return (o.licenseValue || 0) + (o.implementationValue || 0);
+  };
+  const getWeightedPipeVal = (o: Opportunity): number => {
+    // Pipeline values are already probability-weighted
+    if (revenueTypeFilter === 'Implementation') return o.implementationValue || 0;
+    if (revenueTypeFilter === 'License') return o.licenseValue || 0;
+    return (o.licenseValue || 0) + (o.implementationValue || 0);
+  };
+  const getUnweightedPipeVal = (o: Opportunity): number => {
+    // Unweight: divide by probability to get original value
+    const prob = o.probability > 0 ? o.probability / 100 : 0;
+    if (prob === 0) return 0;
+    if (revenueTypeFilter === 'Implementation') return (o.implementationValue || 0) / prob;
+    if (revenueTypeFilter === 'License') return (o.licenseValue || 0) / prob;
+    return ((o.licenseValue || 0) + (o.implementationValue || 0)) / prob;
+  };
+  const currentCalendarYear = new Date().getFullYear();
+  const selectedYear = yearFilter.length > 0 ? parseInt(yearFilter[0]) : currentCalendarYear;
+  const priorYear = selectedYear - 1;
 
-  // A person is a manager if ANY other team member lists them as their Manager_ID
+  // Check if the selected year has data in the Prior Year Performance CSV
+  const selectedYearHasCSV = store.priorYearPerformance.some(r => r.Year === selectedYear);
+
+  // ── Historical year (CSV data exists, e.g. 2024/2025): flat list directly from CSV ──
+  if (selectedYearHasCSV) {
+    let csvRowsForYear = store.priorYearPerformance.filter(r => r.Year === selectedYear);
+    // Apply global filters to CSV rows
+    if (regionFilter.length > 0) csvRowsForYear = csvRowsForYear.filter(r => regionFilter.includes(r.Region));
+    if (segmentFilter.length > 0) {
+      csvRowsForYear = csvRowsForYear.filter(r => {
+        // CSV has "Mid-Market", filter uses "SMB" — normalize for matching
+        const normalizedSeg = r.Segment === 'Mid-Market' ? 'SMB' : r.Segment;
+        return segmentFilter.includes(normalizedSeg);
+      });
+    }
+    if (verticalFilter.length > 0) csvRowsForYear = csvRowsForYear.filter(r => r.Vertical === 'All' || verticalFilter.includes(r.Vertical));
+
+    // Build prior-year lookup for previousYearClosed
+    const priorYearCSVMap = new Map<string, number>();
+    store.priorYearPerformance.filter(r => r.Year === priorYear).forEach(r => {
+      priorYearCSVMap.set(r.Sales_Rep_ID, r.Total_Closed || 0);
+    });
+
+    return csvRowsForYear.map(row => {
+      const quota = row.Annual_Quota || 0;
+      const qClosed = [row.Q1_Closed, row.Q2_Closed, row.Q3_Closed, row.Q4_Closed];
+      const qQuota = quota / 4;
+      const monthlyAttainment = Array.from({ length: 12 }, (_, month) => {
+        const q = Math.floor(month / 3);
+        return qQuota > 0 ? Math.round((qClosed[q] / qQuota) * 100) : (qClosed[q] > 0 ? 100 : 0);
+      });
+
+      return {
+        id: row.Sales_Rep_ID,
+        name: row.Sales_Rep_Name,
+        region: row.Region,
+        isManager: false,       // flat list — no hierarchy for historical years
+        managerId: undefined,
+        previousYearClosed: priorYearCSVMap.get(row.Sales_Rep_ID) || 0,
+        closedYTD: row.Total_Closed || 0,
+        forecast: row.Total_Closed || 0,  // historical: forecast = closed (no pipeline)
+        pipelineValue: 0,
+        unweightedPipeline: 0,
+        monthlyAttainment,
+        quota,
+      };
+    });
+  }
+
+  // ── Current year (2026): existing logic — built from sales_team_structure + opportunities ──
+  // Also use CSV for prior year comparison data if available
+  const priorYearHasCSV = store.priorYearPerformance.some(r => r.Year === priorYear);
+  const priorYearCSVMap = new Map<string, number>();
+  if (priorYearHasCSV) {
+    store.priorYearPerformance.filter(r => r.Year === priorYear).forEach(r => {
+      priorYearCSVMap.set(r.Sales_Rep_ID, r.Total_Closed || 0);
+    });
+  }
+
   const activeTeam = store.salesTeam.filter(m => m.Name && m.Status === 'Active');
   const managerIds = new Set(activeTeam.map(m => m.Manager_ID).filter(Boolean));
 
@@ -261,29 +346,40 @@ function buildRealSalespeople(store: SalesDataState, opps: Opportunity[], prevYe
       const wonDeals = opps.filter(o =>
         o.status === 'Won' &&
         o.owner.trim().toLowerCase() === nameLower &&
-        o.expectedCloseDate.startsWith(String(yr))
+        o.expectedCloseDate.startsWith(String(selectedYear))
       );
-      const closedYTD = wonDeals.reduce((sum, o) => sum + (o.closedACV || 0), 0);
+      const closedYTD = wonDeals.reduce((sum, o) => sum + getClosedVal(o), 0);
 
-      // Previous year closed for YoY comparison
-      const prevYearWon = prevYearOpps.filter(o =>
-        o.status === 'Won' &&
-        o.owner.trim().toLowerCase() === nameLower
-      );
-      const previousYearClosed = prevYearWon.reduce((sum, o) => sum + (o.closedACV || 0), 0);
+      // Previous year: use CSV if available, otherwise compute from prevYearOpps
+      let previousYearClosed: number;
+      if (priorYearHasCSV && priorYearCSVMap.has(member.Sales_Rep_ID)) {
+        previousYearClosed = priorYearCSVMap.get(member.Sales_Rep_ID)!;
+      } else {
+        const prevYearWon = prevYearOpps.filter(o =>
+          o.status === 'Won' &&
+          o.owner.trim().toLowerCase() === nameLower
+        );
+        previousYearClosed = prevYearWon.reduce((sum, o) => sum + getClosedVal(o), 0);
+      }
 
       const activeDeals = opps.filter(o =>
         (o.status === 'Active' || o.status === 'Stalled') &&
         o.owner.trim().toLowerCase() === nameLower
       );
-      const pipelineValue = activeDeals.reduce((sum, o) => sum + o.dealValue, 0);
-      const forecast = activeDeals.reduce((sum, o) => sum + o.weightedValue, 0);
+      const pipelineValue = activeDeals.reduce((sum, o) => sum + getWeightedPipeVal(o), 0);
+      const unweightedPipeline = activeDeals.reduce((sum, o) => sum + getUnweightedPipeVal(o), 0);
+      // Forecast = Closed YTD + Weighted Pipeline
+      const forecast = closedYTD + pipelineValue;
 
+      const prevYearWon = prevYearOpps.filter(o =>
+        o.status === 'Won' &&
+        o.owner.trim().toLowerCase() === nameLower
+      );
       const monthlyAttainment = Array.from({ length: 12 }, (_, month) => {
         const monthDeals = wonDeals.filter(o => parseDateLocal(o.expectedCloseDate).getMonth() === month);
-        const monthClosed = monthDeals.reduce((sum, o) => sum + (o.closedACV || 0), 0);
+        const monthClosed = monthDeals.reduce((sum, o) => sum + getClosedVal(o), 0);
         const prevMonthDeals = prevYearWon.filter(o => parseDateLocal(o.expectedCloseDate).getMonth() === month);
-        const prevMonthClosed = prevMonthDeals.reduce((sum, o) => sum + (o.closedACV || 0), 0);
+        const prevMonthClosed = prevMonthDeals.reduce((sum, o) => sum + getClosedVal(o), 0);
         return prevMonthClosed > 0 ? Math.round((monthClosed / prevMonthClosed) * 100) : (monthClosed > 0 ? 100 : 0);
       });
 
@@ -297,6 +393,7 @@ function buildRealSalespeople(store: SalesDataState, opps: Opportunity[], prevYe
         closedYTD,
         forecast,
         pipelineValue,
+        unweightedPipeline,
         monthlyAttainment,
         quota: member.Annual_Quota || 0,
       };
@@ -952,8 +1049,8 @@ export default function SalesPage() {
 
   const salespeople = useMemo(() => {
     if (!realData.isLoaded) return [];
-    return buildRealSalespeople(realData, filteredOpportunities, previousYearOpportunities);
-  }, [realData.isLoaded, realData.salesTeam, filteredOpportunities, previousYearOpportunities]);
+    return buildRealSalespeople(realData, filteredOpportunities, previousYearOpportunities, yearFilter, regionFilter, segmentFilter, verticalFilter, revenueTypeFilter);
+  }, [realData.isLoaded, realData.salesTeam, realData.priorYearPerformance, filteredOpportunities, previousYearOpportunities, yearFilter, regionFilter, segmentFilter, verticalFilter, revenueTypeFilter]);
 
   const quarterlyForecastData = useMemo(() => {
     if (!realData.isLoaded) return [];
@@ -2779,97 +2876,108 @@ export default function SalesPage() {
 
   // Sorted salespeople data - moved outside render function for proper reactivity
   const sortedSalespeople = useMemo(() => {
-    // Build a map for quick lookup and recursive rollup through multi-tier manager hierarchy
-    // e.g. Mihir → Abhishek → Saurabh → Sean: each manager gets all descendants' totals
-    const spById = new Map(salespeople.map(sp => [sp.id, sp]));
+    // Check if this is a historical CSV year (flat list, no hierarchy)
+    const isHistoricalCSV = salespeople.length > 0 && salespeople.every(sp => !sp.isManager);
 
-    // Recursive function: returns rolled-up totals for a person + all their descendants
-    const rollupCache = new Map<string, { closed: number; forecast: number; pipeline: number; prevYear: number }>();
-    const getRollup = (id: string): { closed: number; forecast: number; pipeline: number; prevYear: number } => {
-      if (rollupCache.has(id)) return rollupCache.get(id)!;
-      const person = spById.get(id);
-      if (!person) return { closed: 0, forecast: 0, pipeline: 0, prevYear: 0 };
+    let processed: (Salesperson & { pipelineCoverage: number; forecastAttainment: number; level: number })[];
 
-      const result = {
-        closed: person.closedYTD,
-        forecast: person.forecast,
-        pipeline: person.pipelineValue,
-        prevYear: person.previousYearClosed,
+    if (isHistoricalCSV) {
+      // Historical year from CSV: flat list, simple metrics, no manager rollup
+      // Coverage = (Closed YTD + Unweighted Pipeline) / Quota
+      // Forecast Attainment = Forecast / Quota
+      processed = salespeople.map(sp => {
+        const pipelineCoverage = sp.quota > 0 ? (sp.closedYTD + sp.unweightedPipeline) / sp.quota : 0;
+        const forecastAttainment = sp.quota > 0 ? (sp.forecast / sp.quota) * 100 : 0;
+        return { ...sp, pipelineCoverage, forecastAttainment, level: 0 };
+      });
+    } else {
+      // Current year: full manager hierarchy with cascading rollup
+      const spById = new Map(salespeople.map(sp => [sp.id, sp]));
+
+      const rollupCache = new Map<string, { closed: number; forecast: number; pipeline: number; unweightedPipeline: number; quota: number }>();
+      const getRollup = (id: string): { closed: number; forecast: number; pipeline: number; unweightedPipeline: number; quota: number } => {
+        if (rollupCache.has(id)) return rollupCache.get(id)!;
+        const person = spById.get(id);
+        if (!person) return { closed: 0, forecast: 0, pipeline: 0, unweightedPipeline: 0, quota: 0 };
+
+        const result = {
+          closed: person.closedYTD,
+          forecast: person.forecast,
+          pipeline: person.pipelineValue,
+          unweightedPipeline: person.unweightedPipeline,
+          quota: person.quota,
+        };
+
+        const directReports = salespeople.filter(s => s.managerId === id && s.id !== id);
+        for (const report of directReports) {
+          const sub = getRollup(report.id);
+          result.closed += sub.closed;
+          result.forecast += sub.forecast;
+          result.pipeline += sub.pipeline;
+          result.unweightedPipeline += sub.unweightedPipeline;
+          result.quota += sub.quota;
+        }
+
+        rollupCache.set(id, result);
+        return result;
       };
 
-      // Add all direct reports' recursive rollups
-      const directReports = salespeople.filter(s => s.managerId === id && s.id !== id);
-      for (const report of directReports) {
-        const sub = getRollup(report.id);
-        result.closed += sub.closed;
-        result.forecast += sub.forecast;
-        result.pipeline += sub.pipeline;
-        result.prevYear += sub.prevYear;
+      const salespeopleWithTotals = salespeople.map(sp => {
+        if (sp.isManager) {
+          const rollup = getRollup(sp.id);
+          // Coverage = (Closed YTD + Unweighted Pipeline) / Quota
+          const mgrCoverage = rollup.quota > 0 ? (rollup.closed + rollup.unweightedPipeline) / rollup.quota : 0;
+          const mgrForecastAtt = rollup.quota > 0 ? (rollup.forecast / rollup.quota) * 100 : 0;
+          return { ...sp, level: 0 as number, closedYTD: rollup.closed, forecast: rollup.forecast,
+            pipelineValue: rollup.pipeline, unweightedPipeline: rollup.unweightedPipeline,
+            quota: rollup.quota, pipelineCoverage: mgrCoverage, forecastAttainment: mgrForecastAtt };
+        }
+        // Coverage = (Closed YTD + Unweighted Pipeline) / Quota
+        const pipelineCoverage = sp.quota > 0 ? (sp.closedYTD + sp.unweightedPipeline) / sp.quota : 0;
+        const forecastAttainment = sp.quota > 0 ? (sp.forecast / sp.quota) * 100 : 0;
+        return { ...sp, level: 0 as number, pipelineCoverage, forecastAttainment };
+      });
+
+      // Build cascading hierarchical order
+      const totalsById = new Map(salespeopleWithTotals.map(sp => [sp.id, sp]));
+      const cascaded: typeof salespeopleWithTotals = [];
+      const visited = new Set<string>();
+
+      const addWithChildren = (id: string, level: number) => {
+        if (visited.has(id)) return;
+        visited.add(id);
+        const person = totalsById.get(id);
+        if (person) {
+          cascaded.push({ ...person, level });
+          const directReports = salespeopleWithTotals
+            .filter(s => s.managerId === id && s.id !== id)
+            .sort((a, b) => {
+              if (a.isManager !== b.isManager) return a.isManager ? -1 : 1;
+              return a.name.localeCompare(b.name);
+            });
+          for (const report of directReports) {
+            addWithChildren(report.id, level + 1);
+          }
+        }
+      };
+
+      const topLevel = salespeopleWithTotals
+        .filter(sp => !sp.managerId)
+        .sort((a, b) => a.name.localeCompare(b.name));
+      for (const top of topLevel) {
+        addWithChildren(top.id, 0);
       }
-
-      rollupCache.set(id, result);
-      return result;
-    };
-
-    // Compute totals and derived metrics for each person
-    const salespeopleWithTotals = salespeople.map(sp => {
-      if (sp.isManager) {
-        const rollup = getRollup(sp.id);
-        // Quota: use the manager's own value directly from the file (do NOT sum team)
-        const mgrCoverage = rollup.prevYear > 0 ? rollup.pipeline / rollup.prevYear : 0;
-        const mgrYtd = rollup.prevYear > 0 ? (rollup.closed / rollup.prevYear) * 100 : 0;
-        const mgrForecastAtt = rollup.prevYear > 0 ? ((rollup.closed + rollup.forecast) / rollup.prevYear) * 100 : 0;
-        return { ...sp, closedYTD: rollup.closed, forecast: rollup.forecast, pipelineValue: rollup.pipeline,
-          previousYearClosed: rollup.prevYear, pipelineCoverage: mgrCoverage,
-          forecastAttainment: mgrForecastAtt, ytdAttainment: mgrYtd };
-      }
-      const pipelineCoverage = sp.previousYearClosed > 0 ? sp.pipelineValue / sp.previousYearClosed : 0;
-      const forecastAttainment = sp.previousYearClosed > 0 ? ((sp.closedYTD + sp.forecast) / sp.previousYearClosed) * 100 : 0;
-      const ytdAttainment = sp.previousYearClosed > 0 ? (sp.closedYTD / sp.previousYearClosed) * 100 : 0;
-      return { ...sp, pipelineCoverage, forecastAttainment, ytdAttainment };
-    });
-
-    // Build cascading hierarchical order: top-level managers first, then their reports indented
-    const totalsById = new Map(salespeopleWithTotals.map(sp => [sp.id, sp]));
-    const cascaded: typeof salespeopleWithTotals = [];
-    const visited = new Set<string>();
-
-    const addWithChildren = (id: string, level: number) => {
-      if (visited.has(id)) return;
-      visited.add(id);
-      const person = totalsById.get(id);
-      if (person) {
-        cascaded.push({ ...person, level });
-        // Add direct reports recursively
-        const directReports = salespeopleWithTotals
-          .filter(s => s.managerId === id && s.id !== id)
-          .sort((a, b) => {
-            // Managers first within each group, then alphabetical
-            if (a.isManager !== b.isManager) return a.isManager ? -1 : 1;
-            return a.name.localeCompare(b.name);
-          });
-        for (const report of directReports) {
-          addWithChildren(report.id, level + 1);
+      for (const sp of salespeopleWithTotals) {
+        if (!visited.has(sp.id)) {
+          cascaded.push({ ...sp, level: 0 });
         }
       }
-    };
 
-    // Start from top-level managers (no managerId = self-managers)
-    const topLevel = salespeopleWithTotals
-      .filter(sp => !sp.managerId)
-      .sort((a, b) => a.name.localeCompare(b.name));
-    for (const top of topLevel) {
-      addWithChildren(top.id, 0);
-    }
-    // Add anyone not in the hierarchy (orphans)
-    for (const sp of salespeopleWithTotals) {
-      if (!visited.has(sp.id)) {
-        cascaded.push({ ...sp, level: 0 });
-      }
+      processed = cascaded;
     }
 
     // Apply table-specific column filters
-    let filteredSalespeople = cascaded;
+    let filteredSalespeople = processed;
 
     if (tableColumnFilters.region && tableColumnFilters.region.length > 0) {
       filteredSalespeople = filteredSalespeople.filter(sp => tableColumnFilters.region.includes(sp.region));
@@ -2894,7 +3002,7 @@ export default function SalesPage() {
       });
     }
 
-    return { filteredSalespeople, salespeopleWithTotals: cascaded };
+    return { filteredSalespeople, salespeopleWithTotals: processed };
   }, [salespeople, tableColumnFilters, sortConfig]);
 
   const renderQuotaTab = () => {
@@ -2929,12 +3037,12 @@ export default function SalesPage() {
                   IsManager: sp.isManager,
                   Quota: sp.quota,
                   ClosedYTD: sp.closedYTD,
-                  Pipeline: sp.pipelineValue,
+                  WeightedPipeline: sp.pipelineValue,
+                  UnweightedPipeline: sp.unweightedPipeline,
                   Forecast: sp.forecast,
                   PreviousYear: sp.previousYearClosed,
                   Coverage: sp.pipelineCoverage.toFixed(2),
-                  YTDvsPrevYear: sp.ytdAttainment.toFixed(1),
-                  ForecastvsPrevYear: sp.forecastAttainment.toFixed(1),
+                  ForecastAttainment: sp.forecastAttainment.toFixed(1),
                 })), 'sales_rep_performance')}
                 className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
               >
@@ -2977,8 +3085,14 @@ export default function SalesPage() {
                     onSort={handleSort}
                   />
                   <SortableHeader
-                    label="Pipeline"
+                    label="Wtd Pipeline"
                     sortKey="pipelineValue"
+                    currentSort={sortConfig}
+                    onSort={handleSort}
+                  />
+                  <SortableHeader
+                    label="Unwt Pipeline"
+                    sortKey="unweightedPipeline"
                     currentSort={sortConfig}
                     onSort={handleSort}
                   />
@@ -3001,13 +3115,7 @@ export default function SalesPage() {
                     onSort={handleSort}
                   />
                   <SortableHeader
-                    label="YTD vs PY"
-                    sortKey="ytdAttainment"
-                    currentSort={sortConfig}
-                    onSort={handleSort}
-                  />
-                  <SortableHeader
-                    label="Forecast vs PY"
+                    label="Forecast vs Quota"
                     sortKey="forecastAttainment"
                     currentSort={sortConfig}
                     onSort={handleSort}
@@ -3036,16 +3144,12 @@ export default function SalesPage() {
                     <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(sp.quota)}</td>
                     <td className="px-4 py-4 text-right text-green-600">{formatCurrency(sp.closedYTD)}</td>
                     <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(sp.pipelineValue)}</td>
+                    <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(sp.unweightedPipeline)}</td>
                     <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(sp.forecast)}</td>
                     <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(sp.previousYearClosed)}</td>
                     <td className="px-4 py-4 text-right">
                       <span className={`font-medium ${sp.pipelineCoverage >= 1.5 ? 'text-green-600' : sp.pipelineCoverage >= 1 ? 'text-yellow-600' : 'text-red-600'}`}>
                         {sp.pipelineCoverage.toFixed(1)}x
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      <span className={`font-medium ${sp.ytdAttainment >= 50 ? 'text-green-600' : sp.ytdAttainment >= 25 ? 'text-yellow-600' : 'text-red-600'}`}>
-                        {sp.ytdAttainment.toFixed(0)}%
                       </span>
                     </td>
                     <td className="px-4 py-4 text-right">

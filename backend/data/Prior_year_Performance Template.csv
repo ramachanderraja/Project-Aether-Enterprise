@@ -1,0 +1,90 @@
+Year,Sales_Rep_ID,Sales_Rep_Name,Region,Vertical,Segment, Annual_Quota , Q1_Closed , Q2_Closed , Q3_Closed , Q4_Closed , Total_Closed 
+2025,GEP.5924,Amit Bhatia,APAC,All,Enterprise,"5,000,000","511,584", -   ,"1,238,352","255,031","2,004,967"
+2025,GEP.7709,Wildan Ramadhani,APAC,All,Enterprise,"1,500,000", -   , -   , -   , -   , -   
+2025,GEP.5802,Aerene Aphiwatudomkun,APAC,All,Enterprise,"1,000,000", -   , -   , -   , -   , -   
+2025,GEP.7687,Rajiv Upadhyay,APAC,All,Enterprise,"1,000,000", -   , -   ,"140,000", -   ,"140,000"
+2025,GEP10488,Jack Keogh,APAC,All,Enterprise,"1,000,000","347,500", -   ,"387,000","255,031","989,531"
+2025,GEP.7175,Meenakshi Wadhwa,APAC,All,Enterprise,"1,000,000","75,196", -   ,"711,352", -   ,"786,548"
+2025,GEP.9239,Milan Oza,APAC,All,Enterprise,"250,000", -   , -   , -   , -   , -   
+2025,GEP.3849,Robert O'Leary,Europe,All,Enterprise,"5,000,000", -   , -   , -   , -   , -   
+2025,GEP05105,Bernard Remacle,Europe,All,Enterprise,"2,933,333","190,316", -   , -   ,"890,167","1,080,483"
+2025,GEP.1794,Sam Zaki,Europe,All,Enterprise,"1,300,000","139,625", -   , -   , -   ,"139,625"
+2025,GEP.2370,Stephan Hesselgren,Europe,All,Enterprise,"1,300,000","355,965", -   , -   , -   ,"355,965"
+2025,GEP.7298,Oliver Oehmke,Europe,All,Enterprise,"1,300,000", -   , -   , -   , -   , -   
+2025,GEP.9129,Patrick Van Osta,Europe,All,Enterprise,"541,667", -   , -   ,"17,000","104,035","121,035"
+2025,GEP06660,Saurabh Bhalla,Global,All,Mid-Market,"5,000,000","449,194","227,000","596,000","50,946","1,323,141"
+2025,GEP03819,Abhishek Garde,Global,All,Mid-Market,"2,500,000","394,194","107,000","269,500", -   ,"770,694"
+2025,GEP11377,Sourabh Sharma,Global,All,Mid-Market,"1,000,000","55,000", -   ,"262,500", -   ,"317,500"
+2025,GEP.4127,Mihir Veshvikar,Global,All,Mid-Market,"750,000","210,000", -   ,"55,000", -   ,"265,000"
+2025,GEP.4037,Rajat Vij,Global,All,Mid-Market,"750,000", -   ,"120,000","64,000", -   ,"184,000"
+2025,GEP.6365,Alvira Khan,Global,All,Mid-Market,"500,000","184,194","107,000","214,500", -   ,"505,694"
+2025,GEP.6412,Rajmohan Nayak,Global,All,Mid-Market,"500,000", -   , -   , -   , -   , -   
+2025,GEP.8673,Adarsh Sonthalia,Global,All,Mid-Market,"250,000", -   , -   , -   , -   , -   
+2025,GEP.7427,Aishwarya Pandey,Global,All,Mid-Market,"500,000", -   , -   , -   ,"50,946","50,946"
+2025,GEP02839,Anirban Sengupta,Global,All,Mid-Market,"250,000", -   , -   , -   , -   , -   
+2025,GEP.6411,Bhumisha Vasani,Global,All,Mid-Market,"500,000", -   , -   , -   , -   , -   
+2025,GEP.8570,Dheeraj Hasija,Global,All,Mid-Market,"500,000", -   , -   , -   , -   , -   
+2025,GEP.8529,Viraj Vakatkar,Global,All,Mid-Market,"500,000", -   , -   , -   , -   , -   
+2025,GEP.4402,Luis Patino,LATAM,All,Enterprise,"1,000,000", -   ,"173,700", -   ,"320,579","494,279"
+2025,GEP10357,Abdel Halim,Middle East,All,Enterprise,"3,500,000", -   , -   ,"585,000", -   ,"585,000"
+2025,GEP.4366,Michael Clear,North America,All,Enterprise,"6,480,000", -   , -   , -   , -   , -   
+2025,GEP00011,Uday Singh,North America,All,Enterprise,"5,940,000", -   ,"649,334", -   , -   ,"649,334"
+2025,GEP89500,Mark Szewczykowski,North America,All,Enterprise,"4,860,000", -   , -   , -   , -   , -   
+2025,GEP.7711,Richard Rivera,North America,All,Enterprise,"4,860,000", -   , -   , -   , -   , -   
+2025,GEP05667,Brian Bergersen,North America,All,Enterprise,"1,800,000", -   ,"284,334","71,500","868,825","1,224,659"
+2025,GEP.3977,Mattie Farnsworth,North America,All,Enterprise,"1,800,000", -   , -   , -   , -   , -   
+2025,GEP.1203,Karson Keogh,North America,All,Enterprise,"1,800,000","2,000,000","325,000", -   , -   ,"2,325,000"
+2025,GEP.5752,Anthony Filoso,North America,All,Enterprise,"1,800,000", -   , -   , -   , -   , -   
+2025,GEP.5899,James Higgins,North America,All,Enterprise,"1,800,000", -   , -   , -   , -   , -   
+2025,GEP.6046,Bill Hoffman,North America,All,Enterprise,"1,800,000", -   , -   , -   , -   , -   
+2025,GEP.6047,Margaret Bowers,North America,All,Enterprise,"1,800,000", -   , -   , -   , -   , -   
+2025,GEP.6225,Addison Cauley,North America,All,Enterprise,"1,800,000", -   , -   ,"2,964,835", -   ,"2,964,835"
+2025,GEP.8136,Christopher Govers,North America,All,Enterprise,"1,500,000", -   , -   , -   , -   , -   
+2025,GEP.8223,Narrie Moye,North America,All,Enterprise,"1,500,000", -   , -   , -   , -   , -   
+2025,GEP11062,Parker Berg,North America,All,Enterprise,"1,800,000", -   , -   , -   , -   , -   
+2025,GEP.8348,Spencer Burke,North America,All,Enterprise,"1,800,000", -   , -   , -   , -   , -   
+2024,GEP.5924,Amit Bhatia,APAC,All,Enterprise,"2,250,000", -   ,"38,000", -   ,"435,000","473,000"
+2024,GEP.4576,Franic Seah,APAC,All,Enterprise,"1,000,000", -   , -   , -   , -   , -   
+2024,GEP.4635,Sardali Mudiastono,APAC,All,Enterprise,"750,000", -   , -   , -   , -   , -   
+2024,GEP.5802,Aerene Aphiwatudomkun,APAC,All,Enterprise,"750,000", -   , -   , -   , -   , -   
+2024,GEP.4361,Louie Li,APAC,All,Enterprise,"750,000", -   ,"38,000", -   , -   ,"38,000"
+2024,GEP10488,Jack Keogh,APAC,All,Enterprise,"250,000", -   , -   , -   ,"75,000","75,000"
+2024,GEP.7175,Meenakshi Wadhwa,APAC,All,Enterprise,"250,000", -   , -   , -   ,"360,000","360,000"
+2024,GEP.3849,Bob O'Leary,Europe,All,Enterprise,"4,000,000","1,004,568","599,197","32,238","31,000","1,667,002"
+2024,GEP05105,Bernard Remacle,Europe,All,Enterprise,"1,500,000","652,944","193,697","32,238","31,000","909,878"
+2024,GEP.1794,Sam Zaki,Europe,All,Enterprise,"1,300,000","351,624","405,500", -   , -   ,"757,124"
+2024,GEP.2370,Stephan Hesselgren,Europe,All,Enterprise,"1,300,000", -   , -   , -   , -   , -   
+2024,GEP.6034,Heleen Maertens,Europe,All,Enterprise,"650,000", -   , -   , -   , -   , -   
+2024,GEP.4135,Uwe Stroh,Europe,All,Enterprise,"650,000", -   , -   , -   , -   , -   
+2024,GEP06660,Saurabh Bhalla,Global,All,Mid-Market,"4,000,000","525,000","290,620","653,000","1,476,200","2,944,820"
+2024,GEP03819,Abhishek Garde,Global,All,Mid-Market,"2,500,000","150,000","205,000","195,000","360,000","910,000"
+2024,GEP11377,Sourabh Sharma,Global,All,Mid-Market,"2,000,000", -   ,"85,620","240,000","395,600","721,220"
+2024,GEP.0437,Rajat Vij,Global,All,Mid-Market,"750,000", -   , -   ,"210,000","236,000","446,000"
+2024,GEP.3921,Sneha Dolare,Global,All,Mid-Market,"500,000","35,000","115,000", -   , -   ,"150,000"
+2024,GEP.4127,Mihir Veshvikar,Global,All,Mid-Market,"500,000","340,000","90,000", -   , -   ,"430,000"
+2024,GEP.3088,Manas Kasliwal,Global,All,Mid-Market,"375,000", -   , -   , -   , -   , -   
+2024,GEP.4433,Prasangika Rai,Global,All,Mid-Market,"375,000", -   , -   , -   , -   , -   
+2024,GEP06383,Srinivas Moorthy,Global,All,Mid-Market,"300,000", -   , -   ,"248,000", -   ,"248,000"
+2024,GEP.4128,Jithesh Karat,Global,All,Mid-Market,"250,000", -   , -   , -   , -   , -   
+2024,GEP.6412,Rajmohan Nayak,Global,All,Mid-Market,"250,000", -   , -   , -   ,"325,000","325,000"
+2024,GEP.6365,Alvira Khan,Global,All,Mid-Market,"250,000", -   , -   , -   , -   , -   
+2024,GEP.6411,Bhushima Vasani,Global,All,Mid-Market,"208,333", -   , -   , -   ,"159,600","159,600"
+2024,GEP.4351,Shrawani Tetarbe,Global,All,Mid-Market,"208,333", -   , -   , -   , -   , -   
+2024,GEP.4350,Suman Mohanty,Global,All,Mid-Market,"166,667", -   , -   , -   , -   , -   
+2024,GEP.6084,Sushma NK,Global,All,Mid-Market,"145,834", -   , -   , -   , -   , -   
+2024,GEP.4402,Luis Patino,LATAM,All,Enterprise,"1,000,000","175,500", -   ,"158,080","91,665","425,245"
+2024,GEP10357,Abdel Halim,Middle East,All,Enterprise,"2,500,000", -   , -   ,"1,825,000", -   ,"1,825,000"
+2024,GEP.4366,Michael Clear,North America,All,Enterprise,"6,200,000", -   , -   ,"1,967,636","970,527","2,938,163"
+2024,GEP.4412,Christine Rampa,North America,All,Enterprise,"3,000,000","65,000", -   , -   , -   ,"65,000"
+2024,GEP00011,Uday Singh,North America,All,Enterprise,"2,500,000","830,653", -   ,"2,200,324","2,976,672","6,007,649"
+2024,GEP05667,Brian Bergersen,North America,All,Enterprise,"1,800,000","830,653", -   ,"759,636","2,087,199","3,677,488"
+2024,GEP.3977,Mattie Farnsworth,North America,All,Enterprise,"1,800,000", -   , -   ,"1,500,000","400,000","1,900,000"
+2024,GEP.1203,Karson Keogh,North America,All,Enterprise,"1,800,000", -   ,"80,000", -   , -   ,"80,000"
+2024,GEP.4143,Connor Andrews,North America,All,Enterprise,"1,650,000","60,000", -   ,"150,000", -   ,"210,000"
+2024,GEP.5752,Anthony Filoso,North America,All,Enterprise,"1,500,000", -   , -   , -   , -   , -   
+2024,GEP10488,Jack Keogh,North America,All,Enterprise,"1,350,000","5,000", -   ,"427,000", -   ,"432,000"
+2024,GEP.5899,James Higgins,North America,All,Enterprise,"1,350,000", -   , -   ,"40,000", -   ,"40,000"
+2024,GEP.6046,Bill Hoffman,North America,All,Enterprise,"1,200,000", -   , -   , -   ,"155,000","155,000"
+2024,GEP.6047,Maggie Bowers,North America,All,Enterprise,"1,200,000", -   , -   , -   , -   , -   
+2024,GEP.6225,Addison Cauley,North America,All,Enterprise,"1,050,000", -   , -   , -   , -   , -   
+2024,GEP.3985,Jason Cooper,North America,All,Enterprise,"1,050,000", -   , -   , -   , -   , -   

@@ -129,6 +129,21 @@ export interface RawSalesTeam {
   Status: string;
 }
 
+export interface RawPriorYearPerformance {
+  Year: number;
+  Sales_Rep_ID: string;
+  Sales_Rep_Name: string;
+  Region: string;
+  Vertical: string;
+  Segment: string;
+  Annual_Quota: number;
+  Q1_Closed: number;
+  Q2_Closed: number;
+  Q3_Closed: number;
+  Q4_Closed: number;
+  Total_Closed: number;
+}
+
 export interface RawCustomerNameMapping {
   ARR_Customer_Name: string;
   Pipeline_Customer_Name: string;

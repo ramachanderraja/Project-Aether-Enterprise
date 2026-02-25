@@ -15,6 +15,7 @@ export class SalesService {
       sowMappings: this.dataService.getSowMappings(),
       arrSubCategoryBreakdown: this.dataService.getArrSubCategoryBreakdown(),
       productCategoryMapping: this.dataService.getProductCategoryMapping(),
+      priorYearPerformance: this.dataService.getPriorYearPerformance(),
     };
   }
 
