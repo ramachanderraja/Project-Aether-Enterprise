@@ -1,6 +1,5 @@
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
-import { RevenueService } from '../../../../revenue/revenue.service';
 import { RevenueComputeService } from '../../../../revenue/services/revenue-compute.service';
 
 const MAX_ITEMS = 50;
@@ -16,7 +15,6 @@ const filtersSchema = z.object({
 });
 
 export function createCustomersTools(
-  revenueService: RevenueService,
   revenueCompute: RevenueComputeService,
 ) {
   const getCustomersList = tool(
@@ -41,7 +39,7 @@ export function createCustomersTools(
     {
       name: 'get_customers_list',
       description:
-        'Get full customer list with ARR, region, vertical, SOW count, earliest renewal date, renewal risk, and expandable SOW details (SOW ID, name, ARR, fees type, contract end, risk). Use for "list all customers", "which customers have renewals coming up", "search for customer X". Supports search by name, filter 2026 renewals only, and filter by renewal risk level.',
+        'Get full customer list with ARR, region, vertical, SOW count, earliest renewal date, renewal risk, and expandable SOW details (SOW ID, name, ARR, fees type, contract end, risk). Use for "list all customers", "which customers have renewals coming up", "search for customer X", or "top customers by ARR". Supports search by name, filter 2026 renewals only, and filter by renewal risk level. Results sorted by ARR descending by default.',
       schema: filtersSchema.extend({
         search: z.string().optional().describe('Search by customer name (partial match)'),
         renewals2026: z.boolean().optional().describe('Set true to show only customers with 2026 renewals'),
@@ -60,38 +58,10 @@ export function createCustomersTools(
     {
       name: 'get_renewal_risk',
       description:
-        'Get 2026 Renewal Risk Distribution (donut chart data) and Renewal Calendar (month-by-month SOW count and ARR). Matches the Customers tab visualizations.',
+        'Get 2026 Renewal Risk Distribution (donut chart data: Win/PO, In Process, Mgmt Approval, High Risk, Lost counts) and Renewal Calendar (month-by-month SOW count and ARR for 2026 renewals). Matches the Customers tab donut chart and renewal calendar grid.',
       schema: filtersSchema,
     },
   );
 
-  const getCustomerHealth = tool(
-    async ({ risk_level }) => {
-      const result = await revenueService.getCustomerHealth(risk_level);
-      return JSON.stringify(result);
-    },
-    {
-      name: 'get_customer_health',
-      description:
-        'Get customer health data showing ARR and renewal risk. Returns up to 50 customers. Filter by risk level.',
-      schema: z.object({
-        risk_level: z.string().optional().describe('Filter by risk: Low, Medium, High, Critical'),
-      }),
-    },
-  );
-
-  const getCohortAnalysis = tool(
-    async () => {
-      const result = await revenueService.getCohortAnalysis();
-      return JSON.stringify(result);
-    },
-    {
-      name: 'get_cohort_analysis',
-      description:
-        'Get customer cohort analysis grouped by contract start year with customer count and current ARR.',
-      schema: z.object({}),
-    },
-  );
-
-  return [getCustomersList, getRenewalRisk, getCustomerHealth, getCohortAnalysis];
+  return [getCustomersList, getRenewalRisk];
 }

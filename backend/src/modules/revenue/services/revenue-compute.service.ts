@@ -299,12 +299,12 @@ export class RevenueComputeService {
   }
 
   private getSelectedARRMonth(filters: RevenueFilterDto): string {
-    const priorMonth = getPriorMonth();
     const priorDate = new Date();
     priorDate.setMonth(priorDate.getMonth() - 1);
+    const defaultMonth = String(priorDate.getMonth() + 1).padStart(2, '0');
 
     const year = filters.year?.length ? filters.year[0] : String(priorDate.getFullYear());
-    const month = filters.month?.length ? (MONTH_NAME_TO_NUM[filters.month[0]] || '12') : '12';
+    const month = filters.month?.length ? (MONTH_NAME_TO_NUM[filters.month[0]] || defaultMonth) : defaultMonth;
     return `${year}-${month}`;
   }
 
@@ -1156,5 +1156,199 @@ export class RevenueComputeService {
     }
 
     return { products };
+  }
+
+  getCategorySummary(filters: RevenueFilterDto & { feesType?: string }) {
+    const customers = this.filterCustomers(this.buildCustomers(), filters);
+    const prodCatIndex = this.buildProdCatIndex();
+
+    const filteredCustomers = filters.feesType && filters.feesType !== 'All'
+      ? customers.filter(c => c.feesType === filters.feesType)
+      : customers;
+
+    const categoryMap = new Map<string, {
+      totalARR: number; customers: Set<string>; subCategories: Set<string>;
+    }>();
+
+    filteredCustomers.forEach(c => {
+      Object.entries(c.productARR).forEach(([subCat, arr]) => {
+        const category = prodCatIndex[subCat] || 'Other';
+        if (!categoryMap.has(category)) {
+          categoryMap.set(category, { totalARR: 0, customers: new Set(), subCategories: new Set() });
+        }
+        const cat = categoryMap.get(category)!;
+        cat.totalARR += arr;
+        cat.customers.add(c.name);
+        cat.subCategories.add(subCat);
+      });
+    });
+
+    const categories = Array.from(categoryMap.entries())
+      .map(([name, data]) => ({
+        category: name,
+        totalARR: Math.round(data.totalARR),
+        customerCount: data.customers.size,
+        subCategoryCount: data.subCategories.size,
+        avgARRPerCustomer: data.customers.size > 0 ? Math.round(data.totalARR / data.customers.size) : 0,
+      }))
+      .sort((a, b) => b.totalARR - a.totalARR);
+
+    const totalSubCategories = new Set<string>();
+    categoryMap.forEach(data => data.subCategories.forEach(s => totalSubCategories.add(s)));
+
+    const mostAdopted = categories.reduce(
+      (best, cat) => cat.customerCount > best.count ? { name: cat.category, count: cat.customerCount } : best,
+      { name: '', count: 0 },
+    );
+
+    return {
+      categories,
+      summary: {
+        totalCategories: categories.length,
+        topCategory: categories.length > 0 ? { name: categories[0].category, totalARR: categories[0].totalARR } : null,
+        totalSubCategories: totalSubCategories.size,
+        mostAdopted: mostAdopted.name ? { name: mostAdopted.name, customerCount: mostAdopted.count } : null,
+      },
+    };
+  }
+
+  getCustomerCategoryMatrix(filters: RevenueFilterDto & { feesType?: string; search?: string }) {
+    const customers = this.filterCustomers(this.buildCustomers(), filters);
+    const prodCatIndex = this.buildProdCatIndex();
+
+    const filteredCustomers = filters.feesType && filters.feesType !== 'All'
+      ? customers.filter(c => c.feesType === filters.feesType)
+      : customers;
+
+    // Group SOW-level customers by customer name
+    const custGroupMap = new Map<string, {
+      region: string; vertical: string; totalARR: number;
+      categoryARR: Record<string, number>;
+      sows: Array<{ sowId: string; categoryARR: Record<string, number>; totalARR: number }>;
+    }>();
+
+    filteredCustomers.forEach(c => {
+      const sowCategoryARR: Record<string, number> = {};
+      Object.entries(c.productARR).forEach(([subCat, arr]) => {
+        const category = prodCatIndex[subCat] || 'Other';
+        sowCategoryARR[category] = (sowCategoryARR[category] || 0) + arr;
+      });
+      const sowTotal = Object.values(sowCategoryARR).reduce((s, v) => s + v, 0);
+
+      const existing = custGroupMap.get(c.name);
+      if (existing) {
+        existing.totalARR += c.currentARR;
+        Object.entries(sowCategoryARR).forEach(([cat, arr]) => {
+          existing.categoryARR[cat] = (existing.categoryARR[cat] || 0) + arr;
+        });
+        existing.sows.push({ sowId: c.sowId, categoryARR: sowCategoryARR, totalARR: Math.round(sowTotal) });
+      } else {
+        custGroupMap.set(c.name, {
+          region: c.region,
+          vertical: c.vertical,
+          totalARR: c.currentARR,
+          categoryARR: { ...sowCategoryARR },
+          sows: [{ sowId: c.sowId, categoryARR: sowCategoryARR, totalARR: Math.round(sowTotal) }],
+        });
+      }
+    });
+
+    let result = Array.from(custGroupMap.entries())
+      .map(([customerName, data]) => ({
+        customerName,
+        region: data.region,
+        vertical: data.vertical,
+        totalARR: Math.round(data.totalARR),
+        categoryARR: Object.fromEntries(
+          Object.entries(data.categoryARR).map(([k, v]) => [k, Math.round(v)]),
+        ),
+        sows: data.sows.map(s => ({
+          sowId: s.sowId,
+          categoryARR: Object.fromEntries(
+            Object.entries(s.categoryARR).map(([k, v]) => [k, Math.round(v)]),
+          ),
+          totalARR: s.totalARR,
+        })),
+      }))
+      .sort((a, b) => b.totalARR - a.totalARR);
+
+    if (filters.search) {
+      const search = filters.search.toLowerCase();
+      result = result.filter(c => c.customerName.toLowerCase().includes(search));
+    }
+
+    const allCategories = Array.from(
+      new Set(result.flatMap(c => Object.keys(c.categoryARR))),
+    ).sort();
+
+    const truncated = result.length > 50;
+    return {
+      data: result.slice(0, 50),
+      allCategories,
+      truncated,
+      total: result.length,
+    };
+  }
+
+  getCrossSellAnalysis(filters: RevenueFilterDto & { feesType?: string }) {
+    const customers = this.filterCustomers(this.buildCustomers(), filters);
+    const prodCatIndex = this.buildProdCatIndex();
+
+    const filteredCustomers = filters.feesType && filters.feesType !== 'All'
+      ? customers.filter(c => c.feesType === filters.feesType)
+      : customers;
+
+    // Group by customer name, collect unique sub-categories
+    const custSubCats = new Map<string, Set<string>>();
+    filteredCustomers.forEach(c => {
+      if (!custSubCats.has(c.name)) custSubCats.set(c.name, new Set());
+      const set = custSubCats.get(c.name)!;
+      Object.keys(c.productARR).forEach(subCat => set.add(subCat));
+    });
+
+    let one = 0, two = 0, threePlus = 0;
+    custSubCats.forEach(subs => {
+      const count = subs.size;
+      if (count === 1) one++;
+      else if (count === 2) two++;
+      else if (count >= 3) threePlus++;
+    });
+
+    const totalCustomers = custSubCats.size;
+    const crossSellRate = totalCustomers > 0
+      ? Math.round(((two + threePlus) / totalCustomers) * 1000) / 10
+      : 0;
+
+    // Category performance for scatter chart
+    const categoryMap = new Map<string, { totalARR: number; customers: Set<string> }>();
+    filteredCustomers.forEach(c => {
+      Object.entries(c.productARR).forEach(([subCat, arr]) => {
+        const category = prodCatIndex[subCat] || 'Other';
+        if (!categoryMap.has(category)) categoryMap.set(category, { totalARR: 0, customers: new Set() });
+        const cat = categoryMap.get(category)!;
+        cat.totalARR += arr;
+        cat.customers.add(c.name);
+      });
+    });
+
+    const categoryPerformance = Array.from(categoryMap.entries())
+      .map(([name, data]) => ({
+        category: name,
+        customerCount: data.customers.size,
+        totalARR: Math.round(data.totalARR),
+        avgARRPerCustomer: data.customers.size > 0 ? Math.round(data.totalARR / data.customers.size) : 0,
+      }))
+      .sort((a, b) => b.totalARR - a.totalARR);
+
+    return {
+      distribution: [
+        { name: '1 Sub-Category', count: one },
+        { name: '2 Sub-Categories', count: two },
+        { name: '3+ Sub-Categories', count: threePlus },
+      ],
+      totalCustomers,
+      crossSellRate,
+      categoryPerformance,
+    };
   }
 }

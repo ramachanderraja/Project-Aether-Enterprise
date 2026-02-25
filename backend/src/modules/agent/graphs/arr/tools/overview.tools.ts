@@ -1,6 +1,5 @@
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
-import { RevenueService } from '../../../../revenue/revenue.service';
 import { RevenueComputeService } from '../../../../revenue/services/revenue-compute.service';
 
 const filtersSchema = z.object({
@@ -14,7 +13,6 @@ const filtersSchema = z.object({
 });
 
 export function createOverviewTools(
-  revenueService: RevenueService,
   revenueCompute: RevenueComputeService,
 ) {
   const getArrOverviewMetrics = tool(
@@ -56,20 +54,5 @@ export function createOverviewTools(
     },
   );
 
-  const getRevenueOverview = tool(
-    async ({ period }) => {
-      const result = await revenueService.getRevenueOverview(period);
-      return JSON.stringify(result);
-    },
-    {
-      name: 'get_revenue_overview',
-      description:
-        'Get a basic summary of revenue: total ARR, new ARR, expansion, contraction, churn, closed ACV. Use get_arr_overview_metrics for the full KPI card data.',
-      schema: z.object({
-        period: z.string().optional().describe('Time period filter'),
-      }),
-    },
-  );
-
-  return [getArrOverviewMetrics, getArrTrend, getArrByDimension, getRevenueOverview];
+  return [getArrOverviewMetrics, getArrTrend, getArrByDimension];
 }

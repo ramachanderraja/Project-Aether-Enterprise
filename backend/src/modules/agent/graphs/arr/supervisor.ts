@@ -15,7 +15,7 @@
  *       ↓              ↓              ↓              ↓
  *    Overview      Movement      Customers       Products
  *     Agent         Agent         Agent           Agent
- *    (4 tools)     (3 tools)     (4 tools)       (1 tool)
+ *    (3 tools)     (3 tools)     (2 tools)       (4 tools)
  */
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -49,10 +49,17 @@ const ROUTER_SYSTEM_PROMPT = `You are an ARR-revenue-query router. Given a user 
 Reply with ONLY a JSON object — no markdown, no explanation:
 {"tab": "<tab_key>", "reason": "User is asking about <brief topic, max 6 words>"}
 
+IMPORTANT CONTEXT — Quantum and SMART are platform filters, NOT product categories:
+- "Quantum ARR", "SMART ARR", "Quantum/SMART" → these are platform filters that apply to the OVERVIEW tab (or any tab). They filter which customers are included.
+- Product categories are things like S2C, P2P, Supply Chain, Spend, Supplier, Qi, TPRM, Click, Cost Drivers, etc.
+- If the user asks "What is the Quantum ARR?" or "year-end forecast for Quantum", route to "overview" (NOT "products").
+
 Tab keys and when to choose each:
 
 1. "overview" — KPI cards (Current ARR, NRR, GRR, Forecast), ARR trend chart, ARR by region/vertical/category. Choose this for:
    - General ARR questions, "what's our current ARR?"
+   - Quantum ARR, SMART ARR (these are platform filters, not products)
+   - Year-end forecast, forecasted ARR
    - NRR/GRR, retention questions
    - ARR trend over time
    - Regional/vertical/category breakdowns
@@ -65,18 +72,19 @@ Tab keys and when to choose each:
    - "Which customers expanded/contracted?"
    - Monthly movement trend analysis
 
-3. "customers" — Customer list with SOWs, renewal risk, renewal calendar, customer health, cohort analysis. Choose this for:
+3. "customers" — Customer list with SOWs, renewal risk, renewal calendar. Choose this for:
    - Customer lookups, "search for customer X"
    - Renewal risk and upcoming renewals
-   - Customer health questions
-   - Cohort retention analysis
    - "Which customers are at risk?"
+   - "Top customers by ARR"
 
-4. "products" — Product category performance, ARR by sub-category. Choose this for:
-   - Product/category breakdowns
+4. "products" — Product category performance (S2C, P2P, Supply Chain, etc.), customer product matrix, cross-sell analysis. Choose this for:
+   - Product/category breakdowns (S2C, P2P, Supply Chain, Spend, Supplier, Qi, TPRM, Click, Cost Drivers)
    - "Top product categories by ARR"
    - Sub-category analysis
-   - Platform/product performance
+   - "Which customers use multiple products?"
+   - Cross-sell rate
+   - Customer-category matrix
 
 If the query is ambiguous or could span multiple tabs, pick the MOST relevant one. If it's a follow-up question, consider the conversation context to route to the same tab.`;
 
@@ -113,23 +121,29 @@ function getDateContext(): string {
   const year = now.getFullYear();
   const quarter = Math.ceil((now.getMonth() + 1) / 3);
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const priorMonthIndex = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+  const priorMonthName = monthNames[priorMonthIndex];
+  const priorMonthYear = now.getMonth() === 0 ? year - 1 : year;
   return `
 
 ## Current Date Context
 - Today: ${now.toISOString().split('T')[0]}
 - Current year: ${year}
 - Current quarter: Q${quarter}
-- Current month: ${monthNames[now.getMonth()]}
+- Calendar month: ${monthNames[now.getMonth()]}
+- **Latest ARR data month: ${priorMonthName} ${priorMonthYear}** (ARR snapshot data is always one month behind — the current calendar month has not ended so there is no snapshot for it yet)
 - Previous year: ${year - 1}
 
-## Smart Date Inference (CRITICAL — apply BEFORE calling any tool)
+## Smart Date Inference for ARR (CRITICAL — apply BEFORE calling any tool)
+- **"current ARR" / "current" / "now" / "latest"** -> ALWAYS pass month: ["${priorMonthName}"], year: ["${priorMonthYear}"]. The latest actual ARR data is for ${priorMonthName} ${priorMonthYear}, NOT ${monthNames[now.getMonth()]} ${year}.
 - "this year" / "current year" / no year mentioned -> ALWAYS pass year: ["${year}"]
 - "last year" / "previous year" -> pass year: ["${year - 1}"]
 - "this quarter" -> pass month filters for the current quarter months
-- "this month" -> pass month: ["${monthNames[now.getMonth()]}"]
+- "this month" -> pass month: ["${priorMonthName}"] (the latest month with actual data)
 - If the user does NOT specify any year at all, DEFAULT to year: ["${year}"] — always assume current year.
-- NEVER pass empty filters ({}) to any tool. At minimum, always include the current year.
-- **IMPORTANT for movement/waterfall tools**: ALWAYS pass month: ["${monthNames[now.getMonth()]}"] (or the prior month "${monthNames[now.getMonth() === 0 ? 11 : now.getMonth() - 1]}") in addition to year. If you only pass year without month, the system defaults to December which may be in the future with no data. Use the current or prior month as the end point.`;
+- **ALWAYS PASS MONTH**: You MUST always include a month filter. If no month is mentioned, DEFAULT to month: ["${priorMonthName}"] (the latest month with actual data). If you only pass year without month, the system defaults to December which may be in the future with no data.
+- NEVER pass empty filters ({}) to any tool. At minimum, always include year and month.
+- For movement/waterfall tools: the lookback period counts backwards FROM the month you specify. Default to month: ["${priorMonthName}"].`;
 }
 
 // ── Sub-agent prompts ──
@@ -159,7 +173,6 @@ When the user mentions a region, vertical, year, month, etc., ALWAYS pass the co
 - \`get_arr_overview_metrics\`: Returns full KPI cards: Current ARR, Year-End Forecast, Monthly NRR/GRR, Full-Year NRR/GRR, expansion, contraction, churn, schedule change
 - \`get_arr_trend\`: Returns month-by-month actual and forecasted ARR from Jan 2024 to Dec 2026
 - \`get_arr_by_dimension\`: Returns ARR breakdown by region, vertical, and product category (three sorted lists)
-- \`get_revenue_overview\`: Returns a basic revenue summary (total ARR, new ARR, expansion, contraction, churn, closed ACV)
 
 Rules:
 1. ALWAYS call tools before answering — never fabricate numbers.
@@ -202,12 +215,14 @@ Rules:
 7. **SMART DEFAULTS**: Never call tools with completely empty filters. At minimum, always infer and pass the year filter.
 8. **CRITICAL — ALWAYS PASS MONTH**: When calling ANY movement tool, you MUST pass the month filter (e.g. month: ["Feb"] for current month, or month: ["Jan"] for prior month). If you only pass year without month, the system defaults to December which may be in the future with no data. The lookback period counts backwards FROM the month you specify.`,
 
-  customers: `You are the Customer Analyst. You answer questions about customers, renewals, health, and cohorts.
+  customers: `You are the Customer Analyst. You answer questions about customers, renewals, and risk.
 
 Your screen shows:
-- 2026 Renewal Risk Distribution chart: Donut (High Risk, Lost, Mgmt Approval, In Process, Win/PO)
+- Top 10 Customers by ARR: Horizontal bar chart
+- 2026 Renewal Risk Distribution chart: Donut (Win/PO, In Process, Mgmt Approval, High Risk, Lost)
 - 2026 Renewal Calendar: 12-month grid with SOW count and ARR per month
-- Customer Table: Expandable rows showing SOW details (SOW ID, name, ARR, contract end, risk)
+- Customer Table: Expandable rows showing SOW details (SOW ID, name, ARR, fees type, contract end, renewal risk)
+- Filters: "Show 2026 Renewals Only" toggle, "Renewal Risk Only" toggle, customer name search
 
 ## Available Filters (pass these to ALL tools)
 When the user mentions a region, vertical, year, month, etc., ALWAYS pass the corresponding filter:
@@ -220,10 +235,8 @@ When the user mentions a region, vertical, year, month, etc., ALWAYS pass the co
 - **quantumSmart**: "Quantum", "SMART", or "All"
 
 ## Tool Guide
-- \`get_customers_list\`: Returns full customer list with ARR, region, vertical, SOW count, earliest renewal date, renewal risk, and expandable SOW details. Supports search by name, filter 2026 renewals only, and filter by renewal risk level. Supports sorting.
-- \`get_renewal_risk\`: Returns 2026 Renewal Risk Distribution (donut chart data) and Renewal Calendar (month-by-month SOW count and ARR).
-- \`get_customer_health\`: Returns customer health data showing ARR and renewal risk. Filter by risk level (Low, Medium, High, Critical).
-- \`get_cohort_analysis\`: Returns customer cohort analysis grouped by contract start year with customer count and current ARR.
+- \`get_customers_list\`: Returns full customer list sorted by ARR (descending). Includes region, vertical, SOW count, earliest renewal date, renewal risk, and expandable SOW details. Supports search by name, filter 2026 renewals only (renewals2026: true), and filter by renewal risk level ("High Risk", "Lost", "Mgmt Approval", "In Process", "Win/PO"). For "top 10 customers" questions, just use this tool — results are already sorted by ARR.
+- \`get_renewal_risk\`: Returns 2026 Renewal Risk Distribution (donut: Win/PO, In Process, Mgmt Approval, High Risk, Lost) and Renewal Calendar (month-by-month SOW count and ARR).
 
 Rules:
 1. ALWAYS call tools before answering — never fabricate numbers.
@@ -231,12 +244,22 @@ Rules:
 3. Use markdown tables for customer lists.
 4. Highlight at-risk renewals and flag concerning patterns.
 5. When asked about renewals without specifying a year, default to 2026.
-6. **SMART DEFAULTS**: Never call tools with completely empty filters. At minimum, always infer and pass the year filter.`,
+6. **SMART DEFAULTS**: Never call tools with completely empty filters. At minimum, always infer and pass the year filter.
+7. **RENEWAL RISK LEVELS**: The risk levels on this screen are: Win/PO, In Process, Mgmt Approval, High Risk, Lost. Use these exact values when filtering.`,
 
-  products: `You are the Product Performance Analyst. You answer questions about product categories and ARR by product.
+  products: `You are the Product Performance Analyst. You answer questions about product categories, cross-sell analysis, and customer product adoption.
 
-Your screen shows:
-- Category Performance Table: Category/sub-category with ARR, customer count, avg ARR/customer
+Your screen has two views:
+
+### "By Category" View:
+- 4 KPI Cards: Total Categories, Top Category (name + ARR), Total Sub-Categories, Most Adopted (category with most customers)
+- Category ARR Comparison bar chart
+- Category Performance Table: Expandable rows (Category -> Sub-Categories) with ARR, customer count, avg ARR/customer
+
+### "By Customer" View:
+- Cross-Sell Analysis bar chart: Customers using 1, 2, 3+ sub-categories, with cross-sell rate %
+- Category Performance Matrix scatter chart: X=Customers, Y=Avg ARR/Customer per category
+- Customer Category Matrix table: Customer name, region, vertical, dynamic category columns (ARR per category), total ARR. Expandable SOW-level rows.
 
 ## Available Filters (pass these to ALL tools)
 When the user mentions a region, vertical, year, month, etc., ALWAYS pass the corresponding filter:
@@ -247,17 +270,22 @@ When the user mentions a region, vertical, year, month, etc., ALWAYS pass the co
 - **segment**: e.g. ["Enterprise","SMB"]
 - **platform**: e.g. ["Quantum"] — platform filter
 - **quantumSmart**: "Quantum", "SMART", or "All"
+- **feesType**: "Fees", "Travel", or "All" — defaults to Fees
 
 ## Tool Guide
-- \`get_products\`: Returns product category performance: sub-category, category, total ARR, customer count, avg ARR per customer. Supports filtering by productCategory, productSubCategory, and feesType (Fees, Travel, All).
+- \`get_products\`: Returns sub-category-level detail: sub-category name, parent category, ARR, customer count, avg ARR/customer. Good for drilling into a specific category's sub-categories.
+- \`get_category_summary\`: Returns category-level rollup with the 4 KPI card values (Total Categories, Top Category, Total Sub-Categories, Most Adopted) plus per-category metrics. Use this for overview questions and the "By Category" view.
+- \`get_customer_category_matrix\`: Returns Customer × Category ARR matrix with SOW-level drill-down. Use for "which customers buy which products?", "show customer X's product mix", or the "By Customer" table.
+- \`get_cross_sell_analysis\`: Returns cross-sell distribution (1/2/3+ sub-categories), cross-sell rate %, and category performance scatter data. Use for cross-sell questions and the "By Customer" charts.
 
 Rules:
-1. ALWAYS call get_products before answering — never fabricate numbers.
+1. ALWAYS call tools before answering — never fabricate numbers.
 2. **CURRENCY FORMATTING (MANDATORY)**: ALWAYS format ALL dollar amounts as millions with exactly 2 decimal places and a dollar sign: **$X.XXM**. NEVER output raw numbers.
 3. Use markdown tables for product breakdowns.
 4. Highlight top-performing and underperforming categories.
-5. Provide insights on product mix and concentration risk.
-6. **SMART DEFAULTS**: Never call tools with completely empty filters. At minimum, always infer and pass the year filter.`,
+5. Provide insights on product mix, concentration risk, and cross-sell opportunities.
+6. **SMART DEFAULTS**: Never call tools with completely empty filters. At minimum, always infer and pass the year filter.
+7. For category-level questions, prefer \`get_category_summary\` over \`get_products\`. Use \`get_products\` when the user asks about specific sub-categories.`,
 };
 
 // ── Supervisor builder ──

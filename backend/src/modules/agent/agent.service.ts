@@ -76,9 +76,9 @@ export class AgentService {
     );
 
     // ── Build ARR Supervisor (4 sub-agents) ──
-    const arrOverviewTools = createArrOverviewTools(this.revenueService, this.revenueComputeService);
+    const arrOverviewTools = createArrOverviewTools(this.revenueComputeService);
     const arrMovementTools = createMovementTools(this.revenueComputeService);
-    const arrCustomersTools = createCustomersTools(this.revenueService, this.revenueComputeService);
+    const arrCustomersTools = createCustomersTools(this.revenueComputeService);
     const arrProductsTools = createProductsTools(this.revenueComputeService);
 
     this.arrSupervisor = buildArrSupervisor(this.llm, {
