@@ -407,131 +407,12 @@ export class SalesComputeService {
 
     const totalPipelineValue = activeDeals.reduce((sum, o) => sum + o.dealValue, 0);
 
-    // Conversion rate: Won from Closed ACV, Lost from ALL pipeline snapshots
-    // Lost deals are dropped from later snapshots, so scan all months for deals
-    // that reached Closed Lost/Dead/Declined/Stalled. Take each deal's LAST lost-stage value.
-    const wonACV = closedWon.reduce((sum, o) => sum + this.getClosedValue(o, rt), 0);
-    let lostACV = 0;
-    {
-      const snapshots = this.dataService.getPipelineSnapshots();
-      const isLostStage = (stage: string) =>
-        stage.includes('Closed Lost') || stage.includes('Closed Dead') || stage.includes('Closed Declined') || stage.includes('Stalled');
-      // Unweighted value: pipeline values are pre-multiplied by probability,
-      // so divide by (Probability / 100) to get the original deal value.
-      const getUnweightedValue = (s: PipelineSnapshotRecord) => {
-        const prob = s.Probability > 0 ? s.Probability / 100 : 0;
-        if (prob === 0) return 0;
-        const license = (s.License_ACV || 0) / prob;
-        const impl = (s.Implementation_Value || 0) / prob;
-        if (rt === 'Implementation') return impl;
-        if (rt === 'License') return license;
-        return license + impl;
-      };
+    // Conversion rate: snapshot-based (compares consecutive monthly snapshots)
+    const conversionRate = this.computeConversionRate(filters);
 
-      const lostDealMap = new Map<string, number>();
-      snapshots.forEach(s => {
-        if (!isLostStage(s.Current_Stage)) return;
-        // Apply year/quarter/month filters on Expected_Close_Date
-        const d = parseDateLocal(s.Expected_Close_Date);
-        const yr = d.getFullYear().toString();
-        const mon = MONTH_NAMES[d.getMonth()];
-        const qtr = `Q${Math.floor(d.getMonth() / 3) + 1}`;
-        if (filters.year?.length && !filters.year.includes(yr)) return;
-        if (filters.month?.length && !filters.month.includes(mon)) return;
-        if (filters.quarter?.length && !filters.quarter.includes(qtr)) return;
-        // Dimension filters
-        if (filters.region?.length && !filters.region.includes(s.Region)) return;
-        if (filters.vertical?.length && !filters.vertical.includes(s.Vertical)) return;
-        if (filters.segment?.length && !filters.segment.includes(s.Segment)) return;
-        if (filters.logoType?.length) {
-          const lt = s.Logo_Type.trim();
-          const normalizedLt = (lt === 'Renewal' || lt === 'Extension') ? 'Extension/Renewal' : lt;
-          const normalizedFilters = filters.logoType.map(f => (f === 'Extension' || f === 'Renewal') ? 'Extension/Renewal' : f);
-          if (!normalizedFilters.includes(normalizedLt) && !filters.logoType.includes(lt)) return;
-        }
-        lostDealMap.set(s.Pipeline_Deal_ID, getUnweightedValue(s));
-      });
-      lostDealMap.forEach(val => { lostACV += val; });
-    }
-    const conversionRate = (wonACV + lostACV) > 0
-      ? (wonACV / (wonACV + lostACV)) * 100
+    const avgSalesCycle = activeDeals.length > 0
+      ? activeDeals.reduce((sum, o) => sum + o.salesCycleDays, 0) / activeDeals.length
       : 0;
-
-    // Time to Close: real calculation from pipeline snapshot history
-    // Won deals: Close_Date (from Closed ACV) - Created_Date (from pipeline snapshots)
-    // Lost/Dead/Declined/Stalled: LATEST snapshot month with closed stage - Created_Date
-    let avgSalesCycle = 0;
-    {
-      const snapshots = this.dataService.getPipelineSnapshots();
-      const closedAcvRecords = this.dataService.getClosedAcv();
-      const isClosed = (stage: string) =>
-        stage.includes('Closed Won') || stage.includes('Closed Lost') ||
-        stage.includes('Closed Dead') || stage.includes('Closed Declined') || stage.includes('Stalled');
-
-      const closedAcvDateMap = new Map<string, string>();
-      closedAcvRecords.forEach(c => {
-        if (c.Pipeline_Deal_ID && c.Close_Date) closedAcvDateMap.set(c.Pipeline_Deal_ID, c.Close_Date);
-      });
-
-      const dealHistory = new Map<string, {
-        createdDate: string; logoType: string; region: string; vertical: string; segment: string;
-        licenseAcv: number; implementationValue: number;
-        entries: { month: string; stage: string }[];
-      }>();
-      snapshots.forEach(s => {
-        if (!s.Pipeline_Deal_ID) return;
-        if (!dealHistory.has(s.Pipeline_Deal_ID)) {
-          dealHistory.set(s.Pipeline_Deal_ID, {
-            createdDate: s.Created_Date || '', logoType: s.Logo_Type || '',
-            region: s.Region || '', vertical: s.Vertical || '', segment: s.Segment || '',
-            licenseAcv: s.License_ACV || 0, implementationValue: s.Implementation_Value || 0,
-            entries: [],
-          });
-        }
-        dealHistory.get(s.Pipeline_Deal_ID)!.entries.push({ month: s.Snapshot_Month, stage: s.Current_Stage });
-      });
-
-      let totalDays = 0;
-      let closedDealCount = 0;
-      dealHistory.forEach((deal, dealId) => {
-        if (!deal.createdDate) return;
-        if (rt === 'License' && deal.licenseAcv <= 0) return;
-        if (rt === 'Implementation' && deal.implementationValue <= 0) return;
-        if (filters.logoType?.length) {
-          const normalizedLt = (deal.logoType === 'Renewal' || deal.logoType === 'Extension') ? 'Extension/Renewal' : deal.logoType;
-          const normalizedFilters = filters.logoType.map(f => (f === 'Extension' || f === 'Renewal') ? 'Extension/Renewal' : f);
-          if (!normalizedFilters.includes(normalizedLt) && !filters.logoType.includes(deal.logoType)) return;
-        }
-        if (filters.region?.length && !filters.region.includes(deal.region)) return;
-        if (filters.vertical?.length && !filters.vertical.includes(deal.vertical)) return;
-        if (filters.segment?.length && !filters.segment.includes(deal.segment)) return;
-
-        deal.entries.sort((a, b) => a.month.localeCompare(b.month));
-        let lastClosedMonth: string | null = null;
-        for (const entry of deal.entries) {
-          if (isClosed(entry.stage)) lastClosedMonth = entry.month;
-        }
-        if (!lastClosedMonth) return;
-
-        const acvCloseDate = closedAcvDateMap.get(dealId);
-        const closeDate = acvCloseDate || lastClosedMonth;
-
-        const closeDateObj = parseDateLocal(closeDate);
-        const yr = closeDateObj.getFullYear().toString();
-        const mon = MONTH_NAMES[closeDateObj.getMonth()];
-        const qtr = `Q${Math.floor(closeDateObj.getMonth() / 3) + 1}`;
-        if (filters.year?.length && !filters.year.includes(yr)) return;
-        if (filters.month?.length && !filters.month.includes(mon)) return;
-        if (filters.quarter?.length && !filters.quarter.includes(qtr)) return;
-
-        const created = parseDateLocal(deal.createdDate);
-        const diffMs = closeDateObj.getTime() - created.getTime();
-        const diffDays = Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
-        totalDays += diffDays;
-        closedDealCount++;
-      });
-      avgSalesCycle = closedDealCount > 0 ? totalDays / closedDealCount : 0;
-    }
 
     return {
       totalClosedACV: Math.round(totalClosedACV),
@@ -556,8 +437,70 @@ export class SalesComputeService {
     };
   }
 
-  // computeConversionRate removed — conversion rate now uses closedWon/closedLost
-  // directly in getOverviewMetrics() above.
+  private computeConversionRate(filters: SalesFilterDto): number {
+    const snapshots = this.dataService.getPipelineSnapshots();
+    const rt = filters.revenueType || 'All';
+
+    const isWon = (stage: string) => stage.includes('Closed Won');
+    const isLostOrStalled = (stage: string) =>
+      stage.includes('Closed Lost') ||
+      stage.includes('Closed Dead') ||
+      stage.includes('Closed Declined') ||
+      stage.includes('Stalled');
+
+    const getSnapshotValue = (s: PipelineSnapshotRecord) => {
+      if (rt === 'Implementation') return s.Implementation_Value || 0;
+      if (rt === 'License') return s.License_ACV || 0;
+      return (s.License_ACV || 0) + (s.Implementation_Value || 0);
+    };
+
+    const allSnapshotMonths = [...new Set(snapshots.map(s => s.Snapshot_Month))].filter(Boolean).sort();
+
+    const selectedSnapshotMonths = allSnapshotMonths.filter(sm => {
+      const d = parseDateLocal(sm);
+      const yr = d.getFullYear().toString();
+      const mon = MONTH_NAMES[d.getMonth()];
+      const qtr = `Q${Math.floor(d.getMonth() / 3) + 1}`;
+      if (filters.year?.length && !filters.year.includes(yr)) return false;
+      if (filters.month?.length && !filters.month.includes(mon)) return false;
+      if (filters.quarter?.length && !filters.quarter.includes(qtr)) return false;
+      return true;
+    });
+
+    let newlyWonACV = 0;
+    let newlyLostACV = 0;
+
+    for (const currentMonth of selectedSnapshotMonths) {
+      const currentIdx = allSnapshotMonths.indexOf(currentMonth);
+      if (currentIdx <= 0) continue;
+      const prevMonth = allSnapshotMonths[currentIdx - 1];
+
+      const currentDeals = new Map<string, { stage: string; value: number }>();
+      const prevDeals = new Map<string, { stage: string }>();
+
+      for (const s of snapshots) {
+        if (s.Snapshot_Month === currentMonth) {
+          currentDeals.set(s.Pipeline_Deal_ID, { stage: s.Current_Stage, value: getSnapshotValue(s) });
+        } else if (s.Snapshot_Month === prevMonth) {
+          prevDeals.set(s.Pipeline_Deal_ID, { stage: s.Current_Stage });
+        }
+      }
+
+      currentDeals.forEach((deal, dealId) => {
+        const prev = prevDeals.get(dealId);
+        if (isWon(deal.stage) && (!prev || !isWon(prev.stage))) {
+          newlyWonACV += deal.value;
+        }
+        if (isLostOrStalled(deal.stage) && (!prev || !isLostOrStalled(prev.stage))) {
+          newlyLostACV += deal.value;
+        }
+      });
+    }
+
+    return (newlyWonACV + newlyLostACV) > 0
+      ? (newlyWonACV / (newlyWonACV + newlyLostACV)) * 100
+      : 0;
+  }
 
   getOverviewFunnel(filters: SalesFilterDto) {
     const allOpps = this.buildOpportunities();
