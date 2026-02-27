@@ -1470,9 +1470,10 @@ export default function SalesPage() {
       if (!passesFilters(row)) return;
       const ym = row.Snapshot_Month.slice(0, 7);
       const key = row.Pipeline_Deal_ID;
+      const probFraction = (row.Probability || 0) / 100; // Probability is stored as percentage (e.g. 90 = 90%)
       const deal: SnapDeal = {
-        licenseACV: row.License_ACV || 0,
-        implValue: row.Implementation_Value || 0,
+        licenseACV: probFraction > 0 ? (row.License_ACV || 0) / probFraction : (row.License_ACV || 0),
+        implValue: probFraction > 0 ? (row.Implementation_Value || 0) / probFraction : (row.Implementation_Value || 0),
         currentStage: row.Current_Stage || '',
         dealName: row.Deal_Name || '',
         customerName: row.Customer_Name || '',
