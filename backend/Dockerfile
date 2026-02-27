@@ -57,9 +57,9 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 # Copy built application
 COPY --from=builder /app/dist ./dist
 
-# Copy entrypoint script
+# Copy entrypoint script (strip Windows CRLF line endings to ensure Linux compatibility)
 COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+RUN sed -i 's/\r//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
 
 # Set ownership
 RUN chown -R nestjs:nodejs /app

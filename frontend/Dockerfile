@@ -21,9 +21,9 @@ FROM nginx:alpine AS production
 # Copy custom nginx config as template
 COPY nginx.conf /etc/nginx/templates/default.conf.template
 
-# Copy entrypoint script
+# Copy entrypoint script (strip Windows CRLF line endings to ensure Linux compatibility)
 COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+RUN sed -i 's/\r//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
 
 # Copy built assets
 COPY --from=builder /app/dist /usr/share/nginx/html

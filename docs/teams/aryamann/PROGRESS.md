@@ -7,6 +7,25 @@
 
 <!-- Add entries below in reverse chronological order (newest first) -->
 
+## 2026-02-27 - Fix Docker CRLF Entrypoint Error (Azure Container Apps)
+
+**Task:** Diagnose and fix `exec /docker-entrypoint.sh: no such file or directory` error in Azure Container Apps.
+
+**Root Cause:** Both `backend/docker-entrypoint.sh` and `frontend/docker-entrypoint.sh` had Windows CRLF (`\r\n`) line endings. When Linux executes the script, the kernel reads the shebang as `#!/bin/sh\r` and cannot find the interpreter, causing the error.
+
+**Files Modified:**
+- `backend/docker-entrypoint.sh` — Converted CRLF → LF (`sed -i 's/\r//'`)
+- `frontend/docker-entrypoint.sh` — Converted CRLF → LF
+- `backend/Dockerfile` — Added `sed -i 's/\r//'` safety strip before `chmod +x`
+- `frontend/Dockerfile` — Added `sed -i 's/\r//'` safety strip before `chmod +x`
+
+**Files Created:**
+- `.gitattributes` — Enforces `eol=lf` for `*.sh`, `Dockerfile`, `.env*` to prevent recurrence
+
+**Status:** Complete — rebuild and redeploy both containers to Azure.
+
+**Branch:** aryamann (committed to current working branch)
+
 ## 2026-02-24 - ARR Revenue Agent Supervisor Architecture
 
 **Task:** Refactor ARR Revenue Agent from a single flat ReAct agent (15 tools) into a Supervisor pattern with 4 sub-agents matching the 4 frontend Revenue tabs, each with focused tools, proper parameter schemas, date context, and clarification behavior.
