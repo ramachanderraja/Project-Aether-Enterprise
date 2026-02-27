@@ -15,7 +15,6 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { Public } from '../auth/decorators/public.decorator';
 import { SalesService } from './sales.service';
 import { DealService } from './services/deal.service';
 import { ForecastService } from './services/forecast.service';
@@ -37,7 +36,6 @@ export class SalesController {
 
   // ── Legacy endpoint (kept for backward compat) ──
 
-  @Public()
   @Get('data')
   @ApiOperation({ summary: '[Deprecated] Get all sales CSV data for the Sales page' })
   @ApiResponse({ status: 200, description: 'Sales data retrieved from CSV files' })
@@ -47,7 +45,6 @@ export class SalesController {
 
   // ── New computed endpoints ──
 
-  @Public()
   @Get('overview/metrics')
   @ApiOperation({ summary: 'Get overview KPI metrics' })
   @ApiResponse({ status: 200, description: 'Overview metrics computed' })
@@ -55,7 +52,6 @@ export class SalesController {
     return this.salesComputeService.getOverviewMetrics(filters);
   }
 
-  @Public()
   @Get('overview/funnel')
   @ApiOperation({ summary: 'Get pipeline funnel data' })
   @ApiResponse({ status: 200, description: 'Funnel data computed' })
@@ -63,7 +59,6 @@ export class SalesController {
     return this.salesComputeService.getOverviewFunnel(filters);
   }
 
-  @Public()
   @Get('overview/key-deals')
   @ApiOperation({ summary: 'Get top active deals' })
   @ApiResponse({ status: 200, description: 'Key deals computed' })
@@ -71,7 +66,6 @@ export class SalesController {
     return this.salesComputeService.getOverviewKeyDeals(filters);
   }
 
-  @Public()
   @Get('overview/closed-deals')
   @ApiOperation({ summary: 'Get closed ACV deals' })
   @ApiResponse({ status: 200, description: 'Closed deals computed' })
@@ -79,7 +73,6 @@ export class SalesController {
     return this.salesComputeService.getOverviewClosedDeals(filters);
   }
 
-  @Public()
   @Get('forecast/quarterly')
   @ApiOperation({ summary: 'Get quarterly forecast data' })
   @ApiResponse({ status: 200, description: 'Quarterly forecast computed' })
@@ -87,7 +80,6 @@ export class SalesController {
     return this.salesComputeService.getForecastQuarterly(filters);
   }
 
-  @Public()
   @Get('forecast/regional')
   @ApiOperation({ summary: 'Get regional forecast data' })
   @ApiResponse({ status: 200, description: 'Regional forecast computed' })
@@ -95,7 +87,6 @@ export class SalesController {
     return this.salesComputeService.getForecastRegional(filters);
   }
 
-  @Public()
   @Get('forecast/trend')
   @ApiOperation({ summary: 'Get cumulative monthly forecast trend' })
   @ApiResponse({ status: 200, description: 'Forecast trend computed' })
@@ -103,7 +94,6 @@ export class SalesController {
     return this.salesComputeService.getForecastTrend(filters);
   }
 
-  @Public()
   @Get('forecast/by-subcategory')
   @ApiOperation({ summary: 'Get forecast breakdown by sub-category' })
   @ApiResponse({ status: 200, description: 'Sub-category forecast computed' })
@@ -111,7 +101,6 @@ export class SalesController {
     return this.salesComputeService.getForecastBySubcategory(filters);
   }
 
-  @Public()
   @Get('pipeline/movement')
   @ApiOperation({ summary: 'Get pipeline movement MoM comparison and waterfall' })
   @ApiResponse({ status: 200, description: 'Pipeline movement computed' })
@@ -119,7 +108,6 @@ export class SalesController {
     return this.salesComputeService.getPipelineMovement(filters);
   }
 
-  @Public()
   @Get('pipeline/by-subcategory')
   @ApiOperation({ summary: 'Get pipeline breakdown by sub-category' })
   @ApiResponse({ status: 200, description: 'Pipeline by sub-category computed' })
@@ -127,7 +115,6 @@ export class SalesController {
     return this.salesComputeService.getPipelineBySubcategory(filters);
   }
 
-  @Public()
   @Get('quota/salespeople')
   @ApiOperation({ summary: 'Get salesperson hierarchy with quota attainment' })
   @ApiResponse({ status: 200, description: 'Salespeople quota data computed' })

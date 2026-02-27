@@ -20,6 +20,7 @@ import { useARRSubCategoryStore } from '@shared/store/arrSubCategoryStore';
 import { useProductCategoryMappingStore } from '@shared/store/productCategoryMappingStore';
 import { normalizeRegion } from '@shared/store/dataTypes';
 import { useSalesDataStore, type SalesDataState } from '@shared/store/salesDataStore';
+import { SalesPageSkeleton } from '@shared/components/ui/PageSkeleton';
 
 // ==================== TYPE DEFINITIONS ====================
 interface Opportunity {
@@ -3464,10 +3465,16 @@ export default function SalesPage() {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'overview' && renderOverviewTab()}
-      {activeTab === 'forecast' && renderForecastTab()}
-      {activeTab === 'pipeline' && renderPipelineTab()}
-      {activeTab === 'quota' && renderQuotaTab()}
+      {!realData.isLoaded ? (
+        <SalesPageSkeleton />
+      ) : (
+        <>
+          {activeTab === 'overview' && renderOverviewTab()}
+          {activeTab === 'forecast' && renderForecastTab()}
+          {activeTab === 'pipeline' && renderPipelineTab()}
+          {activeTab === 'quota' && renderQuotaTab()}
+        </>
+      )}
     </div>
   );
 }

@@ -21,6 +21,7 @@ import {
 import { useSOWMappingStore } from '@shared/store/sowMappingStore';
 import { normalizeRegion } from '@shared/store/dataTypes';
 import { useRevenueDataStore, type RevenueDataState } from '@shared/store/revenueDataStore';
+import { RevenuePageSkeleton } from '@shared/components/ui/PageSkeleton';
 
 // ==================== TYPE DEFINITIONS ====================
 
@@ -3783,10 +3784,16 @@ export default function RevenuePage() {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'overview' && renderOverviewTab()}
-      {activeTab === 'movement' && renderMovementTab()}
-      {activeTab === 'customers' && renderCustomersTab()}
-      {activeTab === 'products' && renderProductsTab()}
+      {!realData.isLoaded ? (
+        <RevenuePageSkeleton />
+      ) : (
+        <>
+          {activeTab === 'overview' && renderOverviewTab()}
+          {activeTab === 'movement' && renderMovementTab()}
+          {activeTab === 'customers' && renderCustomersTab()}
+          {activeTab === 'products' && renderProductsTab()}
+        </>
+      )}
     </div>
   );
 }

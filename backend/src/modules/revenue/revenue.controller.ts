@@ -1,7 +1,6 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { Public } from '../auth/decorators/public.decorator';
 import { RevenueService } from './revenue.service';
 import { RevenueComputeService } from './services/revenue-compute.service';
 import {
@@ -24,7 +23,6 @@ export class RevenueController {
 
   // ── Legacy endpoint (kept for backward compat) ──
 
-  @Public()
   @Get('data')
   @ApiOperation({ summary: '[Deprecated] Get all revenue CSV data for the Revenue page' })
   getRevenueData() {
@@ -33,63 +31,54 @@ export class RevenueController {
 
   // ── New computed endpoints ──
 
-  @Public()
   @Get('overview/metrics')
   @ApiOperation({ summary: 'Get revenue overview KPI metrics' })
   getOverviewMetrics(@Query() filters: RevenueFilterDto) {
     return this.revenueComputeService.getOverviewMetrics(filters);
   }
 
-  @Public()
   @Get('overview/arr-trend')
   @ApiOperation({ summary: 'Get ARR trend chart data (Jan 2024 - Dec 2026)' })
   getOverviewArrTrend(@Query() filters: RevenueFilterDto) {
     return this.revenueComputeService.getOverviewArrTrend(filters);
   }
 
-  @Public()
   @Get('overview/arr-by-dimension')
   @ApiOperation({ summary: 'Get ARR breakdown by region, vertical, and category' })
   getOverviewArrByDimension(@Query() filters: RevenueFilterDto) {
     return this.revenueComputeService.getOverviewArrByDimension(filters);
   }
 
-  @Public()
   @Get('movement/summary')
   @ApiOperation({ summary: 'Get ARR movement waterfall bridge' })
   getMovementSummary(@Query() filters: MovementFilterDto) {
     return this.revenueComputeService.getMovementSummary(filters);
   }
 
-  @Public()
   @Get('movement/customers')
   @ApiOperation({ summary: 'Get customer-level movement detail' })
   getMovementCustomers(@Query() filters: CustomerMovementFilterDto) {
     return this.revenueComputeService.getMovementCustomers(filters);
   }
 
-  @Public()
   @Get('movement/trend')
   @ApiOperation({ summary: 'Get monthly movement trend chart data' })
   getMovementTrend(@Query() filters: RevenueFilterDto) {
     return this.revenueComputeService.getMovementTrend(filters);
   }
 
-  @Public()
   @Get('customers/list')
   @ApiOperation({ summary: 'Get expandable customer list with SOW details' })
   getCustomersList(@Query() filters: CustomerListFilterDto) {
     return this.revenueComputeService.getCustomersList(filters);
   }
 
-  @Public()
   @Get('customers/renewal-risk')
   @ApiOperation({ summary: 'Get 2026 renewal risk distribution and calendar' })
   getCustomerRenewalRisk(@Query() filters: RevenueFilterDto) {
     return this.revenueComputeService.getCustomerRenewalRisk(filters);
   }
 
-  @Public()
   @Get('products')
   @ApiOperation({ summary: 'Get product revenue breakdown' })
   getProducts(@Query() filters: ProductsFilterDto) {
