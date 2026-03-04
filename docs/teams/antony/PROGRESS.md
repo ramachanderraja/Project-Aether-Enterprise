@@ -7,6 +7,24 @@
 
 <!-- Add entries below in reverse chronological order (newest first) -->
 
+## 2026-03-04 - Migrate Pipeline Snapshot & Closed ACV from CSV to XLSX
+**Task:** User updated `monthly_pipeline_snapshot` and `closed_acv` data files from CSV to XLSX format. Update backend to parse XLSX files.
+**Changes:**
+- `backend/package.json`: Added `xlsx` (SheetJS) dependency
+- `backend/src/modules/data/csv-parser.util.ts`:
+  - Added `parseXLSX()` function: reads XLSX files via SheetJS, converts Excel serial dates to YYYY-MM-DD, converts 0-1 percentage decimals to 0-100, trims header whitespace, outputs `Record<string, string>[]` matching `parseCSV` format
+  - Added `excelDateToString()` helper for Excel serial date conversion
+- `backend/src/modules/data/data.service.ts`:
+  - Replaced hardcoded CSV-only loading with `loadFile()` helper that prefers `.xlsx` over `.csv`
+  - All 9 data files now go through `loadFile()` — XLSX-capable files auto-detected
+- `frontend/public/data/`: Copied `monthly_pipeline_snapshot.xlsx` and `closed_acv.xlsx` for consistency
+**Key Data Changes:**
+- Pipeline Snapshot: 7,753 rows (26 months: Jan 2024 → Feb 2026), Pipeline_Deal_ID now proper numbers (no more scientific notation)
+- Closed ACV: 597 rows across 2024-2026
+- Probability converted from 0-1 decimal (XLSX) to 0-100 percentage (matching frontend expectations)
+**Status:** Complete
+**Branch:** `commonbranch`
+
 ## 2026-02-18 - Schedule Change in NRR/GRR + Pipeline-Forecast Full-Year Retention
 **Task:** (1) Add Schedule_Change to both monthly and full-year NRR/GRR formulas. (2) For forecast years (2026+), supplement full-year NRR/GRR with pipeline snapshot by logo type: Renewal/Extension for GRR, Renewal/Extension + Upsell/Cross-Sell for NRR.
 **Changes:**

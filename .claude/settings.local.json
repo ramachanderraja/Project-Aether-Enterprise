@@ -24,7 +24,8 @@
       "Bash(/tmp/test_nan.js:*)",
       "Bash(do)",
       "Bash(echo:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(ls:*)"
     ]
   }
 }

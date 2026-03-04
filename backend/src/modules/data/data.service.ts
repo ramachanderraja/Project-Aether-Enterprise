@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import {
   parseCSV,
+  parseXLSX,
   parseNumber,
   parseDate,
   normalizeLogoType,
@@ -52,7 +53,7 @@ export class DataService implements OnModuleInit {
   }
 
   async loadAllData(): Promise<void> {
-    this.logger.log(`Loading CSV data from ${this.dataDir}`);
+    this.logger.log(`Loading data files from ${this.dataDir}`);
 
     if (!fs.existsSync(this.dataDir)) {
       this.logger.error(`Data directory not found: ${this.dataDir}`);
@@ -60,9 +61,10 @@ export class DataService implements OnModuleInit {
     }
 
     try {
-      const fileNames = [
-        'closed_acv',
-        'monthly_pipeline_snapshot',
+      // Files that support XLSX (prefer .xlsx over .csv)
+      const xlsxSupportedFiles = ['closed_acv', 'monthly_pipeline_snapshot'];
+      // Files that only have CSV
+      const csvOnlyFiles = [
         'monthly_arr_snapshot',
         'sales_team_structure',
         'customer_name_mapping',
@@ -72,29 +74,38 @@ export class DataService implements OnModuleInit {
         'Prior_year_Performance Template',
       ];
 
-      const texts = fileNames.map(f => {
-        const filePath = path.join(this.dataDir, `${f}.csv`);
-        if (!fs.existsSync(filePath)) {
-          this.logger.warn(`CSV file not found: ${filePath}`);
-          return '';
-        }
-        return fs.readFileSync(filePath, 'utf-8');
-      });
+      /**
+       * Load a data file: prefer .xlsx if it exists, fall back to .csv.
+       * Returns parsed rows as Record<string, string>[].
+       */
+      const loadFile = (baseName: string): Record<string, string>[] => {
+        const xlsxPath = path.join(this.dataDir, `${baseName}.xlsx`);
+        const csvPath = path.join(this.dataDir, `${baseName}.csv`);
 
-      const [
-        closedAcvText,
-        pipelineText,
-        arrText,
-        salesTeamText,
-        customerMappingText,
-        sowMappingText,
-        arrSubCatText,
-        prodCatText,
-        priorYearPerfText,
-      ] = texts;
+        if (fs.existsSync(xlsxPath)) {
+          this.logger.log(`Loading XLSX: ${xlsxPath}`);
+          return parseXLSX(xlsxPath);
+        } else if (fs.existsSync(csvPath)) {
+          this.logger.log(`Loading CSV: ${csvPath}`);
+          return parseCSV(fs.readFileSync(csvPath, 'utf-8'));
+        } else {
+          this.logger.warn(`Data file not found: ${baseName} (.xlsx or .csv)`);
+          return [];
+        }
+      };
+
+      const closedAcvRows = loadFile('closed_acv');
+      const pipelineRows = loadFile('monthly_pipeline_snapshot');
+      const arrRows = loadFile('monthly_arr_snapshot');
+      const salesTeamRows = loadFile('sales_team_structure');
+      const customerMappingRows = loadFile('customer_name_mapping');
+      const sowMappingRows = loadFile('sow_mapping');
+      const arrSubCatRows = loadFile('arr_subcategory_breakdown');
+      const prodCatRows = loadFile('product_category_mapping');
+      const priorYearPerfRows = loadFile('Prior_year_Performance Template');
 
       // Parse Closed ACV
-      this.closedAcv = parseCSV(closedAcvText).map(row => ({
+      this.closedAcv = closedAcvRows.map(row => ({
         Closed_ACV_ID: row['Closed_ACV_ID'] || '',
         Pipeline_Deal_ID: normalizeNumericId(row['Pipeline_Deal_ID'] || ''),
         Deal_Name: row['Deal_Name'] || '',
@@ -115,7 +126,7 @@ export class DataService implements OnModuleInit {
       }));
 
       // Parse Pipeline Snapshots
-      this.pipelineSnapshots = parseCSV(pipelineText).map(row => ({
+      this.pipelineSnapshots = pipelineRows.map(row => ({
         Snapshot_Month: parseDate(row['Snapshot_Month'] || ''),
         Pipeline_Deal_ID: normalizeNumericId(row['Pipeline_Deal_ID'] || ''),
         Deal_Name: row['Deal_Name'] || '',
@@ -137,7 +148,7 @@ export class DataService implements OnModuleInit {
       }));
 
       // Parse ARR Snapshots
-      this.arrSnapshots = parseCSV(arrText).map(row => ({
+      this.arrSnapshots = arrRows.map(row => ({
         Snapshot_Month: parseDate(row['Snapshot_Month'] || ''),
         SOW_ID: row['SOW_ID'] || '',
         Customer_Name: row['Customer_Name'] || '',
@@ -166,7 +177,7 @@ export class DataService implements OnModuleInit {
       }));
 
       // Parse Sales Team
-      this.salesTeam = parseCSV(salesTeamText).map(row => ({
+      this.salesTeam = salesTeamRows.map(row => ({
         Sales_Rep_ID: row['Sales_Rep_ID'] || '',
         Name: (row['Name'] || '').trim(),
         Email: row['Email'] || '',
@@ -186,13 +197,13 @@ export class DataService implements OnModuleInit {
       }));
 
       // Parse Customer Name Mapping
-      this.customerNameMappings = parseCSV(customerMappingText).map(row => ({
+      this.customerNameMappings = customerMappingRows.map(row => ({
         ARR_Customer_Name: row['ARR_Customer_Name'] || '',
         Pipeline_Customer_Name: row['Pipeline_Customer_Name'] || '',
       }));
 
       // Parse SOW Mapping
-      this.sowMappings = parseCSV(sowMappingText).map(row => ({
+      this.sowMappings = sowMappingRows.map(row => ({
         SOW_ID: row['SOW_ID'] || '',
         SOW_Name: (row['SOW Name'] || row['SOW_Name'] || '').trim(),
         Vertical: (row['Vertical'] || '').trim(),
@@ -204,7 +215,7 @@ export class DataService implements OnModuleInit {
       }));
 
       // Parse ARR Sub-Category Breakdown
-      this.arrSubCategoryBreakdown = parseCSV(arrSubCatText).map(row => ({
+      this.arrSubCategoryBreakdown = arrSubCatRows.map(row => ({
         SOW_ID: row['SOW_ID'] || '',
         Customer_Name: row['Customer_Name'] || '',
         Product_Sub_Category: (row['Product_Sub_Category'] || '').trim(),
@@ -214,7 +225,7 @@ export class DataService implements OnModuleInit {
       }));
 
       // Parse Product Category Mapping
-      this.productCategoryMapping = parseCSV(prodCatText)
+      this.productCategoryMapping = prodCatRows
         .filter(row => row['Product_Sub_Category'])
         .map(row => ({
           Product_Sub_Category: (row['Product_Sub_Category'] || '').trim(),
@@ -224,7 +235,7 @@ export class DataService implements OnModuleInit {
         }));
 
       // Parse Prior Year Performance
-      this.priorYearPerformance = parseCSV(priorYearPerfText)
+      this.priorYearPerformance = priorYearPerfRows
         .filter(row => row['Year'] && row['Sales_Rep_ID'])
         .map(row => ({
           Year: parseInt((row['Year'] || '').trim()) || 0,
@@ -269,7 +280,7 @@ export class DataService implements OnModuleInit {
           `${this.productCategoryMapping.length} product categories`,
       );
     } catch (err) {
-      this.logger.error(`Failed to load CSV data: ${err}`);
+      this.logger.error(`Failed to load data files: ${err}`);
     }
   }
 
