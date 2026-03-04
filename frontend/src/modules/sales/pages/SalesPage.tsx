@@ -2872,7 +2872,7 @@ export default function SalesPage() {
           result.forecast += sub.forecast;
           result.pipeline += sub.pipeline;
           result.unweightedPipeline += sub.unweightedPipeline;
-          result.quota += sub.quota;
+          // Quota is NOT rolled up — manager quota comes directly from the file
         }
 
         rollupCache.set(id, result);
