@@ -65,7 +65,7 @@ RUN echo "=== Data files in production image ===" && \
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+RUN sed -i 's/\r//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
 
 # Set ownership
 RUN chown -R nestjs:nodejs /app

@@ -1,6 +1,7 @@
 import { Controller, Get, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Response } from 'express';
+import { Public } from '../auth/decorators/public.decorator';
 import { PrismaService } from '../../database/prisma.service';
 import { PrometheusService } from '../../common/metrics/prometheus.service';
 
@@ -12,6 +13,7 @@ export class HealthController {
     private readonly prometheusService: PrometheusService,
   ) {}
 
+  @Public()
   @Get('health')
   @ApiOperation({ summary: 'Health check endpoint' })
   @ApiResponse({ status: 200, description: 'Service is healthy' })
@@ -48,6 +50,7 @@ export class HealthController {
     return checks;
   }
 
+  @Public()
   @Get('metrics')
   @ApiOperation({ summary: 'Prometheus metrics endpoint' })
   @ApiResponse({ status: 200, description: 'Prometheus formatted metrics' })
@@ -57,6 +60,7 @@ export class HealthController {
     res.send(metrics);
   }
 
+  @Public()
   @Get('metrics/json')
   @ApiOperation({ summary: 'JSON metrics endpoint for monitoring' })
   async metrics() {

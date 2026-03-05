@@ -25,10 +25,8 @@
       "Bash(do)",
       "Bash(echo:*)",
       "Bash(python:*)",
-      "WebFetch(domain:developers.hubspot.com)",
-      "Bash(npx nest:*)",
-      "Bash(npx:*)",
-      "Bash(docker build:*)"
+      "Bash(az account:*)",
+      "Bash(az acr:*)"
     ]
   }
 }

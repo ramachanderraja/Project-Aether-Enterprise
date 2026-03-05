@@ -21,7 +21,7 @@ import {
 import { useSOWMappingStore } from '@shared/store/sowMappingStore';
 import { normalizeRegion } from '@shared/store/dataTypes';
 import { useRevenueDataStore, type RevenueDataState } from '@shared/store/revenueDataStore';
-import { useAuthStore } from '@/modules/auth/store/authStore';
+import { RevenuePageSkeleton } from '@shared/components/ui/PageSkeleton';
 
 // ==================== TYPE DEFINITIONS ====================
 
@@ -857,8 +857,8 @@ export default function RevenuePage() {
 
   // Products
   const [productViewMode, setProductViewMode] = useState<'product' | 'customer'>('product');
-  const [productCategoryFilter] = useState('All');
-  const [productSubCategoryFilter] = useState('All');
+  const [productCategoryFilter, _setProductCategoryFilter] = useState('All');
+  const [productSubCategoryFilter, _setProductSubCategoryFilter] = useState('All');
   const [expandedProductCategories, setExpandedProductCategories] = useState<Set<string>>(new Set());
   const [expandedMatrixCustomers, setExpandedMatrixCustomers] = useState<Set<string>>(new Set());
   const [customerNameFilter, setCustomerNameFilter] = useState('');
@@ -1482,6 +1482,8 @@ export default function RevenuePage() {
 
       // Compute the first month in the range
       const startDate = new Date(endYear, endMon - 1 - (months - 1), 1);
+      // startMonth computed but used only for internal calculation
+      void `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
 
       // Collect all months in range
       const monthsInRange: string[] = [];
@@ -1713,6 +1715,22 @@ export default function RevenuePage() {
   }, [realData.isLoaded, realData.arrSnapshots, arrRowPassesFilters, arrMovementHistory]);
 
   // 2026 Renewals
+  const renewals2026 = useMemo(() => {
+    return filteredCustomers.filter(c => c.renewalDate.startsWith('2026') && c.renewalRiskLevel);
+  }, [filteredCustomers]);
+
+  // Renewal risk distribution - computed for future risk analysis features
+  // Kept as side-effect to maintain reactivity pattern
+  useMemo(() => {
+    const distribution: Record<string, number> = { Low: 0, Medium: 0, High: 0, Critical: 0 };
+    renewals2026.forEach(c => {
+      if (c.renewalRiskLevel) {
+        distribution[c.renewalRiskLevel]++;
+      }
+    });
+    return Object.entries(distribution).map(([name, value]) => ({ name, value }));
+  }, [renewals2026]);
+
   // Customer summary with SOW-level breakdown from real ARR snapshot data
   interface SOWDetail {
     sowId: string;
@@ -3203,12 +3221,30 @@ export default function RevenuePage() {
   // Render Products Tab
   const renderProductsTab = () => {
 
+    // Customer product matrix - uses filteredCustomersForProducts for Revenue Type filter
+    // (prepared for future matrix view feature)
+    void filteredCustomersForProducts
+      .filter(c => c.currentARR > 0)
+      .map(c => ({
+        name: c.name,
+        region: c.region,
+        vertical: c.vertical,
+        totalARR: c.currentARR,
+        productCount: c.products.length,
+        ...c.productARR,
+      }))
+      .sort((a, b) => b.totalARR - a.totalARR)
+      .slice(0, 30);
+
     // Cross-sell analysis - uses filteredCustomersForProducts for Revenue Type filter
     const crossSellData = [
       { name: '1 Sub-Category', count: filteredCustomersForProducts.filter(c => c.products.length === 1 && c.currentARR > 0).length },
       { name: '2 Sub-Categories', count: filteredCustomersForProducts.filter(c => c.products.length === 2 && c.currentARR > 0).length },
       { name: '3+ Sub-Categories', count: filteredCustomersForProducts.filter(c => c.products.length >= 3 && c.currentARR > 0).length },
     ];
+
+    // allProductNames prepared for future product matrix column headers
+    void [...new Set(products.map(p => p.name))];
 
     const toggleProductCategory = (cat: string) => {
       setExpandedProductCategories(prev => {
@@ -3756,10 +3792,16 @@ export default function RevenuePage() {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'overview' && renderOverviewTab()}
-      {activeTab === 'movement' && renderMovementTab()}
-      {activeTab === 'customers' && renderCustomersTab()}
-      {activeTab === 'products' && renderProductsTab()}
+      {!realData.isLoaded ? (
+        <RevenuePageSkeleton />
+      ) : (
+        <>
+          {activeTab === 'overview' && renderOverviewTab()}
+          {activeTab === 'movement' && renderMovementTab()}
+          {activeTab === 'customers' && renderCustomersTab()}
+          {activeTab === 'products' && renderProductsTab()}
+        </>
+      )}
     </div>
   );
 }

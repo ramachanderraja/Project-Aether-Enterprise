@@ -7,35 +7,24 @@
 
 <!-- Add entries below in reverse chronological order (newest first) -->
 
-## 2026-03-05 - RBAC: View-Only Users + Tab Permissions + Export Hiding
+## 2026-02-27 - Fix Docker CRLF Entrypoint Error (Azure Container Apps)
 
-**Task:** Implement role-based access control with 5 new view-only users, tab-level permissions, agent filtering, export button hiding, and profile-only Settings page for non-admin users.
+**Task:** Diagnose and fix `exec /docker-entrypoint.sh: no such file or directory` error in Azure Container Apps.
 
-**Users Added:**
-| User | Email | Tabs | Agents |
-|------|-------|------|--------|
-| Santosh Nair | santosh.nair@gep.com | Sales, ARR, AI, Settings | Sales + ARR |
-| Jason Griggs | jason.griggs@gep.com | Sales, AI, Settings | Sales |
-| Prasad Sawant | prasad.sawant@gep.com | Sales, AI, Settings | Sales |
-| Diane Clark | diane.clark@gep.com | ARR, AI, Settings | ARR |
-| Mayur Jain | mayur.jain@gep.com | ARR, AI, Settings | ARR |
+**Root Cause:** Both `backend/docker-entrypoint.sh` and `frontend/docker-entrypoint.sh` had Windows CRLF (`\r\n`) line endings. When Linux executes the script, the kernel reads the shebang as `#!/bin/sh\r` and cannot find the interpreter, causing the error.
 
-**Changes:**
-- `backend/src/modules/auth/auth.service.ts` — Added 5 new in-memory users with viewer role and specific view permissions
-- `frontend/src/modules/auth/components/ProtectedRoute.tsx` — Disabled BYPASS_AUTH, added route-level permission checks with redirect to first allowed tab
-- `frontend/src/shared/components/layout/Sidebar.tsx` — Filter nav items by user permissions from auth store
-- `frontend/src/modules/ai-agent/pages/AIAgentPage.tsx` — Filter agent list by user permissions (sales_pipeline→view:sales, arr_revenue→view:arr)
-- `frontend/src/modules/settings/pages/SettingsPage.tsx` — Non-admin users see "My Profile" only (name, email, role, access tabs); admin tabs hidden
-- `frontend/src/modules/sales/pages/SalesPage.tsx` — Hide all Export buttons + ChartWrapper export menu for non-admin users
-- `frontend/src/modules/revenue/pages/RevenuePage.tsx` — Hide all Export buttons + ChartWrapper export menu for non-admin users
-- `frontend/src/modules/auth/pages/LoginPage.tsx` — Default redirect changed from /dashboard to / (ProtectedRoute handles per-user routing)
+**Files Modified:**
+- `backend/docker-entrypoint.sh` — Converted CRLF → LF (`sed -i 's/\r//'`)
+- `frontend/docker-entrypoint.sh` — Converted CRLF → LF
+- `backend/Dockerfile` — Added `sed -i 's/\r//'` safety strip before `chmod +x`
+- `frontend/Dockerfile` — Added `sed -i 's/\r//'` safety strip before `chmod +x`
 
-**Permission Scheme:** `*` = admin (all access), `view:sales`, `view:arr`, `view:ai`, `view:settings` for view-only users. Export only for `*`.
+**Files Created:**
+- `.gitattributes` — Enforces `eol=lf` for `*.sh`, `Dockerfile`, `.env*` to prevent recurrence
 
-**Status:** Completed (TypeScript compiles clean on both frontend and backend)
-**Branch:** commonbranch
+**Status:** Complete — rebuild and redeploy both containers to Azure.
 
----
+**Branch:** aryamann (committed to current working branch)
 
 ## 2026-02-24 - ARR Revenue Agent Supervisor Architecture
 

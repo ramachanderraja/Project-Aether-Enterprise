@@ -23,7 +23,6 @@ export class RevenueController {
 
   // ── Legacy endpoint (kept for backward compat) ──
 
-
   @Get('data')
   @ApiOperation({ summary: '[Deprecated] Get all revenue CSV data for the Revenue page' })
   getRevenueData() {
@@ -32,13 +31,11 @@ export class RevenueController {
 
   // ── New computed endpoints ──
 
-
   @Get('overview/metrics')
   @ApiOperation({ summary: 'Get revenue overview KPI metrics' })
   getOverviewMetrics(@Query() filters: RevenueFilterDto) {
     return this.revenueComputeService.getOverviewMetrics(filters);
   }
-
 
   @Get('overview/arr-trend')
   @ApiOperation({ summary: 'Get ARR trend chart data (Jan 2024 - Dec 2026)' })
@@ -46,13 +43,11 @@ export class RevenueController {
     return this.revenueComputeService.getOverviewArrTrend(filters);
   }
 
-
   @Get('overview/arr-by-dimension')
   @ApiOperation({ summary: 'Get ARR breakdown by region, vertical, and category' })
   getOverviewArrByDimension(@Query() filters: RevenueFilterDto) {
     return this.revenueComputeService.getOverviewArrByDimension(filters);
   }
-
 
   @Get('movement/summary')
   @ApiOperation({ summary: 'Get ARR movement waterfall bridge' })
@@ -60,13 +55,11 @@ export class RevenueController {
     return this.revenueComputeService.getMovementSummary(filters);
   }
 
-
   @Get('movement/customers')
   @ApiOperation({ summary: 'Get customer-level movement detail' })
   getMovementCustomers(@Query() filters: CustomerMovementFilterDto) {
     return this.revenueComputeService.getMovementCustomers(filters);
   }
-
 
   @Get('movement/trend')
   @ApiOperation({ summary: 'Get monthly movement trend chart data' })
@@ -74,20 +67,17 @@ export class RevenueController {
     return this.revenueComputeService.getMovementTrend(filters);
   }
 
-
   @Get('customers/list')
   @ApiOperation({ summary: 'Get expandable customer list with SOW details' })
   getCustomersList(@Query() filters: CustomerListFilterDto) {
     return this.revenueComputeService.getCustomersList(filters);
   }
 
-
   @Get('customers/renewal-risk')
   @ApiOperation({ summary: 'Get 2026 renewal risk distribution and calendar' })
   getCustomerRenewalRisk(@Query() filters: RevenueFilterDto) {
     return this.revenueComputeService.getCustomerRenewalRisk(filters);
   }
-
 
   @Get('products')
   @ApiOperation({ summary: 'Get product revenue breakdown' })

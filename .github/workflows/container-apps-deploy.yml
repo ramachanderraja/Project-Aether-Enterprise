@@ -1,26 +1,24 @@
 # =============================================================================
 # Project Aether - Azure Container Apps Deployment Workflow
 # =============================================================================
-# This workflow builds Docker images and pushes to ACR.
-# Container Apps are configured to auto-pull the latest images.
+# Triggers on push to master branch.
+# Builds Docker images, pushes to ACR, and explicitly updates Container Apps.
 #
-# NOTE: GEP's Azure subscription only grants Contributor access (not Owner),
-# so we cannot create role assignments for service principals. This workflow
-# pushes images to ACR and relies on Container Apps' existing configuration
-# to pull the latest images. See docs/deployment/ci-cd.md for details.
-#
-# Required secrets:
-#   ACR_CA_LOGIN_SERVER     - Container Apps ACR login server (acraetherdev.azurecr.io)
+# Required GitHub Secrets:
+#   ACR_CA_LOGIN_SERVER     - ACR login server (acraetherdev.azurecr.io)
 #   ACR_CA_USERNAME         - ACR admin username
 #   ACR_CA_PASSWORD         - ACR admin password
+#   AZURE_CREDENTIALS       - Azure service principal JSON for az login
+#                             (or use AZURE_CLIENT_ID, AZURE_TENANT_ID,
+#                              AZURE_SUBSCRIPTION_ID with OIDC)
 #
-# Container Apps FQDNs (stable across updates):
-#   Frontend: ca-aether-ca-dev-web.wonderfulsea-4938652c.westus2.azurecontainerapps.io
-#   Backend:  ca-aether-ca-dev-api.wonderfulsea-4938652c.westus2.azurecontainerapps.io
+# Container Apps:
+#   Backend:  ca-aether-ca-dev-api  (rg-aether-ca-dev)
+#   Frontend: ca-aether-ca-dev-web  (rg-aether-ca-dev)
 #
-# Manual update (if auto-pull doesn't work):
-#   az containerapp update --name ca-aether-ca-dev-api --resource-group rg-aether-ca-dev --image acraetherdev.azurecr.io/aether-backend:latest
-#   az containerapp update --name ca-aether-ca-dev-web --resource-group rg-aether-ca-dev --image acraetherdev.azurecr.io/aether-frontend:latest
+# URLs:
+#   Frontend: https://ca-aether-ca-dev-web.wonderfulsea-4938652c.westus2.azurecontainerapps.io
+#   Backend:  https://ca-aether-ca-dev-api.wonderfulsea-4938652c.westus2.azurecontainerapps.io
 # =============================================================================
 
 name: Deploy to Container Apps
@@ -28,7 +26,6 @@ name: Deploy to Container Apps
 on:
   push:
     branches:
-      - main
       - master
     paths-ignore:
       - 'docs/**'
@@ -50,109 +47,134 @@ on:
         type: boolean
 
 env:
-  REGISTRY: ${{ secrets.ACR_CA_LOGIN_SERVER }}
-  # Container Apps FQDNs (stable across updates)
+  REGISTRY: acraetherdev.azurecr.io
+  RESOURCE_GROUP: rg-aether-ca-dev
+  BACKEND_CONTAINER_APP: ca-aether-ca-dev-api
+  FRONTEND_CONTAINER_APP: ca-aether-ca-dev-web
+  BACKEND_IMAGE: acraetherdev.azurecr.io/aether-backend
+  FRONTEND_IMAGE: acraetherdev.azurecr.io/aether-frontend
   WEB_FQDN: ca-aether-ca-dev-web.wonderfulsea-4938652c.westus2.azurecontainerapps.io
   API_FQDN: ca-aether-ca-dev-api.wonderfulsea-4938652c.westus2.azurecontainerapps.io
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Build and Push Docker Images
+  # Build and Push Docker Images to ACR
   # ---------------------------------------------------------------------------
-  build:
+  build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
     outputs:
-      backend_image: ${{ steps.meta-backend.outputs.tags }}
-      frontend_image: ${{ steps.meta-frontend.outputs.tags }}
+      short_sha: ${{ steps.vars.outputs.short_sha }}
+      deploy_backend: ${{ steps.check.outputs.deploy_backend }}
+      deploy_frontend: ${{ steps.check.outputs.deploy_frontend }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set variables
+        id: vars
+        run: echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Determine what to deploy
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "deploy_backend=${{ github.event.inputs.deploy_backend }}" >> $GITHUB_OUTPUT
+            echo "deploy_frontend=${{ github.event.inputs.deploy_frontend }}" >> $GITHUB_OUTPUT
+          else
+            echo "deploy_backend=true" >> $GITHUB_OUTPUT
+            echo "deploy_frontend=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Login to ACR
         uses: docker/login-action@v3
         with:
-          registry: ${{ secrets.ACR_CA_LOGIN_SERVER }}
+          registry: ${{ env.REGISTRY }}
           username: ${{ secrets.ACR_CA_USERNAME }}
           password: ${{ secrets.ACR_CA_PASSWORD }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Docker meta for backend
-        id: meta-backend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/aether-backend
-          tags: |
-            type=sha
-            type=raw,value=latest
-
-      - name: Docker meta for frontend
-        id: meta-frontend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/aether-frontend
-          tags: |
-            type=sha
-            type=raw,value=latest
-
       - name: Build and push backend image
-        if: ${{ github.event_name == 'push' || github.event.inputs.deploy_backend == 'true' }}
+        if: steps.check.outputs.deploy_backend == 'true'
         uses: docker/build-push-action@v5
         with:
           context: ./backend
           push: true
-          tags: ${{ steps.meta-backend.outputs.tags }}
-          labels: ${{ steps.meta-backend.outputs.labels }}
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:latest
+            ${{ env.BACKEND_IMAGE }}:${{ steps.vars.outputs.short_sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Build and push frontend image
-        if: ${{ github.event_name == 'push' || github.event.inputs.deploy_frontend == 'true' }}
+        if: steps.check.outputs.deploy_frontend == 'true'
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: true
-          tags: ${{ steps.meta-frontend.outputs.tags }}
-          labels: ${{ steps.meta-frontend.outputs.labels }}
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:latest
+            ${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.short_sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build Summary
+  # ---------------------------------------------------------------------------
+  # Deploy to Azure Container Apps
+  # ---------------------------------------------------------------------------
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    permissions:
+      contents: read
+
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Update backend Container App
+        if: needs.build-and-push.outputs.deploy_backend == 'true'
         run: |
-          echo "=========================================="
-          echo "🚀 Images pushed to ACR!"
-          echo "=========================================="
-          echo ""
-          echo "Backend:  ${{ env.REGISTRY }}/aether-backend:latest"
-          echo "Backend:  ${{ env.REGISTRY }}/aether-backend:sha-${{ github.sha }}"
-          echo "Frontend: ${{ env.REGISTRY }}/aether-frontend:latest"
-          echo "Frontend: ${{ env.REGISTRY }}/aether-frontend:sha-${{ github.sha }}"
-          echo ""
-          echo "Container Apps should auto-pull new images within 60-90 seconds."
-          echo ""
-          echo "If auto-pull doesn't work, run manually:"
-          echo "  az containerapp update --name ca-aether-ca-dev-api --resource-group rg-aether-ca-dev --image ${{ env.REGISTRY }}/aether-backend:latest"
-          echo "  az containerapp update --name ca-aether-ca-dev-web --resource-group rg-aether-ca-dev --image ${{ env.REGISTRY }}/aether-frontend:latest"
-          echo "=========================================="
+          echo "Deploying backend image: ${{ env.BACKEND_IMAGE }}:${{ needs.build-and-push.outputs.short_sha }}"
+          az containerapp update \
+            --name ${{ env.BACKEND_CONTAINER_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.BACKEND_IMAGE }}:${{ needs.build-and-push.outputs.short_sha }} \
+            --revision-suffix "sha-${{ needs.build-and-push.outputs.short_sha }}"
+
+      - name: Update frontend Container App
+        if: needs.build-and-push.outputs.deploy_frontend == 'true'
+        run: |
+          echo "Deploying frontend image: ${{ env.FRONTEND_IMAGE }}:${{ needs.build-and-push.outputs.short_sha }}"
+          az containerapp update \
+            --name ${{ env.FRONTEND_CONTAINER_APP }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.FRONTEND_IMAGE }}:${{ needs.build-and-push.outputs.short_sha }} \
+            --revision-suffix "sha-${{ needs.build-and-push.outputs.short_sha }}"
+
+      - name: Azure logout
+        if: always()
+        run: az logout
 
   # ---------------------------------------------------------------------------
   # Smoke Tests
   # ---------------------------------------------------------------------------
   smoke-tests:
     runs-on: ubuntu-latest
-    needs: build
+    needs: deploy
     permissions:
       contents: read
 
     steps:
-      - name: Wait for Container Apps to pull new images
+      - name: Wait for new revisions to become active
         run: |
-          echo "Waiting 90 seconds for Container Apps to pull new images..."
-          sleep 90
+          echo "Waiting 60 seconds for new revisions to activate..."
+          sleep 60
 
       - name: Health check - API
         run: |
@@ -161,13 +183,11 @@ jobs:
             HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ env.API_FQDN }}/api/v1/health" || echo "000")
             echo "Attempt $i: HTTP $HTTP_STATUS"
             if [ "$HTTP_STATUS" = "200" ]; then
-              echo "✅ API health check passed!"
+              echo "API health check passed!"
               break
             fi
             if [ $i -eq 5 ]; then
-              echo "⚠️ API health check failed after 5 attempts (HTTP $HTTP_STATUS)"
-              echo "Note: Container Apps may need manual update. See workflow comments."
-              # Don't fail the workflow - manual update may be needed
+              echo "WARNING: API health check failed after 5 attempts (HTTP $HTTP_STATUS)"
             fi
             sleep 15
           done
@@ -179,13 +199,11 @@ jobs:
             HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ env.WEB_FQDN }}" || echo "000")
             echo "Attempt $i: HTTP $HTTP_STATUS"
             if [ "$HTTP_STATUS" = "200" ]; then
-              echo "✅ Web health check passed!"
+              echo "Web health check passed!"
               break
             fi
             if [ $i -eq 5 ]; then
-              echo "⚠️ Web health check failed after 5 attempts (HTTP $HTTP_STATUS)"
-              echo "Note: Container Apps may need manual update. See workflow comments."
-              # Don't fail the workflow - manual update may be needed
+              echo "WARNING: Web health check failed after 5 attempts (HTTP $HTTP_STATUS)"
             fi
             sleep 15
           done
@@ -193,7 +211,7 @@ jobs:
       - name: Deployment Summary
         run: |
           echo "=========================================="
-          echo "🚀 Container Apps Deployment Complete!"
+          echo "Container Apps Deployment Complete!"
           echo "=========================================="
           echo ""
           echo "URLs:"
@@ -201,11 +219,5 @@ jobs:
           echo "  Backend:  https://${{ env.API_FQDN }}"
           echo "  API Docs: https://${{ env.API_FQDN }}/docs"
           echo ""
-          echo "Images deployed:"
-          echo "  Backend:  ${{ env.REGISTRY }}/aether-backend:sha-${{ github.sha }}"
-          echo "  Frontend: ${{ env.REGISTRY }}/aether-frontend:sha-${{ github.sha }}"
-          echo ""
-          echo "If the apps didn't update automatically, run:"
-          echo "  az containerapp update --name ca-aether-ca-dev-api --resource-group rg-aether-ca-dev --image ${{ env.REGISTRY }}/aether-backend:latest"
-          echo "  az containerapp update --name ca-aether-ca-dev-web --resource-group rg-aether-ca-dev --image ${{ env.REGISTRY }}/aether-frontend:latest"
+          echo "Revision: sha-${{ needs.deploy.result }}"
           echo "=========================================="

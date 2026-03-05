@@ -36,7 +36,6 @@ export class SalesController {
 
   // ── Legacy endpoint (kept for backward compat) ──
 
-
   @Get('data')
   @ApiOperation({ summary: '[Deprecated] Get all sales CSV data for the Sales page' })
   @ApiResponse({ status: 200, description: 'Sales data retrieved from CSV files' })
@@ -46,14 +45,12 @@ export class SalesController {
 
   // ── New computed endpoints ──
 
-
   @Get('overview/metrics')
   @ApiOperation({ summary: 'Get overview KPI metrics' })
   @ApiResponse({ status: 200, description: 'Overview metrics computed' })
   getOverviewMetrics(@Query() filters: SalesFilterDto) {
     return this.salesComputeService.getOverviewMetrics(filters);
   }
-
 
   @Get('overview/funnel')
   @ApiOperation({ summary: 'Get pipeline funnel data' })
@@ -62,14 +59,12 @@ export class SalesController {
     return this.salesComputeService.getOverviewFunnel(filters);
   }
 
-
   @Get('overview/key-deals')
   @ApiOperation({ summary: 'Get top active deals' })
   @ApiResponse({ status: 200, description: 'Key deals computed' })
   getOverviewKeyDeals(@Query() filters: DealsFilterDto) {
     return this.salesComputeService.getOverviewKeyDeals(filters);
   }
-
 
   @Get('overview/closed-deals')
   @ApiOperation({ summary: 'Get closed ACV deals' })
@@ -78,14 +73,12 @@ export class SalesController {
     return this.salesComputeService.getOverviewClosedDeals(filters);
   }
 
-
   @Get('forecast/quarterly')
   @ApiOperation({ summary: 'Get quarterly forecast data' })
   @ApiResponse({ status: 200, description: 'Quarterly forecast computed' })
   getForecastQuarterly(@Query() filters: SalesFilterDto) {
     return this.salesComputeService.getForecastQuarterly(filters);
   }
-
 
   @Get('forecast/regional')
   @ApiOperation({ summary: 'Get regional forecast data' })
@@ -94,14 +87,12 @@ export class SalesController {
     return this.salesComputeService.getForecastRegional(filters);
   }
 
-
   @Get('forecast/trend')
   @ApiOperation({ summary: 'Get cumulative monthly forecast trend' })
   @ApiResponse({ status: 200, description: 'Forecast trend computed' })
   getForecastTrend(@Query() filters: SalesFilterDto) {
     return this.salesComputeService.getForecastTrend(filters);
   }
-
 
   @Get('forecast/by-subcategory')
   @ApiOperation({ summary: 'Get forecast breakdown by sub-category' })
@@ -110,7 +101,6 @@ export class SalesController {
     return this.salesComputeService.getForecastBySubcategory(filters);
   }
 
-
   @Get('pipeline/movement')
   @ApiOperation({ summary: 'Get pipeline movement MoM comparison and waterfall' })
   @ApiResponse({ status: 200, description: 'Pipeline movement computed' })
@@ -118,14 +108,12 @@ export class SalesController {
     return this.salesComputeService.getPipelineMovement(filters);
   }
 
-
   @Get('pipeline/by-subcategory')
   @ApiOperation({ summary: 'Get pipeline breakdown by sub-category' })
   @ApiResponse({ status: 200, description: 'Pipeline by sub-category computed' })
   getPipelineBySubcategory(@Query() filters: SalesFilterDto) {
     return this.salesComputeService.getPipelineBySubcategory(filters);
   }
-
 
   @Get('quota/salespeople')
   @ApiOperation({ summary: 'Get salesperson hierarchy with quota attainment' })

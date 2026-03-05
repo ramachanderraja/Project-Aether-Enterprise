@@ -1,7 +1,11 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
+
+// Auth guard (global)
+import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 // Feature modules
 import { AuthModule } from './modules/auth/auth.module';
@@ -87,6 +91,13 @@ import { validate } from './config/env.validation';
     ImportModule,
     AgentModule,
     HubspotModule,
+  ],
+  providers: [
+    // Global JWT guard — every route is protected unless explicitly marked @Public()
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
   ],
 })
 export class AppModule {}
