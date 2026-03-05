@@ -20,6 +20,7 @@ import { useARRSubCategoryStore } from '@shared/store/arrSubCategoryStore';
 import { useProductCategoryMappingStore } from '@shared/store/productCategoryMappingStore';
 import { normalizeRegion } from '@shared/store/dataTypes';
 import { useSalesDataStore, type SalesDataState } from '@shared/store/salesDataStore';
+import { useAuthStore } from '@/modules/auth/store/authStore';
 
 // ==================== TYPE DEFINITIONS ====================
 interface Opportunity {
@@ -783,6 +784,8 @@ interface ChartWrapperProps {
 const ChartWrapper: React.FC<ChartWrapperProps> = ({ title, subtitle, children, data, filename }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const _perms = useAuthStore((s) => s.user?.permissions || []);
+  const _canExport = _perms.includes('*');
 
   return (
     <div className="card p-6" ref={chartRef}>
@@ -791,6 +794,7 @@ const ChartWrapper: React.FC<ChartWrapperProps> = ({ title, subtitle, children, 
           <h2 className="text-lg font-semibold text-secondary-900">{title}</h2>
           {subtitle && <p className="text-sm text-secondary-500">{subtitle}</p>}
         </div>
+        {_canExport && (
         <div className="relative">
           <button
             onClick={() => setShowExportMenu(!showExportMenu)}
@@ -817,6 +821,7 @@ const ChartWrapper: React.FC<ChartWrapperProps> = ({ title, subtitle, children, 
             </div>
           )}
         </div>
+        )}
       </div>
       {children}
     </div>
@@ -825,6 +830,10 @@ const ChartWrapper: React.FC<ChartWrapperProps> = ({ title, subtitle, children, 
 
 // ==================== MAIN COMPONENT ====================
 export default function SalesPage() {
+  // Permission check - only admin can export
+  const userPermissions = useAuthStore((s) => s.user?.permissions || []);
+  const canExport = userPermissions.includes('*');
+
   // Stores for enrichment
   const sowMappingStore = useSOWMappingStore();
   const pipelineSubCategoryStore = usePipelineSubCategoryStore();
@@ -1869,7 +1878,7 @@ export default function SalesPage() {
             <h2 className="text-lg font-semibold text-secondary-900">Key Deals in Pipeline</h2>
             <p className="text-sm text-secondary-500">Top 10 active deals by value</p>
           </div>
-          <button
+          {canExport && <button
             onClick={() => exportToCSV(keyDeals, 'key_deals')}
             className="px-3 py-1.5 text-sm border border-secondary-200 rounded-lg hover:bg-secondary-50 flex items-center gap-2"
           >
@@ -1877,7 +1886,7 @@ export default function SalesPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
             Export
-          </button>
+          </button>}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -1953,7 +1962,7 @@ export default function SalesPage() {
                 <h2 className="text-lg font-semibold text-secondary-900">Closed ACV Deals</h2>
                 <p className="text-sm text-secondary-500">Won deals with sub-category breakdown (click to expand)</p>
               </div>
-              <button
+              {canExport && <button
                 onClick={() => exportToCSV(closedWonDeals.map(d => ({
                   dealName: d.name,
                   account: d.accountName,
@@ -1971,7 +1980,7 @@ export default function SalesPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
                 Export
-              </button>
+              </button>}
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -2560,12 +2569,12 @@ export default function SalesPage() {
         <div className="card overflow-hidden">
           <div className="p-4 border-b border-secondary-200 flex justify-between items-center">
             <h2 className="text-sm font-semibold text-secondary-900">Key Deal Movement</h2>
-            <button
+            {canExport && <button
               onClick={() => exportToCSV(pipelineMovement.topMovers, 'deal_movement')}
               className="px-2 py-0.5 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
             >
               Export
-            </button>
+            </button>}
           </div>
           <div className="overflow-x-auto max-h-80">
             <table className="w-full" style={{ fontSize: '0.7rem' }}>
@@ -2615,12 +2624,12 @@ export default function SalesPage() {
         <div className="card overflow-hidden">
           <div className="p-4 border-b border-secondary-200 flex justify-between items-center">
             <h2 className="text-sm font-semibold text-secondary-900">Lost Deals Analysis</h2>
-            <button
+            {canExport && <button
               onClick={() => exportToCSV(pipelineMovement.lostDeals, 'lost_deals')}
               className="px-2 py-0.5 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
             >
               Export
-            </button>
+            </button>}
           </div>
           <div className="overflow-x-auto max-h-80">
             <table className="w-full" style={{ fontSize: '0.7rem' }}>
@@ -2679,12 +2688,12 @@ export default function SalesPage() {
                 });
               }}
             />
-            <button
+            {canExport && <button
               onClick={() => exportToCSV(pipelineMovement.dealDetails, 'all_deal_movement')}
               className="px-2 py-1 text-xs border border-secondary-200 rounded-lg hover:bg-secondary-50 flex items-center gap-2"
             >
               Export
-            </button>
+            </button>}
           </div>
         </div>
         <div className="overflow-x-auto max-h-96">
@@ -2983,7 +2992,7 @@ export default function SalesPage() {
                   Clear Filters
                 </button>
               )}
-              <button
+              {canExport && <button
                 onClick={() => exportToCSV(filteredSalespeople.map(sp => ({
                   Name: sp.name,
                   Region: sp.region,
@@ -3000,7 +3009,7 @@ export default function SalesPage() {
                 className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
               >
                 Export
-              </button>
+              </button>}
             </div>
           </div>
           <div className="overflow-x-auto">

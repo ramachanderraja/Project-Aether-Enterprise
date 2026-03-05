@@ -55,7 +55,8 @@ export const useAuthStore = create<AuthState>()(
 
       hasPermission: (permission) => {
         const { user } = get();
-        return user?.permissions.includes(permission) ?? false;
+        if (!user?.permissions) return false;
+        return user.permissions.includes('*') || user.permissions.includes(permission);
       },
 
       hasRole: (role) => {
