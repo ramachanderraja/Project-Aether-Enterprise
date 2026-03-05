@@ -208,12 +208,12 @@ interface Notification {
 }
 
 const mockUsers: User[] = [
-  { id: '1', name: 'John Smith', email: 'john.smith@company.com', role: 'Administrator', status: 'active', lastLogin: '2024-01-31T10:30:00Z' },
-  { id: '2', name: 'Jane Doe', email: 'jane.doe@company.com', role: 'FP&A Manager', status: 'active', lastLogin: '2024-01-31T09:15:00Z' },
-  { id: '3', name: 'Mike Wilson', email: 'mike.wilson@company.com', role: 'Sales Manager', status: 'active', lastLogin: '2024-01-30T16:20:00Z' },
-  { id: '4', name: 'Sarah Johnson', email: 'sarah.johnson@company.com', role: 'Analyst', status: 'active', lastLogin: '2024-01-30T14:00:00Z' },
-  { id: '5', name: 'Bob Williams', email: 'bob.williams@company.com', role: 'Analyst', status: 'inactive', lastLogin: '2024-01-15T11:30:00Z' },
-  { id: '6', name: 'Emily Davis', email: 'emily.davis@company.com', role: 'Executive', status: 'pending', lastLogin: '' },
+  { id: 'usr_admin_001', name: 'Demo Admin', email: 'admin@demo.com', role: 'Administrator', status: 'active', lastLogin: '2026-03-05T10:30:00Z' },
+  { id: 'usr_santosh_002', name: 'Santosh Nair', email: 'santosh.nair@gep.com', role: 'Viewer', status: 'active', lastLogin: '2026-03-05T09:15:00Z' },
+  { id: 'usr_jason_003', name: 'Jason Griggs', email: 'jason.griggs@gep.com', role: 'Viewer', status: 'active', lastLogin: '2026-03-04T16:20:00Z' },
+  { id: 'usr_prasad_004', name: 'Prasad Sawant', email: 'prasad.sawant@gep.com', role: 'Viewer', status: 'active', lastLogin: '2026-03-04T14:00:00Z' },
+  { id: 'usr_diane_005', name: 'Diane Clark', email: 'diane.clark@gep.com', role: 'Viewer', status: 'active', lastLogin: '2026-03-03T11:30:00Z' },
+  { id: 'usr_mayur_006', name: 'Mayur Jain', email: 'mayur.jain@gep.com', role: 'Viewer', status: 'active', lastLogin: '2026-03-03T09:45:00Z' },
 ];
 
 const mockNotifications: Notification[] = [
