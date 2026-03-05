@@ -5,17 +5,36 @@ import {
   fetchAgentConfigs,
   type AgentConfig,
 } from '../services/agent-api';
+import { useAuthStore } from '@/modules/auth/store/authStore';
+
+// Map agent keys to required permissions
+const AGENT_PERMISSION_MAP: Record<string, string> = {
+  sales_pipeline: 'view:sales',
+  arr_revenue: 'view:arr',
+};
 
 export default function AIAgentPage() {
   const [agents, setAgents] = useState<AgentConfig[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<AgentConfig | null>(null);
   const [loading, setLoading] = useState(true);
+  const user = useAuthStore((s) => s.user);
+  const permissions = user?.permissions || [];
 
   useEffect(() => {
     let mounted = true;
     fetchAgentConfigs()
       .then((configs) => {
-        if (mounted) setAgents(configs);
+        if (mounted) {
+          // Filter agents by user permissions
+          const filtered = permissions.includes('*')
+            ? configs
+            : configs.filter((agent) => {
+                const requiredPerm = AGENT_PERMISSION_MAP[agent.key];
+                // Require explicit permission mapping — unmapped agents hidden for non-admin
+                return requiredPerm ? permissions.includes(requiredPerm) : false;
+              });
+          setAgents(filtered);
+        }
       })
       .catch((err) => {
         console.error('Failed to load agent configs:', err);
@@ -26,7 +45,7 @@ export default function AIAgentPage() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [permissions]);
 
   const handleSelectAgent = (agentKey: string) => {
     const agent = agents.find((a) => a.key === agentKey);

@@ -3,6 +3,7 @@ import { useSOWMappingStore, SOWMappingRecord } from '@shared/store/sowMappingSt
 import { usePipelineSubCategoryStore, PipelineSubCategoryRecord } from '@shared/store/pipelineSubCategoryStore';
 import { useARRSubCategoryStore, ARRSubCategoryRecord } from '@shared/store/arrSubCategoryStore';
 import { useProductCategoryMappingStore, ProductCategoryMappingRecord } from '@shared/store/productCategoryMappingStore';
+import { useAuthStore } from '@/modules/auth/store/authStore';
 
 interface ImportTemplate {
   id: string;
@@ -258,6 +259,8 @@ function parseCSVLine(line: string): string[] {
 }
 
 export default function SettingsPage() {
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = user?.permissions?.includes('*') ?? false;
   const [activeTab, setActiveTab] = useState<'general' | 'users' | 'notifications' | 'security' | 'billing' | 'data-import'>('general');
   const [notifications, setNotifications] = useState(mockNotifications);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
@@ -694,14 +697,14 @@ export default function SettingsPage() {
         {/* Sidebar Navigation */}
         <div className="w-48 flex-shrink-0">
           <nav className="space-y-1">
-            {[
-              { id: 'general', label: 'General', icon: '⚙️' },
-              { id: 'users', label: 'Users', icon: '👥' },
-              { id: 'notifications', label: 'Notifications', icon: '🔔' },
-              { id: 'data-import', label: 'Data Import', icon: '📥' },
-              { id: 'security', label: 'Security', icon: '🔒' },
-              { id: 'billing', label: 'Billing', icon: '💳' },
-            ].map((item) => (
+            {([
+              { id: 'general', label: isAdmin ? 'General' : 'My Profile', icon: '⚙️', adminOnly: false },
+              { id: 'users', label: 'Users', icon: '👥', adminOnly: true },
+              { id: 'notifications', label: 'Notifications', icon: '🔔', adminOnly: true },
+              { id: 'data-import', label: 'Data Import', icon: '📥', adminOnly: true },
+              { id: 'security', label: 'Security', icon: '🔒', adminOnly: true },
+              { id: 'billing', label: 'Billing', icon: '💳', adminOnly: true },
+            ].filter(item => !item.adminOnly || isAdmin)).map((item) => (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id as any)}
@@ -720,7 +723,46 @@ export default function SettingsPage() {
 
         {/* Main Content */}
         <div className="flex-1">
-          {activeTab === 'general' && (
+          {activeTab === 'general' && !isAdmin && (
+            <div className="space-y-6">
+              <div className="card p-6">
+                <h2 className="text-lg font-semibold text-secondary-900 mb-4">My Profile</h2>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center text-2xl font-bold text-primary-600">
+                      {user?.name?.charAt(0) || '?'}
+                    </div>
+                    <div>
+                      <p className="text-lg font-semibold text-secondary-900">{user?.name || 'Unknown'}</p>
+                      <p className="text-sm text-secondary-500">{user?.email || ''}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-secondary-500 mb-1">Role</label>
+                      <p className="text-secondary-900 capitalize">{user?.roles?.join(', ') || 'Viewer'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-secondary-500 mb-1">Access</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(user?.permissions || []).filter(p => p.startsWith('view:')).map(p => (
+                          <span key={p} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-50 text-primary-700">
+                            {p.replace('view:', '').replace('arr', 'ARR Analytics').replace('sales', 'Sales Performance').replace('ai', 'AI Agent').replace('settings', 'Settings')}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-secondary-500 mb-1">Account Type</label>
+                    <p className="text-secondary-900">View Only</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'general' && isAdmin && (
             <div className="space-y-6">
               <div className="card p-6">
                 <h2 className="text-lg font-semibold text-secondary-900 mb-4">Organization Settings</h2>
@@ -803,7 +845,7 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {activeTab === 'users' && (
+          {activeTab === 'users' && isAdmin && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -863,7 +905,7 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {activeTab === 'notifications' && (
+          {activeTab === 'notifications' && isAdmin && (
             <div className="space-y-4">
               <div>
                 <h2 className="text-lg font-semibold text-secondary-900">Notification Preferences</h2>
@@ -919,7 +961,7 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {activeTab === 'data-import' && (
+          {activeTab === 'data-import' && isAdmin && (
             <div className="space-y-6">
               {/* Import Section */}
               <div className="card p-6">
@@ -1269,7 +1311,7 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {activeTab === 'security' && (
+          {activeTab === 'security' && isAdmin && (
             <div className="space-y-6">
               <div className="card p-6">
                 <h2 className="text-lg font-semibold text-secondary-900 mb-4">Authentication</h2>
@@ -1352,7 +1394,7 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {activeTab === 'billing' && (
+          {activeTab === 'billing' && isAdmin && (
             <div className="space-y-6">
               <div className="card p-6">
                 <div className="flex items-center justify-between mb-4">

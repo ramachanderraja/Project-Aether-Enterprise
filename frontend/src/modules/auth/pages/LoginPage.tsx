@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { authApi } from '../services/authApi';
 import toast from 'react-hot-toast';
@@ -21,8 +21,9 @@ export default function LoginPage() {
   const { setAuth } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
-  const from = (location.state as any)?.from?.pathname || '/dashboard';
+  const from = (location.state as any)?.from?.pathname || '/';
 
   const {
     register,
@@ -34,13 +35,19 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
+    setLoginError(null);
     try {
       const response = await authApi.login(data.email, data.password);
       setAuth(response.user, response.access_token, response.refresh_token);
       toast.success('Welcome back!');
       navigate(from, { replace: true });
     } catch (error: any) {
-      toast.error(error.response?.data?.error?.message || 'Login failed');
+      const msg =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        error.message ||
+        'Login failed';
+      setLoginError(msg === 'Invalid credentials' ? 'Invalid email or password. Please try again.' : msg);
     } finally {
       setIsLoading(false);
     }
@@ -71,6 +78,12 @@ export default function LoginPage() {
 
           {/* Login Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {loginError && (
+              <div className="flex items-center gap-2.5 px-4 py-3 rounded-lg bg-red-50 border border-red-200">
+                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                <p className="text-sm font-medium text-red-700">{loginError}</p>
+              </div>
+            )}
             <div>
               <label htmlFor="email" className="label block mb-2">
                 Email Address

@@ -20,30 +20,48 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { clsx } from 'clsx';
+import { useAuthStore } from '@/modules/auth/store/authStore';
 
-const navItems = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/ai', label: 'AI Agent', icon: MessageSquare },
-  { to: '/sales', label: 'Sales Performance', icon: TrendingUp },
-  { to: '/marketing', label: 'Marketing', icon: Megaphone },
-  { to: '/gtm', label: 'GTM Metrics', icon: Rocket },
-  { to: '/cost', label: 'Cost Intelligence', icon: DollarSign },
-  { to: '/revenue', label: 'ARR Analytics', icon: BarChart3 },
-  { to: '/reports', label: 'Profitability', icon: FileBarChart },
-  { to: '/scenarios', label: 'Scenarios', icon: GitBranch },
-  { to: '/intelligence', label: 'Intelligent Core', icon: Brain },
-  { to: '/governance', label: 'Governance', icon: Shield },
+interface NavItem {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  permission: string;
+}
+
+const navItems: NavItem[] = [
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view:dashboard' },
+  { to: '/ai', label: 'AI Agent', icon: MessageSquare, permission: 'view:ai' },
+  { to: '/sales', label: 'Sales Performance', icon: TrendingUp, permission: 'view:sales' },
+  { to: '/marketing', label: 'Marketing', icon: Megaphone, permission: 'view:marketing' },
+  { to: '/gtm', label: 'GTM Metrics', icon: Rocket, permission: 'view:gtm' },
+  { to: '/cost', label: 'Cost Intelligence', icon: DollarSign, permission: 'view:cost' },
+  { to: '/revenue', label: 'ARR Analytics', icon: BarChart3, permission: 'view:arr' },
+  { to: '/reports', label: 'Profitability', icon: FileBarChart, permission: 'view:reports' },
+  { to: '/scenarios', label: 'Scenarios', icon: GitBranch, permission: 'view:scenarios' },
+  { to: '/intelligence', label: 'Intelligent Core', icon: Brain, permission: 'view:intelligence' },
+  { to: '/governance', label: 'Governance', icon: Shield, permission: 'view:governance' },
 ];
 
-const bottomNavItems = [
-  { to: '/training', label: 'Training Center', icon: BookOpen },
-  { to: '/data-fabric', label: 'Data Fabric', icon: Database },
-  { to: '/integrations', label: 'Integrations', icon: Plug },
-  { to: '/settings', label: 'Settings', icon: Settings },
+const bottomNavItems: NavItem[] = [
+  { to: '/training', label: 'Training Center', icon: BookOpen, permission: 'view:training' },
+  { to: '/data-fabric', label: 'Data Fabric', icon: Database, permission: 'view:data-fabric' },
+  { to: '/integrations', label: 'Integrations', icon: Plug, permission: 'view:integrations' },
+  { to: '/settings', label: 'Settings', icon: Settings, permission: 'view:settings' },
 ];
+
+function filterByPermissions(items: NavItem[], permissions: string[]): NavItem[] {
+  if (permissions.includes('*')) return items;
+  return items.filter((item) => permissions.includes(item.permission));
+}
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const permissions = user?.permissions || [];
+
+  const visibleNavItems = filterByPermissions(navItems, permissions);
+  const visibleBottomItems = filterByPermissions(bottomNavItems, permissions);
 
   return (
     <aside
@@ -83,7 +101,7 @@ export function Sidebar() {
       {/* Main Navigation */}
       <nav className="flex-1 py-4 overflow-y-auto">
         <ul className="space-y-1 px-2">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <li key={item.to}>
               <NavLink
                 to={item.to}
@@ -107,7 +125,7 @@ export function Sidebar() {
       {/* Bottom Navigation */}
       <div className="border-t border-secondary-800 py-4">
         <ul className="space-y-1 px-2">
-          {bottomNavItems.map((item) => (
+          {visibleBottomItems.map((item) => (
             <li key={item.to}>
               <NavLink
                 to={item.to}

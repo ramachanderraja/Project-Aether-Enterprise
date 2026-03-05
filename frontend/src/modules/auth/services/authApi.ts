@@ -1,4 +1,7 @@
+import axios from 'axios';
 import { apiClient } from '@/shared/services/api/apiClient';
+
+const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 export interface LoginResponse {
   access_token: string;
@@ -37,19 +40,22 @@ export interface User {
 }
 
 export const authApi = {
+  // Use plain axios for login/refresh to avoid the apiClient 401 interceptor
+  // which would redirect to /login on invalid credentials instead of showing an error
   login: async (email: string, password: string): Promise<LoginResponse> => {
-    const response = await apiClient.post<LoginResponse>('/auth/login', {
+    const response = await axios.post(`${BASE_URL}/auth/login`, {
       email,
       password,
     });
-    return response.data;
+    // Backend wraps in { success, data, meta } envelope
+    return response.data?.data ?? response.data;
   },
 
   refresh: async (refreshToken: string): Promise<{ access_token: string }> => {
-    const response = await apiClient.post<{ access_token: string }>('/auth/refresh', {
+    const response = await axios.post(`${BASE_URL}/auth/refresh`, {
       refresh_token: refreshToken,
     });
-    return response.data;
+    return response.data?.data ?? response.data;
   },
 
   logout: async (refreshToken?: string): Promise<void> => {
