@@ -747,6 +747,8 @@ interface ChartWrapperProps {
 const ChartWrapper: React.FC<ChartWrapperProps> = ({ title, subtitle, children, data, filename }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const _perms = useAuthStore((s) => s.user?.permissions || []);
+  const _canExport = _perms.includes('*');
 
   return (
     <div className="card p-6" ref={chartRef}>
@@ -755,6 +757,7 @@ const ChartWrapper: React.FC<ChartWrapperProps> = ({ title, subtitle, children, 
           <h2 className="text-lg font-semibold text-secondary-900">{title}</h2>
           {subtitle && <p className="text-sm text-secondary-500">{subtitle}</p>}
         </div>
+        {_canExport && (
         <div className="relative">
           <button
             onClick={() => setShowExportMenu(!showExportMenu)}
@@ -781,6 +784,7 @@ const ChartWrapper: React.FC<ChartWrapperProps> = ({ title, subtitle, children, 
             </div>
           )}
         </div>
+        )}
       </div>
       {children}
     </div>
@@ -789,6 +793,10 @@ const ChartWrapper: React.FC<ChartWrapperProps> = ({ title, subtitle, children, 
 
 // ==================== MAIN COMPONENT ====================
 export default function RevenuePage() {
+  // Permission check - only admin can export
+  const userPermissions = useAuthStore((s) => s.user?.permissions || []);
+  const canExport = userPermissions.includes('*');
+
   // SOW Mapping store for enrichment
   const sowMappingStore = useSOWMappingStore();
 
@@ -2535,12 +2543,12 @@ export default function RevenuePage() {
             <h2 className="text-lg font-semibold text-secondary-900">
               ARR Movement Details{movementTypeFilter ? ` — ${movementTypeFilter}` : ''} ({(customerNameFilter ? movementFilteredCustomers.filter(c => c.name.toLowerCase().includes(customerNameFilter.toLowerCase())) : movementFilteredCustomers).length})
             </h2>
-            <button
+            {canExport && <button
               onClick={() => exportToCSV(movementFilteredCustomers, 'arr_movement_details')}
               className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
             >
               Export
-            </button>
+            </button>}
           </div>
           <div className="flex items-center gap-2">
             <label className="text-sm text-secondary-600">Customer:</label>
@@ -2623,7 +2631,7 @@ export default function RevenuePage() {
         <div className="card p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-secondary-900">Top Expansions</h2>
-            <button
+            {canExport && <button
               onClick={() => exportToCSV(
                 movementFilteredCustomers.filter(c => c.movementType === 'Expansion' || c.movementType === 'New').slice(0, 10),
                 'top_expansions'
@@ -2631,7 +2639,7 @@ export default function RevenuePage() {
               className="px-2 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
             >
               Export
-            </button>
+            </button>}
           </div>
           <div className="space-y-3">
             {movementFilteredCustomers
@@ -2662,7 +2670,7 @@ export default function RevenuePage() {
         <div className="card p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-secondary-900">Top Contractions & Churns</h2>
-            <button
+            {canExport && <button
               onClick={() => exportToCSV(
                 movementFilteredCustomers.filter(c => c.movementType === 'Contraction' || c.movementType === 'Churn').slice(0, 10),
                 'top_contractions'
@@ -2670,7 +2678,7 @@ export default function RevenuePage() {
               className="px-2 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
             >
               Export
-            </button>
+            </button>}
           </div>
           <div className="space-y-3">
             {movementFilteredCustomers
@@ -2819,7 +2827,7 @@ export default function RevenuePage() {
                 )}
               </div>
             </div>
-            <button
+            {canExport && <button
               onClick={() => exportToCSV(displayedSummary.map(c => ({
                 Customer: c.customerName, 'Total ARR': c.totalARR, SOWs: c.sowCount,
                 Region: c.region, Vertical: c.vertical,
@@ -2828,7 +2836,7 @@ export default function RevenuePage() {
               className="px-4 py-2 border border-secondary-200 rounded-lg text-sm font-medium text-secondary-600 hover:bg-secondary-50"
             >
               Export
-            </button>
+            </button>}
           </div>
         </div>
 
@@ -3321,12 +3329,12 @@ export default function RevenuePage() {
                   >
                     Collapse All
                   </button>
-                  <button
+                  {canExport && <button
                     onClick={() => exportToCSV(filteredProducts, 'category_performance')}
                     className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
                   >
                     Export
-                  </button>
+                  </button>}
                 </div>
               </div>
               <div className="overflow-x-auto">
@@ -3466,12 +3474,12 @@ export default function RevenuePage() {
                     >
                       Collapse All
                     </button>
-                    <button
+                    {canExport && <button
                       onClick={() => exportToCSV(filteredMatrix.map(c => ({ Customer: c.name, Region: c.region, Vertical: c.vertical, ...c.categoryARR, 'Total ARR': c.totalARR })), 'customer_category_matrix')}
                       className="px-3 py-1 text-xs border border-secondary-200 rounded hover:bg-secondary-50"
                     >
                       Export
-                    </button>
+                    </button>}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -3635,7 +3643,7 @@ export default function RevenuePage() {
           <h1 className="text-2xl font-bold text-secondary-900">ARR Analytics</h1>
           <p className="text-secondary-500">Track ARR, retention, and customer metrics</p>
         </div>
-        <button
+        {canExport && <button
           onClick={() => exportToCSV([
             { Metric: 'Current ARR', Value: metrics.currentARR },
             { Metric: isFilteredYearPast ? `Year End ARR (Dec ${filteredYear})` : `Year End Forecasted ARR (Dec ${filteredYear})`, Value: metrics.yearEndARR },
@@ -3647,7 +3655,7 @@ export default function RevenuePage() {
           className="btn-primary"
         >
           Export Report
-        </button>
+        </button>}
       </div>
 
       {/* Global Filters - Multi-Select (Standard filters per requirements) */}

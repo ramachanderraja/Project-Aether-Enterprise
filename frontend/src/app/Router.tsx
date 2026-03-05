@@ -42,6 +42,7 @@ export function Router() {
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
+            {/* ProtectedRoute handles / redirect based on user permissions */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/ai" element={<AIAgentPage />} />

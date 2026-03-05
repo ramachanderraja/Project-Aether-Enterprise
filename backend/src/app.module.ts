@@ -27,6 +27,7 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { ImportModule } from './modules/import/import.module';
 import { DataModule } from './modules/data/data.module';
 import { AgentModule } from './modules/agent/agent.module';
+import { HubspotModule } from './modules/hubspot/hubspot.module';
 
 // Infrastructure modules
 import { PrismaModule } from './database/prisma.module';
@@ -89,6 +90,7 @@ import { validate } from './config/env.validation';
     ReportsModule,
     ImportModule,
     AgentModule,
+    HubspotModule,
   ],
   providers: [
     // Global JWT guard — every route is protected unless explicitly marked @Public()

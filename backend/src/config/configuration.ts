@@ -70,6 +70,13 @@ export default () => ({
     },
   },
 
+  // HubSpot
+  hubspot: {
+    apiToken: process.env.HUBSPOT_API_TOKEN,
+    baseUrl: process.env.HUBSPOT_BASE_URL || 'https://api.hubapi.com',
+    syncEnabled: (process.env.HUBSPOT_SYNC_ENABLED || 'true') === 'true',
+  },
+
   // CORS
   cors: {
     origins: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'],

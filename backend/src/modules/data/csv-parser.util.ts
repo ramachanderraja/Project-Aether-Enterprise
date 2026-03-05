@@ -1,7 +1,83 @@
 /**
- * CSV parsing utilities – ported from frontend/src/shared/store/realDataStore.ts
+ * CSV and XLSX parsing utilities – ported from frontend/src/shared/store/realDataStore.ts
  * so the backend produces identical parsed output.
  */
+
+import * as XLSX from 'xlsx';
+
+/**
+ * Convert an Excel serial date number to YYYY-MM-DD string.
+ * Excel serial date: days since 1899-12-30 (with the Lotus 1-2-3 leap year bug).
+ */
+function excelDateToString(serial: number): string {
+  if (!serial || serial < 1) return '';
+  // Use XLSX built-in utility to convert serial → JS Date
+  const date = XLSX.SSF.parse_date_code(serial);
+  if (!date) return '';
+  const y = date.y;
+  const m = String(date.m).padStart(2, '0');
+  const d = String(date.d).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Parse an XLSX file buffer into an array of Record<string, string> objects,
+ * matching the same output format as parseCSV so downstream code stays unchanged.
+ * Reads the first sheet by default.
+ */
+export function parseXLSX(filePath: string): Record<string, string>[] {
+  const workbook = XLSX.readFile(filePath);
+  const sheetName = workbook.SheetNames[0];
+  if (!sheetName) return [];
+  const sheet = workbook.Sheets[sheetName];
+
+  // Get raw JSON rows (header row = keys)
+  const rawRows: Record<string, any>[] = XLSX.utils.sheet_to_json(sheet, {
+    defval: '',   // default value for empty cells
+    raw: true,    // keep numbers as numbers (we convert below)
+  });
+
+  // Determine which columns are dates by inspecting the header row
+  // Read headers with extra-space tolerance
+  const allRows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
+  const headerRow: any[] = allRows[0] || [];
+  const dateColumnNames = new Set<string>();
+  const trimmedHeaders: string[] = headerRow.map((h: any) => String(h).trim());
+
+  // Columns known to hold date values
+  const knownDateCols = [
+    'Snapshot_Month', 'Close_Date', 'Expected_Close_Date', 'Created Date',
+    'Created_Date', 'Contract_Start_Date', 'Contract_End_Date',
+    'Quantum_GoLive_Date', 'Hire_Date', 'Start_Date',
+  ];
+  for (const h of trimmedHeaders) {
+    if (knownDateCols.includes(h)) dateColumnNames.add(h);
+  }
+
+  // Columns stored as 0-1 decimals in Excel but expected as 0-100 percentages
+  const percentageColumns = new Set<string>(['Probability']);
+
+  return rawRows.map(row => {
+    const record: Record<string, string> = {};
+    for (const rawKey of Object.keys(row)) {
+      const key = rawKey.trim();
+      let val = row[rawKey];
+
+      if (val === null || val === undefined) {
+        record[key] = '';
+      } else if (dateColumnNames.has(key) && typeof val === 'number') {
+        // Excel serial date → YYYY-MM-DD
+        record[key] = excelDateToString(val);
+      } else if (percentageColumns.has(key) && typeof val === 'number' && val >= 0 && val <= 1) {
+        // Convert 0-1 decimal to 0-100 percentage to match CSV format
+        record[key] = String(val * 100);
+      } else {
+        record[key] = String(val);
+      }
+    }
+    return record;
+  }).filter(r => Object.values(r).some(v => v !== ''));
+}
 
 export function parseCSVLine(line: string): string[] {
   const fields: string[] = [];
