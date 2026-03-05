@@ -515,6 +515,73 @@ model CertificateIssuance {
 }
 
 // ============================================
+// HUBSPOT PIPELINE SYNC
+// ============================================
+
+model PipelineSnapshot {
+  id                  String   @id @default(uuid())
+  tenantId            String   @default("default")
+  snapshotMonth       DateTime @db.Date
+  hubspotDealId       String
+  dealName            String
+  customerName        String   @default("")
+  dealValue           Decimal  @db.Decimal(18, 2)
+  licenseAcv          Decimal  @db.Decimal(18, 2)
+  implementationValue Decimal  @db.Decimal(18, 2)
+  logoType            String?
+  dealStage           String
+  currentStage        String   @default("")
+  probability         Decimal  @db.Decimal(5, 2)
+  expectedCloseDate   DateTime? @db.Date
+  region              String?
+  vertical            String?
+  segment             String?
+  productSubCategory  String?
+  salesRep            String?
+  ownerSalesTeam      String?
+  createdDate         DateTime? @db.Date
+  hubspotOwnerId      String?
+  rawDealStageId      String?
+  source              String   @default("hubspot")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([snapshotMonth, hubspotDealId], name: "uq_snapshot_deal")
+  @@index([tenantId, snapshotMonth])
+  @@index([hubspotDealId])
+  @@map("pipeline_snapshots")
+}
+
+model HubspotSyncLog {
+  id              String    @id @default(uuid())
+  syncType        String
+  status          String    @default("running")
+  startedAt       DateTime  @default(now())
+  completedAt     DateTime?
+  recordsFetched  Int       @default(0)
+  recordsUpserted Int       @default(0)
+  recordsUpdated  Int       @default(0)
+  recordsFailed   Int       @default(0)
+  errorMessage    String?
+  metadata        Json?
+
+  @@index([syncType, startedAt])
+  @@map("hubspot_sync_logs")
+}
+
+model HubspotStageMapping {
+  id          String   @id @default(uuid())
+  pipelineId  String
+  stageId     String
+  stageLabel  String
+  probability Decimal? @db.Decimal(5, 2)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([pipelineId, stageId])
+  @@map("hubspot_stage_mappings")
+}
+
+// ============================================
 // AUDIT & GOVERNANCE
 // ============================================
 

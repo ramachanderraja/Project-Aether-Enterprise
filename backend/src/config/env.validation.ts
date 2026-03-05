@@ -84,6 +84,18 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   AZURE_OPENAI_API_INSTANCE_NAME: string;
+
+  @IsString()
+  @IsOptional()
+  HUBSPOT_API_TOKEN: string;
+
+  @IsString()
+  @IsOptional()
+  HUBSPOT_BASE_URL: string = 'https://api.hubapi.com';
+
+  @IsString()
+  @IsOptional()
+  HUBSPOT_SYNC_ENABLED: string = 'true';
 }
 
 export function validate(config: Record<string, unknown>) {

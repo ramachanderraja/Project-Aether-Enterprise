@@ -21,6 +21,7 @@ import {
   PriorYearPerformanceRecord,
   AllDataResponse,
 } from './dto';
+import { PrismaService } from '../../database/prisma.service';
 
 @Injectable()
 export class DataService implements OnModuleInit {
@@ -44,7 +45,7 @@ export class DataService implements OnModuleInit {
 
   private dataDir: string;
 
-  constructor() {
+  constructor(private readonly prisma: PrismaService) {
     this.dataDir = path.resolve(process.cwd(), 'data');
   }
 
@@ -126,28 +127,49 @@ export class DataService implements OnModuleInit {
         Sales_Team: (row['Sales team'] || row['Sales_Team'] || '').trim(),
       }));
 
-      // Parse Pipeline Snapshots
-      this.pipelineSnapshots = pipelineRows.map(row => ({
-        Snapshot_Month: parseDate(row['Snapshot_Month'] || ''),
-        Pipeline_Deal_ID: normalizeNumericId(row['Pipeline_Deal_ID'] || ''),
-        Deal_Name: row['Deal_Name'] || '',
-        Customer_Name: row['Customer_Name'] || '',
-        Deal_Value: parseNumber(row['Deal_Value'] || ''),
-        License_ACV: parseNumber(row['License_ACV'] || ''),
-        Implementation_Value: parseNumber(row['Implementation_Value'] || ''),
-        Logo_Type: normalizeLogoType(row['Logo_Type'] || ''),
-        Deal_Stage: (row['Deal_Stage'] || '').trim(),
-        Current_Stage: (row['Current_Stage'] || '').trim(),
-        Probability: parseNumber(row['Probability'] || ''),
-        Expected_Close_Date: parseDate(row['Expected_Close_Date'] || ''),
-        Region: (row['Region'] || '').trim(),
-        Vertical: (row['Vertical'] || '').trim(),
-        Segment: (row['Segment'] || '').trim(),
-        Product_Sub_Category: (row['Product_Sub_Category'] || '').trim(),
-        Sales_Rep: (row['Sales_Rep'] || '').trim(),
-        Created_Date: parseDate(row['Created Date'] || row['Created_Date'] || ''),
-        Sales_Team: (row['Sales team'] || row['Sales_Team'] || '').trim(),
-      }));
+      // Parse Pipeline Snapshots — prefer DB if connected
+      if (this.prisma.isConnected) {
+        try {
+          const dbSnapshots = await this.prisma.pipelineSnapshot.findMany({
+            orderBy: { snapshotMonth: 'asc' },
+          });
+          this.pipelineSnapshots = dbSnapshots.map(row => ({
+            Snapshot_Month: row.snapshotMonth.toISOString().slice(0, 10),
+            Pipeline_Deal_ID: row.hubspotDealId,
+            Deal_Name: row.dealName,
+            Customer_Name: row.customerName,
+            Deal_Value: Number(row.dealValue),
+            License_ACV: Number(row.licenseAcv),
+            Implementation_Value: Number(row.implementationValue),
+            Logo_Type: row.logoType || '',
+            Deal_Stage: row.dealStage,
+            Current_Stage: row.currentStage,
+            Probability: Number(row.probability),
+            Expected_Close_Date: row.expectedCloseDate
+              ? row.expectedCloseDate.toISOString().slice(0, 10)
+              : '',
+            Region: row.region || '',
+            Vertical: row.vertical || '',
+            Segment: row.segment || '',
+            Product_Sub_Category: row.productSubCategory || '',
+            Sales_Rep: row.salesRep || '',
+            Created_Date: row.createdDate
+              ? row.createdDate.toISOString().slice(0, 10)
+              : '',
+            Sales_Team: row.ownerSalesTeam || '',
+          }));
+          this.logger.log(
+            `[DataService] Loaded ${this.pipelineSnapshots.length} pipeline snapshots from DATABASE`,
+          );
+        } catch (dbErr) {
+          this.logger.warn(
+            `Failed to load pipeline snapshots from DB, falling back to CSV: ${dbErr}`,
+          );
+          this.pipelineSnapshots = this.parsePipelineFromRows(pipelineRows);
+        }
+      } else {
+        this.pipelineSnapshots = this.parsePipelineFromRows(pipelineRows);
+      }
 
       // Parse ARR Snapshots
       this.arrSnapshots = arrRows.map(row => ({
@@ -343,5 +365,29 @@ export class DataService implements OnModuleInit {
 
   getDataDir(): string {
     return this.dataDir;
+  }
+
+  private parsePipelineFromRows(rows: Record<string, string>[]): PipelineSnapshotRecord[] {
+    return rows.map(row => ({
+      Snapshot_Month: parseDate(row['Snapshot_Month'] || ''),
+      Pipeline_Deal_ID: normalizeNumericId(row['Pipeline_Deal_ID'] || ''),
+      Deal_Name: row['Deal_Name'] || '',
+      Customer_Name: row['Customer_Name'] || '',
+      Deal_Value: parseNumber(row['Deal_Value'] || ''),
+      License_ACV: parseNumber(row['License_ACV'] || ''),
+      Implementation_Value: parseNumber(row['Implementation_Value'] || ''),
+      Logo_Type: normalizeLogoType(row['Logo_Type'] || ''),
+      Deal_Stage: (row['Deal_Stage'] || '').trim(),
+      Current_Stage: (row['Current_Stage'] || '').trim(),
+      Probability: parseNumber(row['Probability'] || ''),
+      Expected_Close_Date: parseDate(row['Expected_Close_Date'] || ''),
+      Region: (row['Region'] || '').trim(),
+      Vertical: (row['Vertical'] || '').trim(),
+      Segment: (row['Segment'] || '').trim(),
+      Product_Sub_Category: (row['Product_Sub_Category'] || '').trim(),
+      Sales_Rep: (row['Sales_Rep'] || '').trim(),
+      Created_Date: parseDate(row['Created Date'] || row['Created_Date'] || ''),
+      Sales_Team: (row['Sales team'] || row['Sales_Team'] || '').trim(),
+    }));
   }
 }

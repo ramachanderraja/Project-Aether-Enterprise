@@ -25,7 +25,9 @@
       "Bash(do)",
       "Bash(echo:*)",
       "Bash(python:*)",
-      "Bash(ls:*)"
+      "WebFetch(domain:developers.hubspot.com)",
+      "Bash(npx nest:*)",
+      "Bash(npx:*)"
     ]
   }
 }
