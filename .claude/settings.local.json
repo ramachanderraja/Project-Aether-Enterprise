@@ -26,7 +26,8 @@
       "Bash(echo:*)",
       "Bash(python:*)",
       "Bash(az account:*)",
-      "Bash(az acr:*)"
+      "Bash(az acr:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

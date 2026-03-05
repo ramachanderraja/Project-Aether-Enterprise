@@ -1,5 +1,5 @@
 {
-  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"],
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts", "prisma/seed-hubspot-tables.ts", "prisma/seed-pipeline-snapshots.ts", "src/modules/hubspot/**"],
   "compilerOptions": {
     "module": "commonjs",
     "declaration": false,
