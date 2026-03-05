@@ -16,19 +16,18 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# Verify data files are in build context
+RUN echo "=== CSV/XLSX data files in build context ===" && \
+    ls -la data/ && \
+    test -d data || (echo "ERROR: data/ directory not found in build context!" && exit 1)
+
 # Generate Prisma client
 RUN npx prisma generate
 
 # Build application and verify output
 RUN npm run build && \
-    echo "=== Build completed. Contents of dist folder ===" && \
-    ls -la dist/ && \
-    echo "=== Contents of dist/src ===" && \
-    ls -la dist/src/ && \
-    echo "=== Verifying main.js exists ===" && \
-    test -f dist/src/main.js || (echo "ERROR: dist/src/main.js not found!" && exit 1) && \
-    echo "=== Contents of prisma folder ===" && \
-    ls -la prisma/
+    echo "=== Build completed ===" && \
+    test -f dist/src/main.js || (echo "ERROR: dist/src/main.js not found!" && exit 1)
 
 # Production stage
 FROM node:20-slim AS production
@@ -45,17 +44,24 @@ RUN groupadd -g 1001 nodejs && \
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies plus prisma for migrations
+# Install production dependencies
 RUN npm ci --only=production && \
-    npm install -g prisma && \
     npm cache clean --force
 
-# Copy Prisma files (schema, migrations, and seed)
+# Copy Prisma client (needed by NestJS module resolution)
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Copy built application
 COPY --from=builder /app/dist ./dist
+
+# Copy data files (CSV/XLSX for in-memory data loading)
+COPY --from=builder /app/data ./data
+
+# Verify data files exist in production image
+RUN echo "=== Data files in production image ===" && \
+    ls -la data/ && \
+    echo "=== File count: $(ls data/ | wc -l) ==="
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh /docker-entrypoint.sh
@@ -69,9 +75,8 @@ USER nestjs
 # Expose port
 EXPOSE 3001
 
-# Health check (longer start period for migrations)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD wget --quiet --tries=1 --spider http://localhost:3001/health || exit 1
 
-# Use entrypoint to run migrations before starting app
 ENTRYPOINT ["/docker-entrypoint.sh"]

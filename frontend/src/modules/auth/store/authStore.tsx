@@ -17,9 +17,12 @@ interface AuthState {
   refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  permissionsVerified: boolean;
   setAuth: (user: User, accessToken: string, refreshToken: string) => void;
   clearAuth: () => void;
   setLoading: (loading: boolean) => void;
+  setPermissionsVerified: (verified: boolean) => void;
+  updateUserFromServer: (serverUser: { roles: string[]; permissions: string[] }) => void;
   hasPermission: (permission: string) => boolean;
   hasRole: (role: string) => boolean;
 }
@@ -32,6 +35,7 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: null,
       isAuthenticated: false,
       isLoading: true,
+      permissionsVerified: false,
 
       setAuth: (user, accessToken, refreshToken) =>
         set({
@@ -40,6 +44,7 @@ export const useAuthStore = create<AuthState>()(
           refreshToken,
           isAuthenticated: true,
           isLoading: false,
+          permissionsVerified: true,
         }),
 
       clearAuth: () =>
@@ -49,9 +54,26 @@ export const useAuthStore = create<AuthState>()(
           refreshToken: null,
           isAuthenticated: false,
           isLoading: false,
+          permissionsVerified: false,
         }),
 
       setLoading: (loading) => set({ isLoading: loading }),
+
+      setPermissionsVerified: (verified) => set({ permissionsVerified: verified }),
+
+      updateUserFromServer: (serverUser) => {
+        const { user } = get();
+        if (user) {
+          set({
+            user: {
+              ...user,
+              roles: serverUser.roles,
+              permissions: serverUser.permissions,
+            },
+            permissionsVerified: true,
+          });
+        }
+      },
 
       hasPermission: (permission) => {
         const { user } = get();
@@ -71,9 +93,10 @@ export const useAuthStore = create<AuthState>()(
         refreshToken: state.refreshToken,
         user: state.user,
         isAuthenticated: state.isAuthenticated,
+        // NOTE: permissionsVerified is intentionally NOT persisted.
+        // On refresh, it defaults to false, forcing server re-validation.
       }),
       onRehydrateStorage: () => (state) => {
-        // Set loading to false after hydration completes
         state?.setLoading(false);
       },
     }

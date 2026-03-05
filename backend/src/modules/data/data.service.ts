@@ -21,8 +21,6 @@ import {
   PriorYearPerformanceRecord,
   AllDataResponse,
 } from './dto';
-import { PrismaService } from '../../database/prisma.service';
-
 @Injectable()
 export class DataService implements OnModuleInit {
   private readonly logger = new Logger(DataService.name);
@@ -45,7 +43,7 @@ export class DataService implements OnModuleInit {
 
   private dataDir: string;
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor() {
     this.dataDir = path.resolve(process.cwd(), 'data');
   }
 
@@ -127,49 +125,8 @@ export class DataService implements OnModuleInit {
         Sales_Team: (row['Sales team'] || row['Sales_Team'] || '').trim(),
       }));
 
-      // Parse Pipeline Snapshots — prefer DB if connected
-      if (this.prisma.isConnected) {
-        try {
-          const dbSnapshots = await this.prisma.pipelineSnapshot.findMany({
-            orderBy: { snapshotMonth: 'asc' },
-          });
-          this.pipelineSnapshots = dbSnapshots.map(row => ({
-            Snapshot_Month: row.snapshotMonth.toISOString().slice(0, 10),
-            Pipeline_Deal_ID: row.hubspotDealId,
-            Deal_Name: row.dealName,
-            Customer_Name: row.customerName,
-            Deal_Value: Number(row.dealValue),
-            License_ACV: Number(row.licenseAcv),
-            Implementation_Value: Number(row.implementationValue),
-            Logo_Type: row.logoType || '',
-            Deal_Stage: row.dealStage,
-            Current_Stage: row.currentStage,
-            Probability: Number(row.probability),
-            Expected_Close_Date: row.expectedCloseDate
-              ? row.expectedCloseDate.toISOString().slice(0, 10)
-              : '',
-            Region: row.region || '',
-            Vertical: row.vertical || '',
-            Segment: row.segment || '',
-            Product_Sub_Category: row.productSubCategory || '',
-            Sales_Rep: row.salesRep || '',
-            Created_Date: row.createdDate
-              ? row.createdDate.toISOString().slice(0, 10)
-              : '',
-            Sales_Team: row.ownerSalesTeam || '',
-          }));
-          this.logger.log(
-            `[DataService] Loaded ${this.pipelineSnapshots.length} pipeline snapshots from DATABASE`,
-          );
-        } catch (dbErr) {
-          this.logger.warn(
-            `Failed to load pipeline snapshots from DB, falling back to CSV: ${dbErr}`,
-          );
-          this.pipelineSnapshots = this.parsePipelineFromRows(pipelineRows);
-        }
-      } else {
-        this.pipelineSnapshots = this.parsePipelineFromRows(pipelineRows);
-      }
+      // Parse Pipeline Snapshots from CSV/XLSX
+      this.pipelineSnapshots = this.parsePipelineFromRows(pipelineRows);
 
       // Parse ARR Snapshots
       this.arrSnapshots = arrRows.map(row => ({

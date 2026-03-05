@@ -11,7 +11,6 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { Public } from '../auth/decorators/public.decorator';
 import { AgentService } from './agent.service';
 import { ChatDto } from './dto/chat.dto';
 
@@ -22,7 +21,6 @@ export class AgentController {
 
   constructor(private readonly agentService: AgentService) {}
 
-  @Public()
   @Get('configs')
   getConfigs() {
     return this.agentService.listAgents();

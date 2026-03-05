@@ -1,5 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
 import { useAuthStore } from '../store/authStore';
+import { authApi } from '../services/authApi';
 import { LoadingSpinner } from '@/shared/components/ui/LoadingSpinner';
 
 // Permission-to-route mapping
@@ -45,8 +47,31 @@ function hasRouteAccess(pathname: string, permissions: string[]): boolean {
 }
 
 export function ProtectedRoute() {
-  const { isAuthenticated, isLoading, user } = useAuthStore();
+  const { isAuthenticated, isLoading, user, permissionsVerified, updateUserFromServer, clearAuth } = useAuthStore();
   const location = useLocation();
+  const revalidating = useRef(false);
+
+  // On mount (page refresh), re-validate permissions from the server
+  useEffect(() => {
+    if (!isAuthenticated || permissionsVerified || isLoading || revalidating.current) return;
+    revalidating.current = true;
+
+    authApi
+      .getMe()
+      .then((serverUser) => {
+        updateUserFromServer({
+          roles: serverUser.roles,
+          permissions: serverUser.permissions,
+        });
+      })
+      .catch(() => {
+        // Token is invalid or expired — force re-login
+        clearAuth();
+      })
+      .finally(() => {
+        revalidating.current = false;
+      });
+  }, [isAuthenticated, permissionsVerified, isLoading, updateUserFromServer, clearAuth]);
 
   if (isLoading) {
     return (
@@ -58,6 +83,15 @@ export function ProtectedRoute() {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // Wait for server-side permission verification before rendering any route
+  if (!permissionsVerified) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
   }
 
   const permissions = user?.permissions || [];
