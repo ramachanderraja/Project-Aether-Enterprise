@@ -123,6 +123,7 @@ export class DataService implements OnModuleInit {
         Sales_Rep: (row['Sales_Rep'] || '').trim(),
         SOW_ID: row['SOW_ID'] || '',
         Sold_By: (row['Sold By'] || row['Sold_By'] || 'Sales').trim(),
+        Sales_Team: (row['Sales team'] || row['Sales_Team'] || '').trim(),
       }));
 
       // Parse Pipeline Snapshots
@@ -145,6 +146,7 @@ export class DataService implements OnModuleInit {
         Product_Sub_Category: (row['Product_Sub_Category'] || '').trim(),
         Sales_Rep: (row['Sales_Rep'] || '').trim(),
         Created_Date: parseDate(row['Created Date'] || row['Created_Date'] || ''),
+        Sales_Team: (row['Sales team'] || row['Sales_Team'] || '').trim(),
       }));
 
       // Parse ARR Snapshots

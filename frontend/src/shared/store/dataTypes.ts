@@ -66,6 +66,7 @@ export interface RawClosedAcv {
   Sales_Rep: string;
   SOW_ID: string;
   Sold_By: string;
+  Sales_Team: string;
 }
 
 export interface RawPipelineSnapshot {
@@ -87,6 +88,7 @@ export interface RawPipelineSnapshot {
   Product_Sub_Category: string;
   Sales_Rep: string;
   Created_Date: string;
+  Sales_Team: string;
 }
 
 export interface RawARRSnapshot {

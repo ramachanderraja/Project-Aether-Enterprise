@@ -18,6 +18,7 @@ export interface ClosedAcvRecord {
   Sales_Rep: string;
   SOW_ID: string;
   Sold_By: string;
+  Sales_Team: string;
 }
 
 export interface PipelineSnapshotRecord {
@@ -39,6 +40,7 @@ export interface PipelineSnapshotRecord {
   Product_Sub_Category: string;
   Sales_Rep: string;
   Created_Date: string;
+  Sales_Team: string;
 }
 
 export interface ARRSnapshotRecord {

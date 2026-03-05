@@ -7,6 +7,27 @@
 
 <!-- Add entries below in reverse chronological order (newest first) -->
 
+## 2026-03-05 - Add Sales Team Filter & Remove Segment/Channel Filters from Sales Performance
+**Task:** Add new Sales Team filter to all Sales Performance tabs using the new `Sales team` column in closed_acv.xlsx and monthly_pipeline_snapshot.xlsx. Remove Segment and Channel filters. Change Forecast Deep Dive table from regional to sales team performance.
+**Changes:**
+- `backend/src/modules/data/dto/index.ts`: Added `Sales_Team: string` to `ClosedAcvRecord` and `PipelineSnapshotRecord`
+- `backend/src/modules/data/data.service.ts`: Parse `Sales team` column from both XLSX files
+- `frontend/src/shared/store/dataTypes.ts`: Added `Sales_Team: string` to `RawClosedAcv` and `RawPipelineSnapshot`
+- `frontend/src/modules/sales/pages/SalesPage.tsx`:
+  - Added `salesTeam: string` to `Opportunity` interface
+  - Added `SALES_TEAMS` constant (12 teams: NA East/West/Central Software, Europe Software, LATAM Software, APAC & ANZ Software, Middle East Software, Mid Market Software, Emerging Ent Software, TSO, GD, Partner)
+  - Replaced `segmentFilter`/`channelFilter` states with `salesTeamFilter`
+  - Updated filter logic in `filteredOpportunities`, `previousYearOpportunities`, `metrics` (time-to-close), and `snapshotComparison` (pipeline movement) to use salesTeam filter
+  - Removed `SEGMENTS`/`CHANNELS` constants and Segment/Channel MultiSelectDropdown components
+  - Added Sales Teams MultiSelectDropdown in filter bar
+  - Replaced `RegionalForecast` interface → `SalesTeamForecast`
+  - Replaced `buildRegionalForecast()` → `buildSalesTeamForecast()`: groups by `salesTeam` instead of region, dynamically discovers teams from data
+  - Forecast Deep Dive table now shows "Sales Team Performance vs Previous Year" with Sales Team column
+  - Updated Clear All button to reset salesTeamFilter
+  - Removed segmentFilter from `buildRealSalespeople` function signature
+**Status:** Complete
+**Branch:** `commonbranch`
+
 ## 2026-03-04 - Migrate Pipeline Snapshot & Closed ACV from CSV to XLSX
 **Task:** User updated `monthly_pipeline_snapshot` and `closed_acv` data files from CSV to XLSX format. Update backend to parse XLSX files.
 **Changes:**

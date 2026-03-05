@@ -59,6 +59,8 @@ interface Opportunity {
   pipelineSubCategoryBreakdown?: { subCategory: string; pct: number }[];
   // Revenue Type from SOW Mapping (License, Implementation, Services)
   revenueType?: string;
+  // Sales Team from data (e.g., TSO, NA East Software, Europe Software)
+  salesTeam: string;
 }
 
 interface Salesperson {
@@ -84,8 +86,8 @@ interface QuarterlyForecast {
   previousYear: number;
 }
 
-interface RegionalForecast {
-  region: string;
+interface SalesTeamForecast {
+  salesTeam: string;
   forecast: number;
   previousYearACV: number;
   closedACV: number;
@@ -114,14 +116,17 @@ const VERTICALS = [
   'Private Equity',
   'Unilever',
 ];
-const SEGMENTS = ['Enterprise', 'SMB'];
-const CHANNELS = ['Direct', 'Partner', 'Reseller', 'Organic', 'Referral'];
+const SALES_TEAMS = [
+  'NA East Software', 'NA West Software', 'NA Central Software',
+  'Europe Software', 'LATAM Software', 'APAC & ANZ Software',
+  'Middle East Software', 'Mid Market Software', 'Emerging Ent Software',
+  'TSO', 'GD', 'Partner',
+];
 
 const LICENSE_ACV_LOGO_TYPES = ['New Logo', 'Upsell', 'Cross-Sell'];
 const RENEWAL_LOGO_TYPES = ['Extension', 'Renewal'];
 const STAGES = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
 
-const SOLD_BY_OPTIONS = ['Sales', 'GD', 'TSO'] as const;
 const REVENUE_TYPE_OPTIONS = ['License', 'Implementation'] as const;
 
 function parseDateLocal(dateStr: string): Date {
@@ -185,6 +190,7 @@ function buildRealOpportunities(store: SalesDataState): Opportunity[] {
       soldBy,
       sowId: row.SOW_ID,
       revenueType: sowMapping?.Revenue_Type || row.Value_Type || 'License',
+      salesTeam: row.Sales_Team || '',
     });
   });
 
@@ -241,6 +247,7 @@ function buildRealOpportunities(store: SalesDataState): Opportunity[] {
       soldBy: 'Sales',
       productSubCategory: row.Product_Sub_Category || undefined,
       revenueType: 'License',
+      salesTeam: row.Sales_Team || '',
     });
   });
 
@@ -249,7 +256,7 @@ function buildRealOpportunities(store: SalesDataState): Opportunity[] {
 
 function buildRealSalespeople(
   store: SalesDataState, opps: Opportunity[], prevYearOpps: Opportunity[],
-  yearFilter: string[], regionFilter: string[], segmentFilter: string[], verticalFilter: string[],
+  yearFilter: string[], regionFilter: string[], verticalFilter: string[],
   revenueTypeFilter: string,
 ): Salesperson[] {
   // Revenue-type-aware value getters for closed and pipeline deals
@@ -284,13 +291,6 @@ function buildRealSalespeople(
     let csvRowsForYear = store.priorYearPerformance.filter(r => r.Year === selectedYear);
     // Apply global filters to CSV rows
     if (regionFilter.length > 0) csvRowsForYear = csvRowsForYear.filter(r => regionFilter.includes(r.Region));
-    if (segmentFilter.length > 0) {
-      csvRowsForYear = csvRowsForYear.filter(r => {
-        // CSV has "Mid-Market", filter uses "SMB" — normalize for matching
-        const normalizedSeg = r.Segment === 'Mid-Market' ? 'SMB' : r.Segment;
-        return segmentFilter.includes(normalizedSeg);
-      });
-    }
     if (verticalFilter.length > 0) csvRowsForYear = csvRowsForYear.filter(r => r.Vertical === 'All' || verticalFilter.includes(r.Vertical));
 
     // Build prior-year lookup for previousYearClosed
@@ -455,7 +455,7 @@ function buildQuarterlyForecast(opps: Opportunity[], prevYearOpps: Opportunity[]
   });
 }
 
-function buildRegionalForecast(opps: Opportunity[], prevYearOpps: Opportunity[], revenueType: string): RegionalForecast[] {
+function buildSalesTeamForecast(opps: Opportunity[], prevYearOpps: Opportunity[], revenueType: string): SalesTeamForecast[] {
   const yr = new Date().getFullYear();
 
   // Revenue-type-aware value getters — read column directly from template
@@ -470,34 +470,40 @@ function buildRegionalForecast(opps: Opportunity[], prevYearOpps: Opportunity[],
     return (o.licenseValue || 0) + (o.implementationValue || 0);
   };
 
-  return REGIONS.map(region => {
-    const regionWon = opps.filter(o =>
-      o.status === 'Won' && o.region === region && o.expectedCloseDate.startsWith(String(yr))
+  // Collect all sales teams present in the data (union of current + previous year)
+  const allTeams = new Set<string>();
+  opps.forEach(o => { if (o.salesTeam) allTeams.add(o.salesTeam); });
+  prevYearOpps.forEach(o => { if (o.salesTeam) allTeams.add(o.salesTeam); });
+  const teams = Array.from(allTeams).sort();
+
+  return teams.map(team => {
+    const teamWon = opps.filter(o =>
+      o.status === 'Won' && o.salesTeam === team && o.expectedCloseDate.startsWith(String(yr))
     );
-    const closedACV = regionWon.reduce((sum, o) => sum + getClosedVal(o), 0);
+    const closedACV = teamWon.reduce((sum, o) => sum + getClosedVal(o), 0);
 
     // ACV forecast excludes Renewal/Extension deals from pipeline
-    const regionActive = opps.filter(o =>
-      (o.status === 'Active' || o.status === 'Stalled') && o.region === region && !RENEWAL_LOGO_TYPES.includes(o.logoType)
+    const teamActive = opps.filter(o =>
+      (o.status === 'Active' || o.status === 'Stalled') && o.salesTeam === team && !RENEWAL_LOGO_TYPES.includes(o.logoType)
     );
-    const weightedPipeline = regionActive.reduce((sum, o) => sum + getPipeVal(o), 0);
+    const weightedPipeline = teamActive.reduce((sum, o) => sum + getPipeVal(o), 0);
     const forecast = closedACV + weightedPipeline;
 
-    // Previous year closed ACV for same region
-    const prevRegionWon = prevYearOpps.filter(o =>
-      o.status === 'Won' && o.region === region
+    // Previous year closed ACV for same team
+    const prevTeamWon = prevYearOpps.filter(o =>
+      o.status === 'Won' && o.salesTeam === team
     );
-    const previousYearACV = prevRegionWon.reduce((sum, o) => sum + getClosedVal(o), 0);
+    const previousYearACV = prevTeamWon.reduce((sum, o) => sum + getClosedVal(o), 0);
 
     // Previous year forecast = previous year closed + previous year pipeline (excl. Renewal/Extension)
-    const prevRegionActive = prevYearOpps.filter(o =>
-      (o.status === 'Active' || o.status === 'Stalled') && o.region === region && !RENEWAL_LOGO_TYPES.includes(o.logoType)
+    const prevTeamActive = prevYearOpps.filter(o =>
+      (o.status === 'Active' || o.status === 'Stalled') && o.salesTeam === team && !RENEWAL_LOGO_TYPES.includes(o.logoType)
     );
-    const prevYearPipeline = prevRegionActive.reduce((sum, o) => sum + getPipeVal(o), 0);
+    const prevYearPipeline = prevTeamActive.reduce((sum, o) => sum + getPipeVal(o), 0);
     const previousYearForecast = previousYearACV + prevYearPipeline;
 
     return {
-      region,
+      salesTeam: team,
       forecast,
       previousYearACV: previousYearForecast,
       closedACV,
@@ -843,10 +849,8 @@ export default function SalesPage() {
   const [monthFilter, setMonthFilter] = useState<string[]>([]);
   const [regionFilter, setRegionFilter] = useState<string[]>([]);
   const [verticalFilter, setVerticalFilter] = useState<string[]>([]);
-  const [segmentFilter, setSegmentFilter] = useState<string[]>([]);
-  const [channelFilter, setChannelFilter] = useState<string[]>([]);
+  const [salesTeamFilter, setSalesTeamFilter] = useState<string[]>([]);
   const [logoTypeFilter, setLogoTypeFilter] = useState<string[]>(['New Logo', 'Upsell', 'Cross-Sell']);
-  const [soldByFilter, setSoldByFilter] = useState<string>('All');  // Sold By filter (Change 9)
   const [revenueTypeFilter, setRevenueTypeFilter] = useState<string>('License');  // Revenue Type filter - default License
   const [productCategoryFilter, setProductCategoryFilter] = useState<string[]>([]);
   const [productSubCategoryFilter, setProductSubCategoryFilter] = useState<string[]>([]);
@@ -950,11 +954,8 @@ export default function SalesPage() {
       // Vertical filter (multi-select)
       if (verticalFilter.length > 0 && !verticalFilter.includes(opp.vertical)) return false;
 
-      // Segment filter (multi-select)
-      if (segmentFilter.length > 0 && !segmentFilter.includes(opp.segment)) return false;
-
-      // Channel filter (multi-select)
-      if (channelFilter.length > 0 && !channelFilter.includes(opp.channel)) return false;
+      // Sales Team filter (multi-select)
+      if (salesTeamFilter.length > 0 && !salesTeamFilter.includes(opp.salesTeam)) return false;
 
       // Logo Type filter (multi-select) - treat Extension and Renewal as same
       if (logoTypeFilter.length > 0) {
@@ -988,9 +989,6 @@ export default function SalesPage() {
         if (!monthFilter.includes(monthNames[oppMonth])) return false;
       }
 
-      // Sold By filter (Change 9)
-      if (soldByFilter !== 'All' && opp.soldBy !== soldByFilter) return false;
-
       // Revenue Type filter — NO row filtering for closed deals.
       // All closed deals have both License_ACV and Implementation_Value columns;
       // the metrics computation picks the right column based on the filter.
@@ -1003,7 +1001,7 @@ export default function SalesPage() {
 
       return true;
     });
-  }, [enrichedOpportunities, yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter, segmentFilter, channelFilter, logoTypeFilter, soldByFilter, revenueTypeFilter, productCategoryFilter, productSubCategoryFilter]);
+  }, [enrichedOpportunities, yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter, salesTeamFilter, logoTypeFilter, revenueTypeFilter, productCategoryFilter, productSubCategoryFilter]);
 
   // Previous year opportunities for YoY comparison (same filters except year shifted back by 1)
   const previousYearOpportunities = useMemo(() => {
@@ -1018,8 +1016,7 @@ export default function SalesPage() {
 
       if (regionFilter.length > 0 && !regionFilter.includes(opp.region)) return false;
       if (verticalFilter.length > 0 && !verticalFilter.includes(opp.vertical)) return false;
-      if (segmentFilter.length > 0 && !segmentFilter.includes(opp.segment)) return false;
-      if (channelFilter.length > 0 && !channelFilter.includes(opp.channel)) return false;
+      if (salesTeamFilter.length > 0 && !salesTeamFilter.includes(opp.salesTeam)) return false;
       if (logoTypeFilter.length > 0) {
         const normalizedLogoType = (opp.logoType === 'Renewal' || opp.logoType === 'Extension')
           ? 'Extension/Renewal' : opp.logoType;
@@ -1038,28 +1035,27 @@ export default function SalesPage() {
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         if (!monthFilter.includes(monthNames[oppMonth])) return false;
       }
-      if (soldByFilter !== 'All' && opp.soldBy !== soldByFilter) return false;
       // Revenue Type — no row filtering; metrics pick the right column
       if (productCategoryFilter.length > 0 && opp.productCategory && !productCategoryFilter.includes(opp.productCategory)) return false;
       if (productSubCategoryFilter.length > 0 && opp.productSubCategory && !productSubCategoryFilter.includes(opp.productSubCategory)) return false;
 
       return true;
     });
-  }, [enrichedOpportunities, yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter, segmentFilter, channelFilter, logoTypeFilter, soldByFilter, revenueTypeFilter, productCategoryFilter, productSubCategoryFilter]);
+  }, [enrichedOpportunities, yearFilter, quarterFilter, monthFilter, regionFilter, verticalFilter, salesTeamFilter, logoTypeFilter, revenueTypeFilter, productCategoryFilter, productSubCategoryFilter]);
 
   const salespeople = useMemo(() => {
     if (!realData.isLoaded) return [];
-    return buildRealSalespeople(realData, filteredOpportunities, previousYearOpportunities, yearFilter, regionFilter, segmentFilter, verticalFilter, revenueTypeFilter);
-  }, [realData.isLoaded, realData.salesTeam, realData.priorYearPerformance, filteredOpportunities, previousYearOpportunities, yearFilter, regionFilter, segmentFilter, verticalFilter, revenueTypeFilter]);
+    return buildRealSalespeople(realData, filteredOpportunities, previousYearOpportunities, yearFilter, regionFilter, verticalFilter, revenueTypeFilter);
+  }, [realData.isLoaded, realData.salesTeam, realData.priorYearPerformance, filteredOpportunities, previousYearOpportunities, yearFilter, regionFilter, verticalFilter, revenueTypeFilter]);
 
   const quarterlyForecastData = useMemo(() => {
     if (!realData.isLoaded) return [];
     return buildQuarterlyForecast(filteredOpportunities, previousYearOpportunities, revenueTypeFilter);
   }, [realData.isLoaded, filteredOpportunities, previousYearOpportunities, revenueTypeFilter]);
 
-  const regionalForecastData = useMemo(() => {
+  const salesTeamForecastData = useMemo(() => {
     if (!realData.isLoaded) return [];
-    return buildRegionalForecast(filteredOpportunities, previousYearOpportunities, revenueTypeFilter);
+    return buildSalesTeamForecast(filteredOpportunities, previousYearOpportunities, revenueTypeFilter);
   }, [realData.isLoaded, filteredOpportunities, previousYearOpportunities, revenueTypeFilter]);
 
   const ownerNames = useMemo(() => {
@@ -1221,7 +1217,7 @@ export default function SalesPage() {
       });
 
       const dealHistory = new Map<string, {
-        createdDate: string; logoType: string; region: string; vertical: string; segment: string;
+        createdDate: string; logoType: string; region: string; vertical: string; salesTeam: string;
         licenseAcv: number; implementationValue: number;
         entries: { month: string; stage: string }[];
       }>();
@@ -1230,7 +1226,7 @@ export default function SalesPage() {
         if (!dealHistory.has(s.Pipeline_Deal_ID)) {
           dealHistory.set(s.Pipeline_Deal_ID, {
             createdDate: s.Created_Date || '', logoType: s.Logo_Type || '',
-            region: s.Region || '', vertical: s.Vertical || '', segment: s.Segment || '',
+            region: s.Region || '', vertical: s.Vertical || '', salesTeam: s.Sales_Team || '',
             licenseAcv: s.License_ACV || 0, implementationValue: s.Implementation_Value || 0,
             entries: [],
           });
@@ -1251,7 +1247,7 @@ export default function SalesPage() {
         }
         if (regionFilter.length > 0 && !regionFilter.includes(deal.region)) return;
         if (verticalFilter.length > 0 && !verticalFilter.includes(deal.vertical)) return;
-        if (segmentFilter.length > 0 && !segmentFilter.includes(deal.segment)) return;
+        if (salesTeamFilter.length > 0 && !salesTeamFilter.includes(deal.salesTeam)) return;
 
         deal.entries.sort((a, b) => a.month.localeCompare(b.month));
         let lastClosedMonth: string | null = null;
@@ -1302,7 +1298,7 @@ export default function SalesPage() {
       closedLostCount: closedLost.length,
       activeDealsCount: activeDeals.length,
     };
-  }, [filteredOpportunities, previousYearOpportunities, revenueTypeFilter, realData.pipelineSnapshots, realData.closedAcv, yearFilter, monthFilter, quarterFilter, logoTypeFilter, regionFilter, verticalFilter, segmentFilter]);
+  }, [filteredOpportunities, previousYearOpportunities, revenueTypeFilter, realData.pipelineSnapshots, realData.closedAcv, yearFilter, monthFilter, quarterFilter, logoTypeFilter, regionFilter, verticalFilter, salesTeamFilter]);
 
   // Funnel data - dynamically built from actual Deal_Stage values in the data
   const funnelData = useMemo(() => {
@@ -1451,7 +1447,7 @@ export default function SalesPage() {
     const passesFilters = (row: typeof snapshots[0]): boolean => {
       if (regionFilter.length > 0 && !regionFilter.includes(row.Region)) return false;
       if (verticalFilter.length > 0 && !verticalFilter.includes(row.Vertical)) return false;
-      if (segmentFilter.length > 0 && !segmentFilter.includes(row.Segment)) return false;
+      if (salesTeamFilter.length > 0 && !salesTeamFilter.includes(row.Sales_Team)) return false;
       if (logoTypeFilter.length > 0) {
         const normalizedLogoType = (row.Logo_Type === 'Renewal' || row.Logo_Type === 'Extension')
           ? 'Extension/Renewal' : row.Logo_Type;
@@ -1612,7 +1608,7 @@ export default function SalesPage() {
       dealDetails,
     };
   }, [realData.isLoaded, realData.pipelineSnapshots, yearFilter, monthFilter, quarterFilter,
-      regionFilter, verticalFilter, segmentFilter, logoTypeFilter, revenueTypeFilter, pipelineLookbackMonths]);
+      regionFilter, verticalFilter, salesTeamFilter, logoTypeFilter, revenueTypeFilter, pipelineLookbackMonths]);
 
   // Reset waterfall selection when comparison data changes
   useEffect(() => { setWaterfallSelectedCategory(null); }, [snapshotComparison]);
@@ -2131,17 +2127,17 @@ export default function SalesPage() {
           </div>
         </div>
 
-        {/* Regional Performance vs Previous Year */}
+        {/* Sales Team Performance vs Previous Year */}
         <ChartWrapper
-          title="Regional Performance vs Previous Year"
-          data={regionalForecastData}
-          filename="regional_forecast"
+          title="Sales Team Performance vs Previous Year"
+          data={salesTeamForecastData}
+          filename="sales_team_forecast"
         >
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-secondary-50">
                 <tr>
-                  <SortableHeader label="Region" sortKey="region" currentSort={sortConfig} onSort={handleSort} />
+                  <SortableHeader label="Sales Team" sortKey="salesTeam" currentSort={sortConfig} onSort={handleSort} />
                   <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase tracking-wider">Closed ACV</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase tracking-wider">Forecast</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-500 uppercase tracking-wider">Previous Year</th>
@@ -2151,27 +2147,27 @@ export default function SalesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-secondary-100">
-                {regionalForecastData.map((region) => (
-                  <tr key={region.region} className="hover:bg-secondary-50">
-                    <td className="px-4 py-4 font-medium text-secondary-900">{region.region}</td>
-                    <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(region.closedACV)}</td>
-                    <td className="px-4 py-4 text-right font-medium text-secondary-900">{formatCurrency(region.forecast)}</td>
-                    <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(region.previousYearACV)}</td>
-                    <td className={`px-4 py-4 text-right font-medium ${region.variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {region.variance >= 0 ? '+' : ''}{formatCurrency(region.variance)}
+                {salesTeamForecastData.map((row) => (
+                  <tr key={row.salesTeam} className="hover:bg-secondary-50">
+                    <td className="px-4 py-4 font-medium text-secondary-900">{row.salesTeam}</td>
+                    <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(row.closedACV)}</td>
+                    <td className="px-4 py-4 text-right font-medium text-secondary-900">{formatCurrency(row.forecast)}</td>
+                    <td className="px-4 py-4 text-right text-secondary-600">{formatCurrency(row.previousYearACV)}</td>
+                    <td className={`px-4 py-4 text-right font-medium ${row.variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {row.variance >= 0 ? '+' : ''}{formatCurrency(row.variance)}
                     </td>
                     <td className="px-4 py-4 text-right">
-                      <span className={`font-medium ${region.yoyGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {region.yoyGrowth >= 0 ? '+' : ''}{region.yoyGrowth}%
+                      <span className={`font-medium ${row.yoyGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {row.yoyGrowth >= 0 ? '+' : ''}{row.yoyGrowth}%
                       </span>
                     </td>
                     <td className="px-4 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        region.yoyGrowth >= 10 ? 'bg-green-100 text-green-800' :
-                        region.yoyGrowth >= 0 ? 'bg-yellow-100 text-yellow-800' :
+                        row.yoyGrowth >= 10 ? 'bg-green-100 text-green-800' :
+                        row.yoyGrowth >= 0 ? 'bg-yellow-100 text-yellow-800' :
                         'bg-red-100 text-red-800'
                       }`}>
-                        {region.yoyGrowth >= 10 ? 'Growing' : region.yoyGrowth >= 0 ? 'Flat' : 'Declining'}
+                        {row.yoyGrowth >= 10 ? 'Growing' : row.yoyGrowth >= 0 ? 'Flat' : 'Declining'}
                       </span>
                     </td>
                   </tr>
@@ -3327,11 +3323,11 @@ export default function SalesPage() {
           />
 
           <MultiSelectDropdown
-            label="Segments"
-            options={SEGMENTS}
-            selected={segmentFilter}
-            onChange={setSegmentFilter}
-            placeholder="All Segments"
+            label="Sales Teams"
+            options={SALES_TEAMS}
+            selected={salesTeamFilter}
+            onChange={setSalesTeamFilter}
+            placeholder="All Sales Teams"
           />
 
           <MultiSelectDropdown
@@ -3340,14 +3336,6 @@ export default function SalesPage() {
             selected={logoTypeFilter}
             onChange={setLogoTypeFilter}
             placeholder="All Logo Types"
-          />
-
-          <MultiSelectDropdown
-            label="Channels"
-            options={CHANNELS}
-            selected={channelFilter}
-            onChange={setChannelFilter}
-            placeholder="All Channels"
           />
 
           {/* Category / Sub-Category Filters */}
@@ -3385,21 +3373,6 @@ export default function SalesPage() {
             );
           })()}
 
-          {/* Sold By Filter (Change 9) */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-secondary-600">Sold By:</label>
-            <select
-              value={soldByFilter}
-              onChange={(e) => setSoldByFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-secondary-200 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            >
-              <option value="All">All</option>
-              {SOLD_BY_OPTIONS.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </div>
-
           {/* Revenue Type Filter */}
           <div className="flex items-center gap-2">
             <label className="text-sm text-secondary-600">Revenue Type:</label>
@@ -3416,7 +3389,7 @@ export default function SalesPage() {
           </div>
 
           {/* Clear All Filters Button */}
-          {((yearFilter.length !== 1 || yearFilter[0] !== '2026') || quarterFilter.length > 0 || monthFilter.length > 0 || regionFilter.length > 0 || verticalFilter.length > 0 || segmentFilter.length > 0 || logoTypeFilter.length > 0 || channelFilter.length > 0 || soldByFilter !== 'All' || revenueTypeFilter !== 'License' || productCategoryFilter.length > 0 || productSubCategoryFilter.length > 0) && (
+          {((yearFilter.length !== 1 || yearFilter[0] !== '2026') || quarterFilter.length > 0 || monthFilter.length > 0 || regionFilter.length > 0 || verticalFilter.length > 0 || salesTeamFilter.length > 0 || logoTypeFilter.length > 0 || revenueTypeFilter !== 'License' || productCategoryFilter.length > 0 || productSubCategoryFilter.length > 0) && (
             <button
               onClick={() => {
                 setYearFilter(['2026']);
@@ -3424,10 +3397,8 @@ export default function SalesPage() {
                 setMonthFilter([]);
                 setRegionFilter([]);
                 setVerticalFilter([]);
-                setSegmentFilter([]);
+                setSalesTeamFilter([]);
                 setLogoTypeFilter([]);
-                setChannelFilter([]);
-                setSoldByFilter('All');
                 setRevenueTypeFilter('License');
                 setProductCategoryFilter([]);
                 setProductSubCategoryFilter([]);
