@@ -7,6 +7,19 @@
 
 <!-- Add entries below in reverse chronological order (newest first) -->
 
+## 2026-03-09 - Refresh ARR Snapshot & Pipeline Logo_Type Updates
+**Task:** User updated monthly_arr_snapshot.csv with additional months (now Jan 2024 → Dec 2026, 36 months, 12,233 rows). Pipeline XLSX Logo_Type values updated to: `Upsell`, `New Logo`, `Cross Sell`, `Renewal/Extn`. Segment and Product_Sub_Category columns removed from pipeline XLSX.
+**Changes:**
+- `frontend/public/data/monthly_arr_snapshot.csv`: Copied updated file from backend/data
+- `frontend/public/data/monthly_pipeline_snapshot.xlsx`: Copied updated file from backend/data
+- No code changes needed:
+  - Backend `normalizeLogoType` already handles `Cross Sell` → `Cross-Sell` and `Renewal/Extn` → `Extension`
+  - Frontend `normalizeLogoType` and `Extension/Renewal` filter option work correctly
+  - Missing `Segment`/`Product_Sub_Category` columns default to empty string via `|| ''`
+  - ARR snapshot parser handles `New Business_ARR` column name and `$` formatted `Ending_ARR`
+**Status:** Complete
+**Branch:** `commonbranch`
+
 ## 2026-03-09 - Update Pipeline Snapshot to Unweighted Values & Refresh Data with Additional Month
 **Task:** Pipeline snapshot XLSX now contains unweighted values for Deal_Value, License_ACV, Implementation_Value. Previously values were pre-multiplied by probability. Also refreshed both closed_acv.xlsx and monthly_pipeline_snapshot.xlsx with an additional month of data.
 **Changes:**
