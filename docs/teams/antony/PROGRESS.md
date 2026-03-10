@@ -7,6 +7,21 @@
 
 <!-- Add entries below in reverse chronological order (newest first) -->
 
+## 2026-03-09 - Update Pipeline Snapshot to Unweighted Values & Refresh Data with Additional Month
+**Task:** Pipeline snapshot XLSX now contains unweighted values for Deal_Value, License_ACV, Implementation_Value. Previously values were pre-multiplied by probability. Also refreshed both closed_acv.xlsx and monthly_pipeline_snapshot.xlsx with an additional month of data.
+**Changes:**
+- `frontend/src/modules/sales/pages/SalesPage.tsx`:
+  - `buildRealOpportunities`: Now multiplies License_ACV, Implementation_Value by `Probability/100` when creating Opportunity objects (weighted at creation for downstream use)
+  - Deal Velocity `SnapDeal`: Simplified to use raw unweighted values directly (removed division by probFraction)
+  - Updated comments throughout to reflect unweighted source data
+- `frontend/src/modules/revenue/pages/RevenuePage.tsx`:
+  - All 5 locations where `row.License_ACV` was summed for pipeline forecasts now multiply by `row.Probability / 100`
+  - Affected: ARR forecast by month, year-end forecast, month forecast, full-year NRR/GRR, monthly NRR/GRR
+- `frontend/public/data/monthly_pipeline_snapshot.xlsx`: Copied updated file from backend/data
+- `frontend/public/data/closed_acv.xlsx`: Copied updated file from backend/data
+**Status:** Complete
+**Branch:** `commonbranch`
+
 ## 2026-03-05 - Add Sales Team Filter & Remove Segment/Channel Filters from Sales Performance
 **Task:** Add new Sales Team filter to all Sales Performance tabs using the new `Sales team` column in closed_acv.xlsx and monthly_pipeline_snapshot.xlsx. Remove Segment and Channel filters. Change Forecast Deep Dive table from regional to sales team performance.
 **Changes:**

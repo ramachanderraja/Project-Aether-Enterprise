@@ -20,6 +20,7 @@ import { useARRSubCategoryStore } from '@shared/store/arrSubCategoryStore';
 import { useProductCategoryMappingStore } from '@shared/store/productCategoryMappingStore';
 import { normalizeRegion } from '@shared/store/dataTypes';
 import { useSalesDataStore, type SalesDataState } from '@shared/store/salesDataStore';
+import { useAuthStore } from '@/modules/auth/store/authStore';
 import { SalesPageSkeleton } from '@shared/components/ui/PageSkeleton';
 
 // ==================== TYPE DEFINITIONS ====================
@@ -222,6 +223,7 @@ function buildRealOpportunities(store: SalesDataState): Opportunity[] {
     }
 
     const prob = status === 'Lost' ? 0 : row.Probability;
+    const probFrac = prob / 100;
 
     opps.push({
       id: row.Pipeline_Deal_ID || `PIP-${String(++pipIdx).padStart(4, '0')}`,
@@ -233,11 +235,11 @@ function buildRealOpportunities(store: SalesDataState): Opportunity[] {
       channel: 'Direct',
       stage: status === 'Lost' ? 'Closed Lost' : (row.Deal_Stage || 'Prospecting'),
       probability: prob,
-      // Pipeline values (License_ACV, Implementation_Value) are already probability-adjusted
+      // Pipeline values are unweighted in the data; weight by probability for forecasting
       dealValue: row.Deal_Value,
-      licenseValue: row.License_ACV,
-      implementationValue: row.Implementation_Value,
-      weightedValue: row.License_ACV + row.Implementation_Value,
+      licenseValue: row.License_ACV * probFrac,
+      implementationValue: row.Implementation_Value * probFrac,
+      weightedValue: (row.License_ACV + row.Implementation_Value) * probFrac,
       expectedCloseDate: row.Expected_Close_Date,
       daysInStage: 30,
       owner: row.Sales_Rep,
@@ -267,13 +269,13 @@ function buildRealSalespeople(
     return (o.licenseValue || 0) + (o.implementationValue || 0);
   };
   const getWeightedPipeVal = (o: Opportunity): number => {
-    // Pipeline values are already probability-weighted
+    // Opportunity licenseValue/implementationValue are already probability-weighted at creation
     if (revenueTypeFilter === 'Implementation') return o.implementationValue || 0;
     if (revenueTypeFilter === 'License') return o.licenseValue || 0;
     return (o.licenseValue || 0) + (o.implementationValue || 0);
   };
   const getUnweightedPipeVal = (o: Opportunity): number => {
-    // Unweight: divide by probability to get original value
+    // Unweight: divide weighted value by probability to get original unweighted value
     const prob = o.probability > 0 ? o.probability / 100 : 0;
     if (prob === 0) return 0;
     if (revenueTypeFilter === 'Implementation') return (o.implementationValue || 0) / prob;
@@ -1347,8 +1349,7 @@ export default function SalesPage() {
 
   // Key deals (top 10 by value) - show UNWEIGHTED fee (weighted value / probability)
   const keyDeals = useMemo(() => {
-    // Unweighted value = weighted value / (probability / 100)
-    // Pipeline values are already probability-adjusted, so divide by probability to get unweighted
+    // Unweighted value = weighted value / (probability / 100) to recover original deal value
     const getUnweightedVal = (o: Opportunity): number => {
       const prob = o.probability > 0 ? o.probability / 100 : 1;
       if (revenueTypeFilter === 'Implementation') return (o.implementationValue || 0) / prob;
@@ -1475,10 +1476,10 @@ export default function SalesPage() {
       if (!passesFilters(row)) return;
       const ym = row.Snapshot_Month.slice(0, 7);
       const key = row.Pipeline_Deal_ID;
-      const probFraction = (row.Probability || 0) / 100; // Probability is stored as percentage (e.g. 90 = 90%)
+      // Pipeline values are unweighted in the data — use directly for Deal Velocity
       const deal: SnapDeal = {
-        licenseACV: probFraction > 0 ? (row.License_ACV || 0) / probFraction : (row.License_ACV || 0),
-        implValue: probFraction > 0 ? (row.Implementation_Value || 0) / probFraction : (row.Implementation_Value || 0),
+        licenseACV: row.License_ACV || 0,
+        implValue: row.Implementation_Value || 0,
         currentStage: row.Current_Stage || '',
         dealName: row.Deal_Name || '',
         customerName: row.Customer_Name || '',

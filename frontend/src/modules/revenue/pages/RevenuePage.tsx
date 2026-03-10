@@ -21,6 +21,7 @@ import {
 import { useSOWMappingStore } from '@shared/store/sowMappingStore';
 import { normalizeRegion } from '@shared/store/dataTypes';
 import { useRevenueDataStore, type RevenueDataState } from '@shared/store/revenueDataStore';
+import { useAuthStore } from '@/modules/auth/store/authStore';
 import { RevenuePageSkeleton } from '@shared/components/ui/PageSkeleton';
 
 // ==================== TYPE DEFINITIONS ====================
@@ -285,7 +286,7 @@ function buildRealMonthlyARR(
   }
 
   // 3. Build pipeline forecast by month, split by logo type (latest snapshot only, with filters)
-  // Pipeline values (License_ACV) are already weighted (pre-multiplied by probability)
+  // Pipeline values (License_ACV) are unweighted — multiply by Probability/100 for weighted forecast
   // Renewal logo types: Renewal, Extension (Extension = Renewal per business rules)
   // New business logo types: New Logo, Upsell, Cross-Sell
   let latestSnapshotMonth = '';
@@ -304,10 +305,11 @@ function buildRealMonthlyARR(
     const closeMonth = row.Expected_Close_Date.slice(0, 7);
     if (closeMonth <= priorMonth) return;
     const logoType = row.Logo_Type.trim();
+    const weightedLicenseACV = row.License_ACV * ((row.Probability || 0) / 100);
     if (RENEWAL_TYPES.has(logoType)) {
-      renewalByMonth.set(closeMonth, (renewalByMonth.get(closeMonth) || 0) + row.License_ACV);
+      renewalByMonth.set(closeMonth, (renewalByMonth.get(closeMonth) || 0) + weightedLicenseACV);
     } else {
-      newBizByMonth.set(closeMonth, (newBizByMonth.get(closeMonth) || 0) + row.License_ACV);
+      newBizByMonth.set(closeMonth, (newBizByMonth.get(closeMonth) || 0) + weightedLicenseACV);
     }
   });
 
@@ -1177,7 +1179,7 @@ export default function RevenuePage() {
       if (!pipelineRowPassesFilters(row)) return;
       const closeMonth = row.Expected_Close_Date.slice(0, 7);
       if (closeMonth > priorMonth && closeMonth <= decOfYear) {
-        cumulativePipeline += row.License_ACV; // Already weighted
+        cumulativePipeline += row.License_ACV * ((row.Probability || 0) / 100);
       }
     });
 
@@ -1234,7 +1236,7 @@ export default function RevenuePage() {
       if (!pipelineRowPassesFilters(row)) return;
       const closeMonth = row.Expected_Close_Date.slice(0, 7);
       if (closeMonth > priorMonth && closeMonth <= selectedARRMonth) {
-        cumulativePipeline += row.License_ACV;
+        cumulativePipeline += row.License_ACV * ((row.Probability || 0) / 100);
       }
     });
 
@@ -1316,10 +1318,11 @@ export default function RevenuePage() {
         const closeMonth = row.Expected_Close_Date.slice(0, 7);
         if (closeMonth <= priorMonth || !closeMonth.startsWith(yr)) return;
         const logoType = row.Logo_Type.trim();
+        const wLicenseACV = row.License_ACV * ((row.Probability || 0) / 100);
         if (logoType === 'Renewal' || logoType === 'Extension') {
-          forecastRenewalExt += row.License_ACV;
+          forecastRenewalExt += wLicenseACV;
         } else if (logoType === 'Upsell' || logoType === 'Cross-Sell') {
-          forecastUpsellCrossSell += row.License_ACV;
+          forecastUpsellCrossSell += wLicenseACV;
         }
       });
     }
@@ -1404,8 +1407,9 @@ export default function RevenuePage() {
         const closeMonth = row.Expected_Close_Date.slice(0, 7);
         if (closeMonth !== selectedARRMonth) return;
         const logoType = row.Logo_Type.trim();
-        if (logoType === 'Renewal' || logoType === 'Extension') forecastRenewalExt += row.License_ACV;
-        else if (logoType === 'Upsell' || logoType === 'Cross-Sell') forecastUpsellCrossSell += row.License_ACV;
+        const wLicenseACV = row.License_ACV * ((row.Probability || 0) / 100);
+        if (logoType === 'Renewal' || logoType === 'Extension') forecastRenewalExt += wLicenseACV;
+        else if (logoType === 'Upsell' || logoType === 'Cross-Sell') forecastUpsellCrossSell += wLicenseACV;
       });
 
       nrr = previousARR > 0

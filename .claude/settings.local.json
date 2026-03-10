@@ -27,7 +27,10 @@
       "Bash(python:*)",
       "Bash(az account:*)",
       "Bash(az acr:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(grep:*)",
+      "Bash(pip3 list:*)"
     ]
   }
 }
